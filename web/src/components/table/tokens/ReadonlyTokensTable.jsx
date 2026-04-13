@@ -31,7 +31,8 @@ const ReadonlyTokensTable = () => {
         const res = await API.get('/api/token/?p=0&size=100');
         const { success, data } = res.data;
         if (success) {
-          setTokens(data || []);
+          // API returns paginated { items, total, ... }, not a plain array
+          setTokens(data?.items || []);
         }
       } catch (e) {
         Toast.error('获取 Key 列表失败');
@@ -111,19 +112,21 @@ const ReadonlyTokensTable = () => {
       <div style={{ marginBottom: '24px' }}>
         <Title heading={4}>My Key</Title>
       </div>
-      <Table
-        columns={columns}
-        dataSource={tokens}
-        loading={loading}
-        pagination={false}
-        rowKey='id'
-        empty={
-          <Empty
-            title='暂无 Key'
-            description='请联系管理员分配 API Key'
-          />
-        }
-      />
+      {tokens.length === 0 && !loading ? (
+        <Empty
+          title='暂无 Key'
+          description='请联系管理员分配 API Key'
+          style={{ marginTop: '40px' }}
+        />
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={tokens}
+          loading={loading}
+          pagination={{ pageSize: 100, hideOnSinglePage: true }}
+          rowKey='id'
+        />
+      )}
     </div>
   );
 };
