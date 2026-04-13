@@ -162,48 +162,6 @@ const Home = () => {
           循此苦旅，以达繁星。
         </p>
 
-        {/* CTA 按钮 */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {docsLink && (
-            <Button
-              size='large'
-              style={{
-                borderRadius: '999px',
-                padding: '0 28px',
-                height: '44px',
-                fontSize: '15px',
-                border: '1px solid rgba(0,0,0,0.15)',
-                background: '#fff',
-                color: 'rgba(0,0,0,0.88)',
-                fontWeight: 500,
-              }}
-              onClick={() => window.open(docsLink, '_blank')}
-            >
-              Docs
-            </Button>
-          )}
-          <Button
-            size='large'
-            theme='solid'
-            type='primary'
-            style={{
-              borderRadius: '999px',
-              padding: '0 28px',
-              height: '44px',
-              fontSize: '15px',
-              fontWeight: 600,
-              background: '#1677ff',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-            onClick={handleGetKey}
-          >
-            Get API Key
-            <span style={{ fontSize: '14px' }}>→</span>
-          </Button>
-        </div>
       </section>
 
       {/* ══════════════════════════════════════

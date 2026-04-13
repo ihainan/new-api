@@ -74,7 +74,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 20px;
   border-radius: 999px;
   text-decoration: none;
   color: rgba(0, 0, 0, 0.65);
@@ -82,7 +82,7 @@
   font-weight: 400;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
   line-height: 1;
 }
 
@@ -95,6 +95,7 @@
   background: rgba(0, 0, 0, 0.05);
   color: rgba(0, 0, 0, 0.88);
   font-weight: 500;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
 }
 
 .aihub-nav-item svg {

@@ -1,8 +1,8 @@
-import React, { useContext, useRef } from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown } from '@douyinfe/semi-ui';
 import { UserContext } from '../../context/User';
-import { API, getLogo, getSystemName } from '../../helpers';
+import { API, getSystemName } from '../../helpers';
 import './SimpleHeader.css';
 
 /* ── 可爱平面头像生成器 ── */
@@ -179,9 +179,8 @@ const SimpleHeader = () => {
   const [userState, userDispatch] = useContext(UserContext);
   const location = useLocation();
   const navigate = useNavigate();
-  const dropdownRef = useRef(null);
 
-  const logo = getLogo();
+  const logo = '/logo.png';
   const systemName = getSystemName();
   const user = userState.user;
   const currentPath = location.pathname;
@@ -214,11 +213,10 @@ const SimpleHeader = () => {
         </nav>
 
         {/* 右侧：登录 或 用户头像+名字 */}
-        <div className='aihub-right' ref={dropdownRef}>
+        <div className='aihub-right'>
           {user ? (
             <Dropdown
               position='bottomRight'
-              getPopupContainer={() => dropdownRef.current}
               render={
                 <Dropdown.Menu>
                   <Dropdown.Item onClick={logout}>退出登录</Dropdown.Item>
