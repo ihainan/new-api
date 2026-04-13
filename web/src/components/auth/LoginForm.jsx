@@ -259,7 +259,7 @@ const LoginForm = () => {
               centered: true,
             });
           }
-          navigate('/console');
+          navigate('/console/token');
         } else {
           showError(message);
         }
@@ -475,7 +475,7 @@ const LoginForm = () => {
         setUserData(finish.data);
         updateAPI();
         showSuccess('登录成功！');
-        navigate('/console');
+        navigate('/console/token');
       } else {
         showError(finish.message || 'Passkey 登录失败，请重试');
       }
@@ -510,7 +510,7 @@ const LoginForm = () => {
     setUserData(data);
     updateAPI();
     showSuccess('登录成功！');
-    navigate('/console');
+    navigate('/console/token');
   };
 
   // 返回登录页面
@@ -520,6 +520,51 @@ const LoginForm = () => {
   };
 
   const renderOAuthOptions = () => {
+    // 钉钉 SSO 启用时，只显示钉钉登录入口（含隐藏的管理员密码入口）
+    if (status?.dingtalk_oauth) {
+      return (
+        <div className='flex flex-col items-center'>
+          <div className='w-full max-w-md'>
+            <div className='flex items-center justify-center mb-6 gap-2'>
+              <img src={logo} alt='Logo' className='h-10 rounded-full' />
+              <Title heading={3} className='!text-gray-800'>
+                {systemName}
+              </Title>
+            </div>
+            <Card className='border-0 !rounded-2xl overflow-hidden'>
+              <div className='flex flex-col items-center px-6 py-10 gap-6'>
+                <Title heading={3} className='text-gray-800 dark:text-gray-200'>
+                  {t('登 录')}
+                </Title>
+                <p className='text-sm text-gray-500 text-center'>
+                  {t('使用钉钉账号登录继续使用服务')}
+                </p>
+                <Button
+                  theme='solid'
+                  type='primary'
+                  size='large'
+                  className='w-full h-12 !rounded-full'
+                  icon={
+                    <DingTalkIcon style={{ width: '20px', height: '20px' }} />
+                  }
+                  onClick={handleDingTalkClick}
+                  loading={dingtalkLoading}
+                >
+                  <span className='ml-2'>{t('使用钉钉继续')}</span>
+                </Button>
+                <button
+                  className='text-xs text-gray-300 hover:text-gray-400 transition-colors mt-2'
+                  onClick={() => setShowEmailLogin(true)}
+                >
+                  {t('管理员登录')}
+                </button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className='flex flex-col items-center'>
         <div className='w-full max-w-md'>

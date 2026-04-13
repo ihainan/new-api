@@ -39,6 +39,7 @@ import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
 import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
+import { isAdmin } from '../../helpers/utils.jsx';
 const { Sider, Content, Header } = Layout;
 
 const PageLayout = () => {
@@ -70,7 +71,7 @@ const PageLayout = () => {
     location.pathname !== '/console/playground';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
-  const showSider = isConsoleRoute && (!isMobile || drawerOpen);
+  const showSider = isConsoleRoute && (!isMobile || drawerOpen) && isAdmin();
 
   useEffect(() => {
     if (isMobile && drawerOpen && collapsed) {

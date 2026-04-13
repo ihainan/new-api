@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SkeletonWrapper from '../components/SkeletonWrapper';
+import { isAdmin } from '../../../helpers/utils.jsx';
 
 const Navigation = ({
   mainNavLinks,
@@ -35,6 +36,18 @@ const Navigation = ({
     const spacingClasses = isMobile ? 'p-1' : 'p-2';
 
     const commonLinkClasses = `${baseClasses} ${spacingClasses} ${hoverClasses}`;
+
+    // 非管理员只显示"首页"和"Keys"
+    if (!isAdmin()) {
+      return [
+        <Link key='home' to='/' className={commonLinkClasses}>
+          <span>首页</span>
+        </Link>,
+        <Link key='keys' to='/console/token' className={commonLinkClasses}>
+          <span>Keys</span>
+        </Link>,
+      ];
+    }
 
     return mainNavLinks.map((link) => {
       const linkContent = <span>{link.text}</span>;

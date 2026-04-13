@@ -19,11 +19,20 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import TokensTable from '../../components/table/tokens';
+import ReadonlyTokensTable from '../../components/table/tokens/ReadonlyTokensTable.jsx';
+import { isAdmin } from '../../helpers/utils.jsx';
 
 const Token = () => {
+  if (isAdmin()) {
+    return (
+      <div className='mt-[60px] px-2'>
+        <TokensTable />
+      </div>
+    );
+  }
   return (
-    <div className='mt-[60px] px-2'>
-      <TokensTable />
+    <div className='mt-[60px] px-6 py-6 max-w-4xl mx-auto'>
+      <ReadonlyTokensTable />
     </div>
   );
 };

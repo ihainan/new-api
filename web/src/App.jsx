@@ -18,10 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { lazy, Suspense, useContext, useMemo } from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Route, Routes, useLocation, useParams, Navigate } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
+import { isAdmin } from './helpers/utils.jsx';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
 import NotFound from './pages/NotFound';
@@ -290,7 +291,7 @@ function App() {
           element={
             <PrivateRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-                <Dashboard />
+                {isAdmin() ? <Dashboard /> : <Navigate to='/console/token' replace />}
               </Suspense>
             </PrivateRoute>
           }
