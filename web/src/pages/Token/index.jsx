@@ -31,7 +31,7 @@ const Token = () => {
     );
   }
   return (
-    <div className='mt-[60px] px-6 py-6 max-w-4xl mx-auto'>
+    <div className='px-6 py-8 max-w-4xl mx-auto'>
       <ReadonlyTokensTable />
     </div>
   );

@@ -40,6 +40,7 @@ import { StatusContext } from '../../context/Status';
 import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
 import { isAdmin } from '../../helpers/utils.jsx';
+import SimpleHeader from './SimpleHeader';
 const { Sider, Content, Header } = Layout;
 
 const PageLayout = () => {
@@ -144,6 +145,21 @@ const PageLayout = () => {
       }
     }
   }, [i18n, userState?.user?.setting]);
+
+  // 非管理员：独立的精简布局，完全不复用 admin 的 Header/Sider
+  if (!isAdmin()) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <SimpleHeader />
+        <main style={{ flex: 1 }}>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </main>
+        <ToastContainer />
+      </div>
+    );
+  }
 
   return (
     <Layout

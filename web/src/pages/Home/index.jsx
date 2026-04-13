@@ -17,9 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext } from 'react';
-import { Button, Typography, Tag } from '@douyinfe/semi-ui';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useContext, useState, useEffect } from 'react';
+import { Button } from '@douyinfe/semi-ui';
+import { useNavigate } from 'react-router-dom';
 import { StatusContext } from '../../context/Status';
 import {
   Moonshot,
@@ -44,360 +44,351 @@ import {
   Xinference,
 } from '@lobehub/icons';
 
-const { Title, Text } = Typography;
-
-// 代码示例片段（仿 AIHubMix 卡片2）
-const CODE_SNIPPET = `from openai import OpenAI
-
-client = OpenAI(
-  api_key="sk-***",
-  base_url="https://your-gateway/v1"
-)
-
-response = client.chat.completions.create(
-  model="gpt-4o",
-  messages=[{"role": "user",
-    "content": "Hello!"}]
-)`;
-
+/* ─── 供应商图标列表 ─── */
 const PROVIDER_ICONS = [
-  { key: 'moonshot', el: <Moonshot size={36} /> },
-  { key: 'openai', el: <OpenAI size={36} /> },
-  { key: 'xai', el: <XAI size={36} /> },
-  { key: 'zhipu', el: <Zhipu.Color size={36} /> },
-  { key: 'volcengine', el: <Volcengine.Color size={36} /> },
-  { key: 'cohere', el: <Cohere.Color size={36} /> },
-  { key: 'claude', el: <Claude.Color size={36} /> },
-  { key: 'gemini', el: <Gemini.Color size={36} /> },
-  { key: 'suno', el: <Suno size={36} /> },
-  { key: 'minimax', el: <Minimax.Color size={36} /> },
-  { key: 'wenxin', el: <Wenxin.Color size={36} /> },
-  { key: 'spark', el: <Spark.Color size={36} /> },
-  { key: 'qingyan', el: <Qingyan.Color size={36} /> },
-  { key: 'deepseek', el: <DeepSeek.Color size={36} /> },
-  { key: 'qwen', el: <Qwen.Color size={36} /> },
-  { key: 'midjourney', el: <Midjourney size={36} /> },
-  { key: 'grok', el: <Grok size={36} /> },
-  { key: 'azure', el: <AzureAI.Color size={36} /> },
-  { key: 'hunyuan', el: <Hunyuan.Color size={36} /> },
-  { key: 'xinference', el: <Xinference.Color size={36} /> },
+  { key: 'openai', el: <OpenAI size={32} /> },
+  { key: 'claude', el: <Claude.Color size={32} /> },
+  { key: 'gemini', el: <Gemini.Color size={32} /> },
+  { key: 'deepseek', el: <DeepSeek.Color size={32} /> },
+  { key: 'qwen', el: <Qwen.Color size={32} /> },
+  { key: 'zhipu', el: <Zhipu.Color size={32} /> },
+  { key: 'moonshot', el: <Moonshot size={32} /> },
+  { key: 'grok', el: <Grok size={32} /> },
+  { key: 'xai', el: <XAI size={32} /> },
+  { key: 'volcengine', el: <Volcengine.Color size={32} /> },
+  { key: 'cohere', el: <Cohere.Color size={32} /> },
+  { key: 'azure', el: <AzureAI.Color size={32} /> },
+  { key: 'minimax', el: <Minimax.Color size={32} /> },
+  { key: 'wenxin', el: <Wenxin.Color size={32} /> },
+  { key: 'spark', el: <Spark.Color size={32} /> },
+  { key: 'qingyan', el: <Qingyan.Color size={32} /> },
+  { key: 'suno', el: <Suno size={32} /> },
+  { key: 'midjourney', el: <Midjourney size={32} /> },
+  { key: 'hunyuan', el: <Hunyuan.Color size={32} /> },
+  { key: 'xinference', el: <Xinference.Color size={32} /> },
 ];
 
+/* ─── 代码行组件 ─── */
+const CodeLine = ({ indent = 0, children }) => (
+  <div style={{ paddingLeft: indent * 16, lineHeight: '1.8', fontFamily: '"JetBrains Mono","Fira Code","Cascadia Code",monospace', fontSize: '12.5px' }}>
+    {children}
+  </div>
+);
+const C = ({ color, children }) => <span style={{ color }}>{children}</span>;
+
+/* ─── 卡片容器样式 ─── */
+const cardBase = {
+  borderRadius: '16px',
+  border: '1px solid rgba(5,5,5,0.08)',
+  padding: '24px',
+  flex: '1 1 0',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: '320px',
+};
+
+const cardTitle = {
+  fontSize: '15px',
+  fontWeight: 600,
+  marginBottom: '20px',
+  letterSpacing: '-0.01em',
+};
+
+/* ─── 主组件 ─── */
 const Home = () => {
   const [statusState] = useContext(StatusContext);
   const navigate = useNavigate();
   const docsLink = statusState?.status?.docs_link || '';
+  const systemName = statusState?.status?.system_name || 'AI Gateway';
   const isLoggedIn = !!localStorage.getItem('user');
 
-  const handleGetKey = () => {
-    if (isLoggedIn) {
-      navigate('/console/token');
-    } else {
-      navigate('/login');
-    }
-  };
+  const [statIndex, setStatIndex] = useState(0);
+  const stats = [
+    { label: 'Uptime', value: '99.9%', sub: 'High availability' },
+    { label: 'Channels', value: '100+', sub: 'Multi-provider routing' },
+    { label: 'Latency', value: '< 200ms', sub: 'Global edge nodes' },
+  ];
+  useEffect(() => {
+    const t = setInterval(() => setStatIndex(i => (i + 1) % stats.length), 2500);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleGetKey = () => navigate(isLoggedIn ? '/console/token' : '/login');
 
   return (
-    <div style={{ width: '100%', overflowX: 'hidden' }}>
-      {/* ── Hero 区域（深色背景） ── */}
-      <section
-        style={{
-          background: 'linear-gradient(180deg, #0a0a0f 0%, #0f1020 100%)',
-          minHeight: '680px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: '80px',
-          paddingBottom: '80px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* 背景装饰光晕 */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '20%',
-            left: '15%',
-            width: '400px',
-            height: '400px',
-            background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            top: '30%',
-            right: '10%',
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(circle, rgba(20,184,166,0.12) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
+    <div style={{ width: '100%', overflowX: 'hidden', background: '#ffffff', fontFamily: 'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' }}>
 
-        {/* 居中内容 */}
-        <div
-          style={{
-            textAlign: 'center',
-            maxWidth: '800px',
-            padding: '0 24px',
-            zIndex: 1,
-          }}
-        >
-          <h1
-            style={{
-              fontSize: 'clamp(40px, 7vw, 72px)',
-              fontWeight: 800,
-              lineHeight: 1.1,
-              margin: '0 0 24px 0',
-              background: 'linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #67e8f9 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            One Gateway,<br />Infinite Models
-          </h1>
-          <p
-            style={{
-              fontSize: '18px',
-              color: 'rgba(255,255,255,0.65)',
-              margin: '0 0 40px 0',
-              lineHeight: 1.6,
-            }}
-          >
-            Access every major LLM through a single, unified interface.<br />
-            Build smarter, faster.
-          </p>
+      {/* ══════════════════════════════════════
+          Hero 区域 — 白色背景，深色文字
+      ══════════════════════════════════════ */}
+      <section style={{
+        background: '#ffffff',
+        paddingTop: '64px',
+        paddingBottom: '20px',
+        paddingLeft: '24px',
+        paddingRight: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+      }}>
 
-          {/* CTA 按钮 */}
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {docsLink && (
-              <Button
-                size='large'
-                style={{
-                  borderRadius: '999px',
-                  padding: '0 32px',
-                  height: '48px',
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  color: '#fff',
-                  fontSize: '16px',
-                }}
-                onClick={() => window.open(docsLink, '_blank')}
-              >
-                Docs
-              </Button>
-            )}
+        {/* 大标题 */}
+        <h1 style={{
+          fontSize: 'clamp(36px, 6vw, 64px)',
+          fontWeight: 800,
+          lineHeight: 1.1,
+          letterSpacing: '-0.03em',
+          color: 'rgba(0,0,0,0.88)',
+          margin: '0 0 20px 0',
+          maxWidth: '800px',
+        }}>
+          One Gateway,{' '}
+          <span style={{
+            background: 'linear-gradient(135deg, #1677ff 0%, #5b2be9 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}>
+            Infinite Models
+          </span>
+        </h1>
+
+        {/* 副标题 */}
+        <p style={{
+          fontSize: '17px',
+          color: 'rgba(0,0,0,0.45)',
+          margin: '0 0 36px 0',
+          lineHeight: 1.6,
+          maxWidth: '520px',
+        }}>
+          Access every major LLM through a single, unified interface.<br />
+          Build smarter, faster.
+        </p>
+
+        {/* CTA 按钮 */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {docsLink && (
             <Button
               size='large'
-              theme='solid'
-              type='primary'
               style={{
                 borderRadius: '999px',
-                padding: '0 32px',
-                height: '48px',
-                fontSize: '16px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                border: 'none',
+                padding: '0 28px',
+                height: '44px',
+                fontSize: '15px',
+                border: '1px solid rgba(0,0,0,0.15)',
+                background: '#fff',
+                color: 'rgba(0,0,0,0.88)',
+                fontWeight: 500,
               }}
-              onClick={handleGetKey}
+              onClick={() => window.open(docsLink, '_blank')}
             >
-              Get API Key →
+              Docs
             </Button>
-          </div>
+          )}
+          <Button
+            size='large'
+            theme='solid'
+            type='primary'
+            style={{
+              borderRadius: '999px',
+              padding: '0 28px',
+              height: '44px',
+              fontSize: '15px',
+              fontWeight: 600,
+              background: '#1677ff',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+            onClick={handleGetKey}
+          >
+            Get API Key
+            <span style={{ fontSize: '14px' }}>→</span>
+          </Button>
         </div>
       </section>
 
-      {/* ── 特性卡片区（浅色背景） ── */}
-      <section
-        style={{
-          background: '#f8fafc',
-          padding: '80px 24px',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1100px',
-            margin: '0 auto',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '24px',
-          }}
-        >
-          {/* 卡片1：Full Model Coverage */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '20px',
-              border: '1px solid #e8ecf0',
-              padding: '32px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            }}
-          >
-            <Title heading={5} style={{ marginBottom: '8px', color: '#1a1a2e' }}>
-              Full Model Coverage
-            </Title>
-            <Text type='tertiary' style={{ fontSize: '13px', display: 'block', marginBottom: '24px' }}>
-              Access 30+ top AI providers in one place
-            </Text>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '12px',
-                alignItems: 'center',
-              }}
-            >
-              {PROVIDER_ICONS.slice(0, 12).map(({ key, el }) => (
-                <div
-                  key={key}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+      {/* ══════════════════════════════════════
+          三栏特性卡片
+      ══════════════════════════════════════ */}
+      <section style={{
+        background: '#f5f5f7',
+        padding: '32px 24px 56px',
+      }}>
+        <div style={{
+          maxWidth: '1100px',
+          margin: '0 auto',
+          display: 'flex',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}>
+
+          {/* ── 卡片 1：Full Model Coverage ── */}
+          <div style={{ ...cardBase, background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={cardTitle}>Full Model Coverage</div>
+
+            {/* 供应商图标网格 */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+              {PROVIDER_ICONS.map(({ key, el }) => (
+                <div key={key} style={{
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#f9f9fb',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                }}>
                   {el}
                 </div>
               ))}
-              <Text strong style={{ fontSize: '18px', color: '#6366f1' }}>30+</Text>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#f0f5ff',
+                borderRadius: '10px',
+                border: '1px solid rgba(22,119,255,0.15)',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#1677ff',
+              }}>
+                30+
+              </div>
             </div>
-            <div style={{ marginTop: '20px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {['Chat', 'Embedding', 'Image', 'Audio', 'Video'].map((tag) => (
-                <Tag
-                  key={tag}
-                  style={{
-                    borderRadius: '999px',
-                    background: '#f1f5ff',
-                    color: '#6366f1',
-                    border: 'none',
-                    fontSize: '12px',
-                  }}
-                >
-                  {tag}
-                </Tag>
+
+            {/* 类别标签 */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto' }}>
+              {[
+                { label: 'Chat', color: '#f0f5ff', text: '#1677ff' },
+                { label: 'Image Gen', color: '#fff7e6', text: '#d46b08' },
+                { label: 'Embedding', color: '#f6ffed', text: '#389e0d' },
+                { label: 'Audio', color: '#fff0f6', text: '#c41d7f' },
+                { label: 'MCP', color: '#f9f0ff', text: '#531dab' },
+              ].map(({ label, color, text }) => (
+                <span key={label} style={{
+                  background: color,
+                  color: text,
+                  borderRadius: '999px',
+                  padding: '3px 10px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                }}>
+                  {label}
+                </span>
               ))}
             </div>
           </div>
 
-          {/* 卡片2：Unified API */}
-          <div
-            style={{
-              background: '#0f1117',
-              borderRadius: '20px',
-              border: '1px solid #1e2130',
-              padding: '32px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-            }}
-          >
-            <Title heading={5} style={{ marginBottom: '8px', color: '#fff' }}>
-              Unified API, Flexible Model Choice
-            </Title>
-            <Text style={{ fontSize: '13px', display: 'block', marginBottom: '20px', color: 'rgba(255,255,255,0.5)' }}>
-              OpenAI-compatible interface, switch models with one line
-            </Text>
-            <pre
-              style={{
-                background: '#1a1d2e',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '12px',
-                lineHeight: 1.7,
-                color: '#a5b4fc',
-                overflow: 'auto',
-                margin: 0,
-                fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-              }}
-            >
-              <span style={{ color: '#f472b6' }}>{'from '}</span>
-              <span style={{ color: '#67e8f9' }}>{'openai'}</span>
-              <span style={{ color: '#f472b6' }}>{' import '}</span>
-              <span style={{ color: '#fff' }}>{'OpenAI'}</span>
-              {'\n\n'}
-              <span style={{ color: '#94a3b8' }}>{'client = OpenAI('}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{'  api_key='}</span>
-              <span style={{ color: '#86efac' }}>{'"sk-***"'}</span>
-              <span style={{ color: '#94a3b8' }}>{','}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{'  base_url='}</span>
-              <span style={{ color: '#86efac' }}>{'"https://your-gw/v1"'}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{')'}</span>
-              {'\n\n'}
-              <span style={{ color: '#94a3b8' }}>{'response = client.chat'}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{'  .completions.create('}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{'    model='}</span>
-              <span style={{ color: '#86efac' }}>{'"gpt-4o"'}</span>
-              {'\n'}
-              <span style={{ color: '#94a3b8' }}>{'  )'}</span>
-            </pre>
+          {/* ── 卡片 2：Unified API（深色） ── */}
+          <div style={{ ...cardBase, background: '#0f1117', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+            <div style={{ ...cardTitle, color: '#ffffff' }}>Unified API, Flexible Model Choice</div>
+
+            {/* 语言选项卡 */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              {['Python', 'cURL'].map((lang, i) => (
+                <span key={lang} style={{
+                  fontSize: '12px',
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  background: i === 0 ? 'rgba(255,255,255,0.12)' : 'transparent',
+                  color: i === 0 ? '#fff' : 'rgba(255,255,255,0.4)',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}>
+                  {lang}
+                </span>
+              ))}
+            </div>
+
+            {/* 代码块 */}
+            <div style={{
+              background: '#1a1d2e',
+              borderRadius: '12px',
+              padding: '16px',
+              flex: 1,
+              overflow: 'hidden',
+            }}>
+              <CodeLine><C color='#c792ea'>from </C><C color='#82aaff'>openai</C><C color='#c792ea'> import </C><C color='#eeffff'>OpenAI</C></CodeLine>
+              <CodeLine>&nbsp;</CodeLine>
+              <CodeLine><C color='#eeffff'>client</C><C color='#89ddff'> = </C><C color='#eeffff'>OpenAI</C><C color='#89ddff'>{'('}</C></CodeLine>
+              <CodeLine indent={1}><C color='#f07178'>api_key</C><C color='#89ddff'>=</C><C color='#c3e88d'>"sk-***"</C><C color='#89ddff'>,</C></CodeLine>
+              <CodeLine indent={1}><C color='#f07178'>base_url</C><C color='#89ddff'>=</C><C color='#c3e88d'>"https://your-gw/v1"</C></CodeLine>
+              <CodeLine><C color='#89ddff'>{')'}</C></CodeLine>
+              <CodeLine>&nbsp;</CodeLine>
+              <CodeLine><C color='#eeffff'>response</C><C color='#89ddff'> = </C><C color='#eeffff'>client</C><C color='#89ddff'>.</C><C color='#82aaff'>chat</C></CodeLine>
+              <CodeLine indent={1}><C color='#89ddff'>.</C><C color='#82aaff'>completions</C><C color='#89ddff'>.</C><C color='#82aaff'>create</C><C color='#89ddff'>{'('}</C></CodeLine>
+              <CodeLine indent={2}><C color='#f07178'>model</C><C color='#89ddff'>=</C><C color='#c3e88d'>"gpt-4o"</C><C color='#89ddff'>,</C></CodeLine>
+              <CodeLine indent={2}><C color='#f07178'>messages</C><C color='#89ddff'>=[</C><C color='#89ddff'>{'{'}</C><C color='#c3e88d'>"role"</C><C color='#89ddff'>: </C><C color='#c3e88d'>"user"</C><C color='#89ddff'>, </C><C color='#c3e88d'>"content"</C><C color='#89ddff'>: </C><C color='#c3e88d'>"Hi!"</C><C color='#89ddff'>{'}'}</C><C color='#89ddff'>]</C></CodeLine>
+              <CodeLine indent={1}><C color='#89ddff'>{')'}</C></CodeLine>
+            </div>
           </div>
 
-          {/* 卡片3：Boundless Concurrency */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '20px',
-              border: '1px solid #e8ecf0',
-              padding: '32px',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-            }}
-          >
-            <Title heading={5} style={{ marginBottom: '8px', color: '#1a1a2e' }}>
-              Boundless Concurrency, Always-On
-            </Title>
-            <Text type='tertiary' style={{ fontSize: '13px', display: 'block', marginBottom: '24px' }}>
-              High availability with intelligent load balancing
-            </Text>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* ── 卡片 3：Boundless Concurrency ── */}
+          <div style={{ ...cardBase, background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={cardTitle}>Boundless Concurrency, Always-On</div>
+
+            {/* 指标卡片列表 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
               {[
-                { label: 'Uptime', value: '99.9%', color: '#22c55e' },
-                { label: 'Avg Latency', value: '< 200ms', color: '#6366f1' },
-                { label: 'Requests/day', value: '10M+', color: '#f59e0b' },
-                { label: 'Channels', value: '100+', color: '#14b8a6' },
-              ].map(({ label, value, color }) => (
-                <div
-                  key={label}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    background: '#f8fafc',
-                    borderRadius: '12px',
-                  }}
-                >
-                  <Text type='tertiary' style={{ fontSize: '14px' }}>{label}</Text>
-                  <Text strong style={{ fontSize: '18px', color }}>{value}</Text>
+                { label: 'Uptime SLA', value: '99.9%', color: '#52c41a', bg: '#f6ffed', border: '#b7eb8f' },
+                { label: 'Avg Response', value: '< 200ms', color: '#1677ff', bg: '#e6f4ff', border: '#91caff' },
+                { label: 'Requests / day', value: '10M+', color: '#722ed1', bg: '#f9f0ff', border: '#d3adf7' },
+                { label: 'Active Channels', value: '100+', color: '#fa8c16', bg: '#fff7e6', border: '#ffd591' },
+              ].map(({ label, value, color, bg, border }) => (
+                <div key={label} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  background: bg,
+                  border: `1px solid ${border}`,
+                  borderRadius: '12px',
+                }}>
+                  <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.55)', fontWeight: 500 }}>{label}</span>
+                  <span style={{ fontSize: '20px', fontWeight: 700, color, letterSpacing: '-0.02em' }}>{value}</span>
                 </div>
               ))}
             </div>
+
+            {/* 轮播提示 */}
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(0,0,0,0.35)', background: '#f5f5f5', padding: '4px 12px', borderRadius: '999px' }}>
+                Auto-failover · Load balancing · Multi-region
+              </span>
+            </div>
           </div>
+
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer
-        style={{
-          background: '#0a0a0f',
-          color: 'rgba(255,255,255,0.4)',
-          textAlign: 'center',
-          padding: '32px 24px',
-          fontSize: '13px',
-        }}
-      >
-        <div style={{ marginBottom: '8px' }}>
-          {statusState?.status?.system_name || 'AI Gateway'} · Powered by New API
-        </div>
-        <div>© {new Date().getFullYear()} All rights reserved.</div>
+      {/* ══════════════════════════════════════
+          Footer
+      ══════════════════════════════════════ */}
+      <footer style={{
+        background: '#fff',
+        borderTop: '1px solid rgba(0,0,0,0.06)',
+        padding: '24px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '16px',
+        flexWrap: 'wrap',
+      }}>
+        <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.35)' }}>
+          {systemName} · © {new Date().getFullYear()} All rights reserved.
+        </span>
+        {docsLink && (
+          <a href={docsLink} target='_blank' rel='noopener noreferrer' style={{ fontSize: '13px', color: '#1677ff', textDecoration: 'none' }}>
+            Documentation
+          </a>
+        )}
       </footer>
     </div>
   );
