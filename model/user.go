@@ -47,6 +47,7 @@ type User struct {
 	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
+	DingTalkId       string         `json:"dingtalk_id" gorm:"column:dingtalk_id;index"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
@@ -1035,6 +1036,20 @@ func (user *User) FillUserByLinuxDOId() error {
 		return errors.New("linux do id is empty")
 	}
 	err := DB.Where("linux_do_id = ?", user.LinuxDOId).First(user).Error
+	return err
+}
+
+func IsDingTalkIdAlreadyTaken(dingTalkId string) bool {
+	var user User
+	err := DB.Unscoped().Where("dingtalk_id = ?", dingTalkId).First(&user).Error
+	return !errors.Is(err, gorm.ErrRecordNotFound)
+}
+
+func (user *User) FillUserByDingTalkId() error {
+	if user.DingTalkId == "" {
+		return errors.New("dingtalk id is empty")
+	}
+	err := DB.Where("dingtalk_id = ?", user.DingTalkId).First(user).Error
 	return err
 }
 

@@ -315,6 +315,19 @@ export async function onLinuxDOOAuthClicked(
   );
 }
 
+export async function onDingTalkOAuthClicked(
+  dingtalk_client_id,
+  server_address,
+  options = { shouldLogout: false },
+) {
+  const state = await prepareOAuthState(options);
+  if (!state) return;
+  const redirectUri = encodeURIComponent(`${server_address}/oauth/dingtalk`);
+  redirectToOAuthUrl(
+    `https://login.dingtalk.com/oauth2/auth?response_type=code&client_id=${dingtalk_client_id}&redirect_uri=${redirectUri}&scope=openid&prompt=consent&state=${state}`,
+  );
+}
+
 /**
  * Initiate custom OAuth login
  * @param {Object} provider - Custom OAuth provider config from status API

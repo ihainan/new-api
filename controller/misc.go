@@ -58,6 +58,8 @@ func GetStatus(c *gin.Context) {
 		"discord_client_id":           system_setting.GetDiscordSettings().ClientId,
 		"linuxdo_oauth":               common.LinuxDOOAuthEnabled,
 		"linuxdo_client_id":           common.LinuxDOClientId,
+		"dingtalk_oauth":              common.DingTalkOAuthEnabled,
+		"dingtalk_client_id":          common.DingTalkClientId,
 		"linuxdo_minimum_trust_level": common.LinuxDOMinimumTrustLevel,
 		"telegram_oauth":              common.TelegramOAuthEnabled,
 		"telegram_bot_name":           common.TelegramBotName,

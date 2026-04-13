@@ -91,6 +91,10 @@ var LinuxDOClientId = ""
 var LinuxDOClientSecret = ""
 var LinuxDOMinimumTrustLevel = 0
 
+var DingTalkOAuthEnabled = false
+var DingTalkClientId = ""
+var DingTalkClientSecret = ""
+
 var WeChatServerAddress = ""
 var WeChatServerToken = ""
 var WeChatAccountQRCodeImageURL = ""

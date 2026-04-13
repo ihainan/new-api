@@ -113,6 +113,9 @@ func InitOptionMap() {
 	common.OptionMap["PayMethods"] = operation_setting.PayMethods2JsonString()
 	common.OptionMap["GitHubClientId"] = ""
 	common.OptionMap["GitHubClientSecret"] = ""
+	common.OptionMap["DingTalkOAuthEnabled"] = strconv.FormatBool(common.DingTalkOAuthEnabled)
+	common.OptionMap["DingTalkClientId"] = ""
+	common.OptionMap["DingTalkClientSecret"] = ""
 	common.OptionMap["TelegramBotToken"] = ""
 	common.OptionMap["TelegramBotName"] = ""
 	common.OptionMap["WeChatServerAddress"] = ""
@@ -317,6 +320,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.DefaultUseAutoGroup = boolValue
 		case "ExposeRatioEnabled":
 			ratio_setting.SetExposeRatioEnabled(boolValue)
+		case "DingTalkOAuthEnabled":
+			common.DingTalkOAuthEnabled = boolValue
 		}
 	}
 	switch key {
@@ -413,6 +418,10 @@ func updateOptionMap(key string, value string) (err error) {
 		common.GitHubClientId = value
 	case "GitHubClientSecret":
 		common.GitHubClientSecret = value
+	case "DingTalkClientId":
+		common.DingTalkClientId = value
+	case "DingTalkClientSecret":
+		common.DingTalkClientSecret = value
 	case "LinuxDOClientId":
 		common.LinuxDOClientId = value
 	case "LinuxDOClientSecret":

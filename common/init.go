@@ -145,6 +145,10 @@ func initConstantEnv() {
 	constant.NotificationLimitDurationMinute = GetEnvOrDefault("NOTIFICATION_LIMIT_DURATION_MINUTE", 10)
 	// GenerateDefaultToken 是否生成初始令牌，默认关闭。
 	constant.GenerateDefaultToken = GetEnvOrDefaultBool("GENERATE_DEFAULT_TOKEN", false)
+	// DingTalk OAuth 配置，通过环境变量加载
+	DingTalkOAuthEnabled = GetEnvOrDefaultBool("DINGTALK_OAUTH_ENABLED", false)
+	DingTalkClientId = GetEnvOrDefaultString("DINGTALK_CLIENT_ID", "")
+	DingTalkClientSecret = GetEnvOrDefaultString("DINGTALK_CLIENT_SECRET", "")
 	// 是否启用错误日志
 	constant.ErrorLogEnabled = GetEnvOrDefaultBool("ERROR_LOG_ENABLED", false)
 	// 任务轮询时查询的最大数量

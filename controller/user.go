@@ -64,6 +64,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// 密码登录仅限管理员及以上角色，普通用户需使用 OAuth 登录
+	if user.Role < common.RoleAdminUser {
+		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginAdminOnly)
+		return
+	}
+
 	// 检查是否启用2FA
 	if model.IsTwoFAEnabled(user.Id) {
 		// 设置pending session，等待2FA验证
