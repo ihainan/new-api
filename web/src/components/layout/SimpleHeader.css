@@ -1,0 +1,175 @@
+/* 药丸导航栏 —— 居中浮动，距顶有边距 */
+
+.aihub-header-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  padding: 10px 24px;
+  box-sizing: border-box;
+  /* 背景透明，让页面内容透过 */
+  background: transparent;
+  pointer-events: none; /* 让点击穿透到页面，药丸自身开启 */
+}
+
+/* 药丸本体 */
+.aihub-pill {
+  pointer-events: auto;
+  max-width: 960px;
+  margin: 0 auto;
+  height: 52px;
+  background: #ffffff;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 16px;
+  box-sizing: border-box;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  gap: 0;
+}
+
+/* Logo 区域 */
+.aihub-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.aihub-logo img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.aihub-logo h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* 导航区域：flex-1 撑满中间 */
+.aihub-nav {
+  flex: 1 1 0%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  min-width: 0;
+}
+
+/* 单个导航项 */
+.aihub-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.aihub-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.aihub-nav-item.active {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 500;
+}
+
+.aihub-nav-item svg {
+  flex-shrink: 0;
+}
+
+/* 右侧区域 */
+.aihub-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+/* 登录按钮 */
+.aihub-sign-in {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.65);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.aihub-sign-in:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+/* 已登录用户 */
+.aihub-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: background 0.15s;
+  background: transparent;
+}
+
+.aihub-user:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.aihub-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.aihub-username {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  font-weight: 400;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
