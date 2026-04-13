@@ -15,16 +15,16 @@
 /* 药丸本体 */
 .aihub-pill {
   pointer-events: auto;
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
-  height: 52px;
+  height: 72px;
   background: #ffffff;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
-  padding: 0 8px 0 16px;
+  padding: 0 12px 0 10px;
   box-sizing: border-box;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -43,8 +43,8 @@
 }
 
 .aihub-logo img {
-  width: 32px;
-  height: 32px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -148,20 +148,6 @@
 
 .aihub-user:hover {
   background: rgba(0, 0, 0, 0.03);
-}
-
-.aihub-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
-  line-height: 1;
 }
 
 .aihub-username {

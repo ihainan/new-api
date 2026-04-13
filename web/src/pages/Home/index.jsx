@@ -136,35 +136,30 @@ const Home = () => {
 
         {/* 大标题 */}
         <h1 style={{
-          fontSize: 'clamp(36px, 6vw, 64px)',
+          fontSize: 'clamp(32px, 5.5vw, 60px)',
           fontWeight: 800,
           lineHeight: 1.1,
-          letterSpacing: '-0.03em',
-          color: 'rgba(0,0,0,0.88)',
-          margin: '0 0 20px 0',
+          letterSpacing: '0.04em',
+          fontStyle: 'italic',
+          margin: '0 0 36px 0',
           maxWidth: '800px',
+          background: 'linear-gradient(135deg, #1677ff 0%, #5b2be9 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
         }}>
-          One Gateway,{' '}
-          <span style={{
-            background: 'linear-gradient(135deg, #1677ff 0%, #5b2be9 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            Infinite Models
-          </span>
+          Per aspera ad astra
         </h1>
 
         {/* 副标题 */}
         <p style={{
-          fontSize: '17px',
-          color: 'rgba(0,0,0,0.45)',
+          fontSize: '18px',
+          color: 'rgba(0,0,0,0.4)',
           margin: '0 0 36px 0',
-          lineHeight: 1.6,
-          maxWidth: '520px',
+          letterSpacing: '0.15em',
+          fontWeight: 400,
         }}>
-          Access every major LLM through a single, unified interface.<br />
-          Build smarter, faster.
+          循此苦旅，以达繁星。
         </p>
 
         {/* CTA 按钮 */}
