@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -159,6 +160,10 @@ func InitOptionMap() {
 	common.OptionMap["CheckSensitiveEnabled"] = strconv.FormatBool(setting.CheckSensitiveEnabled)
 	common.OptionMap["DemoSiteEnabled"] = strconv.FormatBool(operation_setting.DemoSiteEnabled)
 	common.OptionMap["SelfUseModeEnabled"] = strconv.FormatBool(operation_setting.SelfUseModeEnabled)
+	// Seed from env-loaded constant for backward-compat (GENERATE_DEFAULT_TOKEN env var)
+	operation_setting.GenerateDefaultToken = constant.GenerateDefaultToken
+	common.OptionMap["GenerateDefaultToken"] = strconv.FormatBool(operation_setting.GenerateDefaultToken)
+	common.OptionMap["DefaultTokenQuota"] = strconv.Itoa(operation_setting.DefaultTokenQuota)
 	common.OptionMap["ModelRequestRateLimitEnabled"] = strconv.FormatBool(setting.ModelRequestRateLimitEnabled)
 	common.OptionMap["CheckSensitiveOnPromptEnabled"] = strconv.FormatBool(setting.CheckSensitiveOnPromptEnabled)
 	common.OptionMap["StopOnSensitiveEnabled"] = strconv.FormatBool(setting.StopOnSensitiveEnabled)
@@ -362,6 +367,10 @@ func updateOptionMap(key string, value string) (err error) {
 		operation_setting.USDExchangeRate, _ = strconv.ParseFloat(value, 64)
 	case "MinTopUp":
 		operation_setting.MinTopUp, _ = strconv.Atoi(value)
+	case "GenerateDefaultToken":
+		operation_setting.GenerateDefaultToken = value == "true"
+	case "DefaultTokenQuota":
+		operation_setting.DefaultTokenQuota, _ = strconv.Atoi(value)
 	case "StripeApiSecret":
 		setting.StripeApiSecret = value
 	case "StripeWebhookSecret":

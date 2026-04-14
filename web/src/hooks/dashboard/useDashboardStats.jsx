@@ -41,6 +41,7 @@ export const useDashboardStats = (
   performanceMetrics,
   navigate,
   t,
+  isAdminUser,
 ) => {
   const groupedStatsData = useMemo(
     () => [
@@ -147,7 +148,9 @@ export const useDashboardStats = (
     ],
   );
 
+  const visibleStatsData = isAdminUser ? groupedStatsData : groupedStatsData.slice(1);
+
   return {
-    groupedStatsData,
+    groupedStatsData: visibleStatsData,
   };
 };

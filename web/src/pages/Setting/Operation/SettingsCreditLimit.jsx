@@ -104,6 +104,7 @@ export default function SettingsCreditLimit(props) {
                   step={1}
                   min={0}
                   suffix={'Token'}
+                  extraText={t('默认为 0，即新用户注册时不赠送额度')}
                   placeholder={''}
                   onChange={(value) =>
                     setInputs({

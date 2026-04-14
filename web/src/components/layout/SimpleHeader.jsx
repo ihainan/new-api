@@ -207,7 +207,7 @@ const SimpleHeader = () => {
 
         {/* 中间：导航项（flex-1 撑满） */}
         <nav className='aihub-nav'>
-          <NavItem to='/'                   label='Models'      icon={<IconModels />}     currentPath={currentPath} />
+          <NavItem to='/pricing'            label='Models'      icon={<IconModels />}     currentPath={currentPath} />
           <NavItem to='/console/playground' label='Playground'  icon={<IconPlayground />} currentPath={currentPath} />
           <NavItem to='/console/token'      label='Keys'        icon={<IconKey />}        currentPath={currentPath} />
         </nav>

@@ -57,6 +57,8 @@ export default function GeneralSettings(props) {
     DefaultCollapseSidebar: false,
     DemoSiteEnabled: false,
     SelfUseModeEnabled: false,
+    GenerateDefaultToken: false,
+    DefaultTokenQuota: 0,
     'token_setting.max_user_tokens': 1000,
   });
   const refForm = useRef();
@@ -388,6 +390,31 @@ export default function GeneralSettings(props) {
                   checkedText='｜'
                   uncheckedText='〇'
                   onChange={handleFieldChange('SelfUseModeEnabled')}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'GenerateDefaultToken'}
+                  label={t('新用户注册时生成初始令牌')}
+                  extraText={t('开启后，新用户注册及 OAuth 登录时自动创建初始 API Key')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  onChange={handleFieldChange('GenerateDefaultToken')}
+                />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('初始令牌额度')}
+                  field={'DefaultTokenQuota'}
+                  step={1}
+                  min={0}
+                  suffix={'Token'}
+                  extraText={t('0 表示无限额度')}
+                  placeholder={'0'}
+                  onChange={handleFieldChange('DefaultTokenQuota')}
                 />
               </Col>
             </Row>

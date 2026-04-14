@@ -41,23 +41,15 @@ export const usePlaygroundState = () => {
   const [savedConfig] = useState(() => loadConfig());
   const [initialMessages] = useState(() => {
     const loaded = loadMessages();
-    // 检查是否是旧的中文默认消息，如果是则清除
+    // 清除旧的占位默认消息（中文或翻译后的版本，id 固定为 '2'/'3'）
     if (
       loaded &&
       loaded.length === 2 &&
       loaded[0].id === '2' &&
       loaded[1].id === '3'
     ) {
-      const hasOldChinese =
-        loaded[0].content === '你好' ||
-        loaded[1].content === '你好，请问有什么可以帮助您的吗？' ||
-        loaded[1].content === '你好！很高兴见到你。有什么我可以帮助你的吗？';
-
-      if (hasOldChinese) {
-        // 清除旧的默认消息
-        localStorage.removeItem('playground_messages');
-        return null;
-      }
+      localStorage.removeItem('playground_messages');
+      return null;
     }
     return loaded;
   });
@@ -90,13 +82,7 @@ export const usePlaygroundState = () => {
     () => initialMessages || getDefaultMessages(t),
   );
 
-  // 当语言改变时，如果是默认消息则更新
-  useEffect(() => {
-    // 只在没有保存的消息时才更新默认消息
-    if (!initialMessages) {
-      setMessage(getDefaultMessages(t));
-    }
-  }, [t, initialMessages]); // 当语言改变时
+  // getDefaultMessages 现在返回空数组，此 effect 不再需要
 
   // 调试状态
   const [debugData, setDebugData] = useState({

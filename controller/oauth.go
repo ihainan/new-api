@@ -296,6 +296,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 
 		// Perform post-transaction tasks (logs, sidebar config, inviter rewards)
 		user.FinalizeOAuthUserCreation(inviterId)
+		// 生成默认令牌（非致命，失败仅记录日志）
+		if err := model.CreateDefaultTokenForUser(user.Id, user.Username); err != nil {
+			common.SysLog("failed to create default token for OAuth user: " + err.Error())
+		}
 	} else {
 		// Built-in provider: create user and update provider ID in a transaction
 		err := model.DB.Transaction(func(tx *gorm.DB) error {
@@ -326,6 +330,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 
 		// Perform post-transaction tasks
 		user.FinalizeOAuthUserCreation(inviterId)
+		// 生成默认令牌（非致命，失败仅记录日志）
+		if err := model.CreateDefaultTokenForUser(user.Id, user.Username); err != nil {
+			common.SysLog("failed to create default token for OAuth user: " + err.Error())
+		}
 	}
 
 	return user, nil

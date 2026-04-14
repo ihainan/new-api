@@ -325,8 +325,12 @@ func HardDeleteUserById(id int) error {
 	if id == 0 {
 		return errors.New("id 为空！")
 	}
-	err := DB.Unscoped().Delete(&User{}, "id = ?", id).Error
-	return err
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", id).Delete(&Token{}).Error; err != nil {
+			return err
+		}
+		return tx.Unscoped().Delete(&User{}, "id = ?", id).Error
+	})
 }
 
 func inviteUser(inviterId int) (err error) {

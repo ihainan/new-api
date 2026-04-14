@@ -330,15 +330,39 @@ export const useApiRequest = (
 
       source.addEventListener('message', (e) => {
         if (e.data === '[DONE]') {
-          isStreamComplete = true; // 标记流正常完成
+          isStreamComplete = true;
           source.close();
           sseSourceRef.current = null;
           setDebugData((prev) => ({
             ...prev,
             response: responseData,
-            sseMessages: [...(prev.sseMessages || []), '[DONE]'], // 添加 DONE 标记
+            sseMessages: [...(prev.sseMessages || []), '[DONE]'],
             isStreaming: false,
           }));
+          // 兜底：流结束时若消息内容仍为空，标记为错误而非显示空白
+          setMessage((prevMessage) => {
+            const last = prevMessage[prevMessage.length - 1];
+            if (
+              last &&
+              last.role === 'assistant' &&
+              last.status !== MESSAGE_STATUS.COMPLETE &&
+              last.status !== MESSAGE_STATUS.ERROR &&
+              !last.content &&
+              !last.reasoningContent
+            ) {
+              const updated = [
+                ...prevMessage.slice(0, -1),
+                {
+                  ...last,
+                  content: t('未收到有效回复，请稍后重试'),
+                  status: MESSAGE_STATUS.ERROR,
+                },
+              ];
+              setTimeout(() => saveMessages(updated), 0);
+              return updated;
+            }
+            return prevMessage;
+          });
           completeMessage();
           return;
         }
@@ -357,6 +381,34 @@ export const useApiRequest = (
             ...prev,
             sseMessages: [...(prev.sseMessages || []), e.data],
           }));
+
+          // 检测上游透传的错误 chunk（非 OpenAI 标准格式，但部分渠道会透传）
+          if (payload.type === 'error' && payload.error) {
+            const errMsg =
+              payload.error.message || t('请求发生错误');
+            setMessage((prevMessage) => {
+              const newMessages = [...prevMessage];
+              const last = newMessages[newMessages.length - 1];
+              if (
+                last &&
+                last.status !== MESSAGE_STATUS.COMPLETE &&
+                last.status !== MESSAGE_STATUS.ERROR
+              ) {
+                newMessages[newMessages.length - 1] = {
+                  ...last,
+                  content: errMsg,
+                  errorCode: payload.error.type || null,
+                  status: MESSAGE_STATUS.ERROR,
+                };
+              }
+              return newMessages;
+            });
+            isStreamComplete = true;
+            source.close();
+            sseSourceRef.current = null;
+            setDebugData((prev) => ({ ...prev, isStreaming: false }));
+            return;
+          }
 
           const delta = payload.choices?.[0]?.delta;
           if (delta) {

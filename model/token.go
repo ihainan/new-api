@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/bytedance/gopkg/util/gopool"
 	"gorm.io/gorm"
@@ -479,4 +480,37 @@ func GetTokenKeysByIds(ids []int, userId int) ([]Token, error) {
 		Where("user_id = ? AND id IN (?)", userId, ids).
 		Find(&tokens).Error
 	return tokens, err
+}
+
+// CreateDefaultTokenForUser creates the initial token for a newly registered user.
+// Reads GenerateDefaultToken and DefaultTokenQuota from operation_setting.
+// DefaultTokenQuota == 0 means unlimited quota.
+func CreateDefaultTokenForUser(userId int, username string) error {
+	if !operation_setting.GenerateDefaultToken {
+		return nil
+	}
+	key, err := common.GenerateKey()
+	if err != nil {
+		return err
+	}
+	token := Token{
+		UserId:             userId,
+		Name:               username + "的初始令牌",
+		Key:                key,
+		CreatedTime:        common.GetTimestamp(),
+		AccessedTime:       common.GetTimestamp(),
+		ExpiredTime:        -1,
+		ModelLimitsEnabled: false,
+	}
+	quota := operation_setting.DefaultTokenQuota
+	if quota == 0 {
+		token.UnlimitedQuota = true
+	} else {
+		token.UnlimitedQuota = false
+		token.RemainQuota = quota
+	}
+	if setting.DefaultUseAutoGroup {
+		token.Group = "auto"
+	}
+	return token.Insert()
 }

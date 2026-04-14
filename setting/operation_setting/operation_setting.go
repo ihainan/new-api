@@ -4,6 +4,8 @@ import "strings"
 
 var DemoSiteEnabled = false
 var SelfUseModeEnabled = false
+var GenerateDefaultToken = false
+var DefaultTokenQuota = 0
 
 var AutomaticDisableKeywords = []string{
 	"Your credit balance is too low",

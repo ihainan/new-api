@@ -30,23 +30,8 @@ export const MESSAGE_ROLES = {
   SYSTEM: 'system',
 };
 
-// 默认消息示例 - 使用函数生成以支持 i18n
-export const getDefaultMessages = (t) => [
-  {
-    role: MESSAGE_ROLES.USER,
-    id: '2',
-    createAt: 1715676751919,
-    content: t('默认用户消息'),
-  },
-  {
-    role: MESSAGE_ROLES.ASSISTANT,
-    id: '3',
-    createAt: 1715676751919,
-    content: t('默认助手消息'),
-    reasoningContent: '',
-    isReasoningExpanded: false,
-  },
-];
+// 默认消息示例 - 初始为空，不显示占位消息
+export const getDefaultMessages = (t) => [];
 
 // 保留旧的导出以保持向后兼容
 export const DEFAULT_MESSAGES = [
