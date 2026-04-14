@@ -7,7 +7,7 @@ import {
   Typography,
   Empty,
 } from '@douyinfe/semi-ui';
-import { IconCopy } from '@douyinfe/semi-icons';
+import { IconCopy, IconEyeOpened, IconEyeClosedSolid } from '@douyinfe/semi-icons';
 import { API } from '../../../helpers';
 
 const { Title, Text } = Typography;
@@ -18,11 +18,29 @@ function maskKey(key) {
   return '***';
 }
 
+// HTTP 环境下 navigator.clipboard 不可用，用 execCommand 兜底
+function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text);
+  }
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.position = 'fixed';
+  el.style.opacity = '0';
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(el);
+  return ok ? Promise.resolve() : Promise.reject(new Error('execCommand failed'));
+}
+
 const ReadonlyTokensTable = () => {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tokenKeys, setTokenKeys] = useState({});
   const [copyingId, setCopyingId] = useState(null);
+  const [revealedIds, setRevealedIds] = useState(new Set());
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -43,26 +61,41 @@ const ReadonlyTokensTable = () => {
     fetchTokens();
   }, []);
 
+  const fetchKey = async (record) => {
+    let key = tokenKeys[record.id];
+    if (!key) {
+      const res = await API.get(`/api/token/${record.id}?status=true`);
+      const { success, data } = res.data;
+      if (!success || !data?.key) throw new Error('获取 Key 失败，请重试');
+      key = data.key;
+      setTokenKeys((prev) => ({ ...prev, [record.id]: key }));
+    }
+    return key;
+  };
+
   const handleCopy = async (record) => {
     setCopyingId(record.id);
     try {
-      let key = tokenKeys[record.id];
-      if (!key) {
-        const res = await API.get(`/api/token/${record.id}?status=true`);
-        const { success, data } = res.data;
-        if (!success || !data?.key) {
-          Toast.error('获取 Key 失败，请重试');
-          return;
-        }
-        key = data.key;
-        setTokenKeys((prev) => ({ ...prev, [record.id]: key }));
-      }
-      await navigator.clipboard.writeText(key);
+      const key = await fetchKey(record);
+      await copyToClipboard(key);
       Toast.success('已复制到剪贴板');
     } catch (e) {
-      Toast.error('复制失败，请手动复制');
+      Toast.error(e.message || '复制失败，请手动复制');
     } finally {
       setCopyingId(null);
+    }
+  };
+
+  const handleToggleReveal = async (record) => {
+    if (revealedIds.has(record.id)) {
+      setRevealedIds((prev) => { const s = new Set(prev); s.delete(record.id); return s; });
+      return;
+    }
+    try {
+      await fetchKey(record);
+      setRevealedIds((prev) => new Set(prev).add(record.id));
+    } catch (e) {
+      Toast.error(e.message || '获取 Key 失败');
     }
   };
 
@@ -79,31 +112,49 @@ const ReadonlyTokensTable = () => {
     {
       title: 'Key',
       dataIndex: 'key',
-      render: (key, record) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Tag
-            style={{
-              fontFamily: 'monospace',
-              fontSize: '13px',
-              padding: '4px 10px',
-              background: 'var(--semi-color-fill-0)',
-              border: '1px solid var(--semi-color-border)',
-              borderRadius: '6px',
-            }}
-          >
-            {tokenKeys[record.id] ? tokenKeys[record.id] : maskKey(key)}
-          </Tag>
-          <Button
-            size='small'
-            icon={<IconCopy />}
-            loading={copyingId === record.id}
-            onClick={() => handleCopy(record)}
-            style={{ borderRadius: '999px' }}
-          >
-            Copy
-          </Button>
-        </div>
-      ),
+      render: (key, record) => {
+        const revealed = revealedIds.has(record.id);
+        const displayKey = revealed && tokenKeys[record.id]
+          ? tokenKeys[record.id]
+          : maskKey(key);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Tag
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                padding: '4px 10px',
+                background: 'var(--semi-color-fill-0)',
+                border: '1px solid var(--semi-color-border)',
+                borderRadius: '6px',
+                maxWidth: '320px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {displayKey}
+            </Tag>
+            <Button
+              size='small'
+              icon={revealed ? <IconEyeClosedSolid /> : <IconEyeOpened />}
+              onClick={() => handleToggleReveal(record)}
+              style={{ borderRadius: '999px' }}
+              theme='borderless'
+              type='tertiary'
+            />
+            <Button
+              size='small'
+              icon={<IconCopy />}
+              loading={copyingId === record.id}
+              onClick={() => handleCopy(record)}
+              style={{ borderRadius: '999px' }}
+            >
+              Copy
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
