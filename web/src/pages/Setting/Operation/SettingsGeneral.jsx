@@ -40,27 +40,30 @@ import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
+// 提取为常量，供 useEffect 作为起始默认值，避免新选项首次保存时被 compareObjects 漏检
+const DEFAULT_INPUTS = {
+  TopUpLink: '',
+  'general_setting.docs_link': '',
+  'general_setting.quota_display_type': 'USD',
+  'general_setting.custom_currency_symbol': '¤',
+  'general_setting.custom_currency_exchange_rate': '',
+  QuotaPerUnit: '',
+  RetryTimes: '',
+  USDExchangeRate: '',
+  DisplayTokenStatEnabled: false,
+  DefaultCollapseSidebar: false,
+  DemoSiteEnabled: false,
+  SelfUseModeEnabled: false,
+  GenerateDefaultToken: false,
+  DefaultTokenQuota: 0,
+  'token_setting.max_user_tokens': 1000,
+};
+
 export default function GeneralSettings(props) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [showQuotaWarning, setShowQuotaWarning] = useState(false);
-  const [inputs, setInputs] = useState({
-    TopUpLink: '',
-    'general_setting.docs_link': '',
-    'general_setting.quota_display_type': 'USD',
-    'general_setting.custom_currency_symbol': '¤',
-    'general_setting.custom_currency_exchange_rate': '',
-    QuotaPerUnit: '',
-    RetryTimes: '',
-    USDExchangeRate: '',
-    DisplayTokenStatEnabled: false,
-    DefaultCollapseSidebar: false,
-    DemoSiteEnabled: false,
-    SelfUseModeEnabled: false,
-    GenerateDefaultToken: false,
-    DefaultTokenQuota: 0,
-    'token_setting.max_user_tokens': 1000,
-  });
+  const [inputs, setInputs] = useState({ ...DEFAULT_INPUTS });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
 
@@ -201,9 +204,11 @@ export default function GeneralSettings(props) {
   }, [quotaDisplayType, combinedRate, inputs, t]);
 
   useEffect(() => {
-    const currentInputs = {};
+    // 以全量默认值为起点，确保从未保存过的新选项也存在于 inputsRow 中，
+    // 否则 compareObjects 会因 inputsRow 缺少对应 key 而漏检变更。
+    const currentInputs = { ...DEFAULT_INPUTS };
     for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
+      if (Object.keys(DEFAULT_INPUTS).includes(key)) {
         currentInputs[key] = props.options[key];
       }
     }
