@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useContext, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Layout, Toast, Modal } from '@douyinfe/semi-ui';
 
@@ -84,6 +84,8 @@ const Playground = () => {
   const isMobile = useIsMobile();
   const styleState = { isMobile };
   const [searchParams] = useSearchParams();
+  const navigateTo = useNavigate();
+  const autoSentRef = useRef(false);
 
   const state = usePlaygroundState();
   const {
@@ -392,6 +394,20 @@ const Playground = () => {
       Toast.warning(t('登录过期，请重新登录！'));
     }
   }, [searchParams, t]);
+
+  // 处理首页快速对话跳转：?q=<message>
+  const onMessageSendRef = useRef(null);
+  useEffect(() => { onMessageSendRef.current = onMessageSend; });
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (!q || autoSentRef.current) return;
+    autoSentRef.current = true;
+    navigateTo('/console/playground', { replace: true });
+    setTimeout(() => {
+      onMessageSendRef.current?.(decodeURIComponent(q), null);
+    }, 100);
+  }, [searchParams, navigateTo]);
 
   // Playground 组件无需再监听窗口变化，isMobile 由 useIsMobile Hook 自动更新
 

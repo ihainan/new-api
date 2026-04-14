@@ -113,6 +113,17 @@ const Home = () => {
 
   const handleGetKey = () => navigate(isLoggedIn ? '/console/token' : '/login');
 
+  const [chatInput, setChatInput] = useState('');
+  const handleChatSubmit = () => {
+    const q = chatInput.trim();
+    if (!q) return;
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    navigate(`/console/playground?q=${encodeURIComponent(q)}`);
+  };
+
   const apiUrl = `${window.location.origin}/v1/chat/completions`;
   const handleCopyUrl = async () => {
     await copy(apiUrl);
@@ -164,6 +175,64 @@ const Home = () => {
         }}>
           循此苦旅，以达繁星。
         </p>
+
+        {/* 快速对话输入框 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          width: '100%',
+          maxWidth: '560px',
+          background: '#ffffff',
+          border: '1.5px solid rgba(0,0,0,0.1)',
+          borderRadius: '14px',
+          padding: '6px 6px 6px 18px',
+          margin: '0 0 20px 0',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          transition: 'border-color 0.2s, box-shadow 0.2s',
+        }}
+          onFocus={e => { e.currentTarget.style.borderColor = '#1677ff'; e.currentTarget.style.boxShadow = '0 2px 16px rgba(22,119,255,0.12)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'; }}
+        >
+          <input
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleChatSubmit()}
+            placeholder='发送一条消息，开始对话...'
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: '14px',
+              color: 'rgba(0,0,0,0.85)',
+              fontFamily: 'inherit',
+              lineHeight: '22px',
+            }}
+          />
+          <button
+            onClick={handleChatSubmit}
+            style={{
+              flexShrink: 0,
+              width: 36,
+              height: 36,
+              borderRadius: '10px',
+              background: chatInput.trim() ? '#1677ff' : 'rgba(0,0,0,0.06)',
+              border: 'none',
+              cursor: chatInput.trim() ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.15s',
+            }}
+          >
+            <svg width='16' height='16' viewBox='0 0 24 24' fill='none'
+              stroke={chatInput.trim() ? 'white' : 'rgba(0,0,0,0.3)'}
+              strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+              <line x1='12' y1='19' x2='12' y2='5' />
+              <polyline points='5 12 12 5 19 12' />
+            </svg>
+          </button>
+        </div>
 
         {/* API 地址展示 */}
         <div style={{
