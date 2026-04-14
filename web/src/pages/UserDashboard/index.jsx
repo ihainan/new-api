@@ -41,14 +41,11 @@ const tsToDate = (ts) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/* ─── 聚合 QuotaData 数组 → { tokens, requests } ─── */
+/* ─── 聚合 QuotaData 数组 → 总 token 数 ─── */
 const sumData = (data) => {
-  let tokens = 0, requests = 0;
-  (data || []).forEach((item) => {
-    tokens   += item.token_used || 0;
-    requests += item.count      || 0;
-  });
-  return { tokens, requests };
+  let tokens = 0;
+  (data || []).forEach((item) => { tokens += item.token_used || 0; });
+  return { tokens };
 };
 
 const CHART_CONFIG = { mode: 'desktop-browser' };
@@ -115,23 +112,33 @@ const UserDashboard = () => {
     initVChartSemiTheme({ isWatchingThemeSwitch: true });
   }, []);
 
-  /* ─── 加载统计卡片数据（1d + 7d 并发） ─── */
+  /* ─── 加载统计卡片数据（4 个请求并发） ─── */
   const loadStats = useCallback(async () => {
     try {
       const now = Math.floor(Date.now() / 1000);
-      const [res7d, res1d] = await Promise.all([
-        API.get(`/api/data/self?start_timestamp=${now - 86400 * 7}&end_timestamp=${now}`),
-        API.get(`/api/data/self?start_timestamp=${now - 86400 * 1}&end_timestamp=${now}`),
+      // 今日：当天 00:00:00 起；7天：滚动 7×24h
+      const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+      const start7d    = now - 86400 * 7;
+
+      const [tokRes7d, tokRes1d, reqRes7d, reqRes1d] = await Promise.all([
+        // Token：来自 quota_data（按模型+小时聚合，延迟 ≤5min）
+        API.get(`/api/data/self?start_timestamp=${start7d}&end_timestamp=${now}`),
+        API.get(`/api/data/self?start_timestamp=${todayStart}&end_timestamp=${now}`),
+        // Requests：来自 log 表 total（实时）
+        API.get(`/api/log/self?p=1&page_size=1&type=2&start_timestamp=${start7d}&end_timestamp=${now}`),
+        API.get(`/api/log/self?p=1&page_size=1&type=2&start_timestamp=${todayStart}&end_timestamp=${now}`),
       ]);
-      const data7d = res7d.data.success ? res7d.data.data : [];
-      const data1d = res1d.data.success ? res1d.data.data : [];
-      const s7 = sumData(data7d);
-      const s1 = sumData(data1d);
+
+      const tokens7d = sumData(tokRes7d.data.success ? tokRes7d.data.data : []).tokens;
+      const tokens1d = sumData(tokRes1d.data.success ? tokRes1d.data.data : []).tokens;
+      const req7d    = reqRes7d.data.success ? (reqRes7d.data.data?.total ?? 0) : 0;
+      const req1d    = reqRes1d.data.success ? (reqRes1d.data.data?.total ?? 0) : 0;
+
       setStats({
-        tokens7d: renderNumber(s7.tokens),
-        tokens1d: renderNumber(s1.tokens),
-        req7d:    renderNumber(s7.requests),
-        req1d:    renderNumber(s1.requests),
+        tokens7d: renderNumber(tokens7d),
+        tokens1d: renderNumber(tokens1d),
+        req7d:    renderNumber(req7d),
+        req1d:    renderNumber(req1d),
       });
     } catch (e) {
       console.error('Failed to load stats', e);
