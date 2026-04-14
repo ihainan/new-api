@@ -18,21 +18,36 @@ function maskKey(key) {
   return '***';
 }
 
-// HTTP 环境下 navigator.clipboard 不可用，用 execCommand 兜底
+// HTTP 环境下 navigator.clipboard 不可用，用 execCommand 兜底。
+// Safari 不接受 opacity:0 的隐藏元素，需移到屏幕外；iOS Safari 需用 Selection API 选中内容。
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text);
   }
-  const el = document.createElement('textarea');
-  el.value = text;
-  el.style.position = 'fixed';
-  el.style.opacity = '0';
-  document.body.appendChild(el);
-  el.focus();
-  el.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(el);
-  return ok ? Promise.resolve() : Promise.reject(new Error('execCommand failed'));
+  return new Promise((resolve, reject) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.setAttribute('readonly', '');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    el.style.top = '-9999px';
+    document.body.appendChild(el);
+    // iOS Safari 需通过 Selection/Range API 选中内容
+    if (/ipad|iphone/i.test(navigator.userAgent)) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.setSelectionRange(0, 999999);
+    } else {
+      el.focus();
+      el.select();
+    }
+    const ok = document.execCommand('copy');
+    document.body.removeChild(el);
+    ok ? resolve() : reject(new Error('execCommand failed'));
+  });
 }
 
 const ReadonlyTokensTable = () => {
@@ -128,10 +143,14 @@ const ReadonlyTokensTable = () => {
                 background: 'var(--semi-color-fill-0)',
                 border: '1px solid var(--semi-color-border)',
                 borderRadius: '6px',
-                maxWidth: '320px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                ...(revealed ? {
+                  whiteSpace: 'nowrap',
+                } : {
+                  maxWidth: '320px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }),
               }}
             >
               {displayKey}

@@ -154,12 +154,42 @@ const Home = () => {
         <p style={{
           fontSize: '18px',
           color: 'rgba(0,0,0,0.4)',
-          margin: '0 0 36px 0',
+          margin: '0 0 20px 0',
           letterSpacing: '0.15em',
           fontWeight: 400,
         }}>
           循此苦旅，以达繁星。
         </p>
+
+        {/* API 地址展示 */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'rgba(22,119,255,0.05)',
+          border: '1px solid rgba(22,119,255,0.14)',
+          borderRadius: '10px',
+          padding: '8px 18px',
+          margin: '0 0 36px 0',
+        }}>
+          <span style={{
+            width: '7px',
+            height: '7px',
+            borderRadius: '50%',
+            background: '#1677ff',
+            opacity: 0.7,
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontFamily: '"JetBrains Mono","Fira Code","Cascadia Code",monospace',
+            fontSize: '13px',
+            color: '#1677ff',
+            letterSpacing: '0.02em',
+            userSelect: 'all',
+          }}>
+            https://hub.zgci.org/v1/chat/completions
+          </span>
+        </div>
 
       </section>
 
