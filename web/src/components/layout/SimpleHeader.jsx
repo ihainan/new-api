@@ -146,9 +146,7 @@ const IconModels = () => (
 
 const IconPlayground = () => (
   <svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
-    <path d='M16 13l5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5'
-      stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'/>
-    <path d='M14 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Z'
+    <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
       stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'/>
   </svg>
 );
@@ -160,6 +158,15 @@ const IconKey = () => (
     <path d='M14 1.333L7.6 7.733' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
     <path d='M5 14a3.333 3.333 0 1 0 0-6.667A3.333 3.333 0 0 0 5 14Z'
       stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
+  </svg>
+);
+
+const IconDashboard = () => (
+  <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
+    <rect x='1.333' y='1.333' width='5.333' height='5.333' rx='1.333' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
+    <rect x='9.333' y='1.333' width='5.333' height='5.333' rx='1.333' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
+    <rect x='1.333' y='9.333' width='5.333' height='5.333' rx='1.333' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
+    <rect x='9.333' y='9.333' width='5.333' height='5.333' rx='1.333' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round'/>
   </svg>
 );
 
@@ -208,8 +215,11 @@ const SimpleHeader = () => {
         {/* 中间：导航项（flex-1 撑满） */}
         <nav className='aihub-nav'>
           <NavItem to='/pricing'            label='Models'      icon={<IconModels />}     currentPath={currentPath} />
-          <NavItem to='/console/playground' label='Chat' icon={<IconPlayground />} currentPath={currentPath} />
+          <NavItem to='/console/playground' label='Chat'        icon={<IconPlayground />} currentPath={currentPath} />
           <NavItem to='/console/token'      label='Keys'        icon={<IconKey />}        currentPath={currentPath} />
+          {user && (
+            <NavItem to='/console/dashboard' label='Dashboard'  icon={<IconDashboard />}  currentPath={currentPath} />
+          )}
         </nav>
 
         {/* 右侧：登录 或 用户头像+名字 */}

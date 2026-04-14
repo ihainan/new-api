@@ -54,6 +54,7 @@ import SetupCheck from './components/layout/SetupCheck';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const UserDashboard = lazy(() => import('./pages/UserDashboard'));
 const About = lazy(() => import('./pages/About'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -156,6 +157,16 @@ function App() {
           element={
             <PrivateRoute>
               <Token />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/dashboard'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading />} key='/console/dashboard'>
+                <UserDashboard />
+              </Suspense>
             </PrivateRoute>
           }
         />
