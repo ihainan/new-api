@@ -64,7 +64,8 @@ const ReadonlyTokensTable = () => {
   const fetchKey = async (record) => {
     let key = tokenKeys[record.id];
     if (!key) {
-      const res = await API.get(`/api/token/${record.id}?status=true`);
+      // GET /api/token/:id 返回 masked key，需用 POST /api/token/:id/key 获取明文
+      const res = await API.post(`/api/token/${record.id}/key`);
       const { success, data } = res.data;
       if (!success || !data?.key) throw new Error('获取 Key 失败，请重试');
       key = data.key;

@@ -99,7 +99,6 @@ const cardTitle = {
 const Home = () => {
   const [statusState] = useContext(StatusContext);
   const navigate = useNavigate();
-  const docsLink = statusState?.status?.docs_link || '';
   const systemName = statusState?.status?.system_name || 'AI Gateway';
   const isLoggedIn = !!localStorage.getItem('user');
 
@@ -562,11 +561,6 @@ const Home = () => {
         <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.35)' }}>
           {systemName} · © {new Date().getFullYear()} 中关村学院 / 中关村人工智能研究院. 保留所有权利。
         </span>
-        {docsLink && (
-          <a href={docsLink} target='_blank' rel='noopener noreferrer' style={{ fontSize: '13px', color: '#1677ff', textDecoration: 'none' }}>
-            Documentation
-          </a>
-        )}
       </footer>
     </div>
   );
