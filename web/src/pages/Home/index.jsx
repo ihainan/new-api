@@ -17,10 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@douyinfe/semi-ui';
 import { useNavigate } from 'react-router-dom';
-import { StatusContext } from '../../context/Status';
 import {
   Moonshot,
   OpenAI,
@@ -97,9 +96,7 @@ const cardTitle = {
 
 /* ─── 主组件 ─── */
 const Home = () => {
-  const [statusState] = useContext(StatusContext);
   const navigate = useNavigate();
-  const systemName = statusState?.status?.system_name || 'AI Gateway';
   const isLoggedIn = !!localStorage.getItem('user');
 
   const [statIndex, setStatIndex] = useState(0);
@@ -575,23 +572,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════
-          Footer
-      ══════════════════════════════════════ */}
-      <footer style={{
-        background: '#fff',
-        borderTop: '1px solid rgba(0,0,0,0.06)',
-        padding: '24px',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '16px',
-        flexWrap: 'wrap',
-      }}>
-        <span style={{ fontSize: '13px', color: 'rgba(0,0,0,0.35)' }}>
-          {systemName} · © {new Date().getFullYear()} 中关村学院 / 中关村人工智能研究院. 保留所有权利。
-        </span>
-      </footer>
     </div>
   );
 };

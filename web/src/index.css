@@ -31,9 +31,10 @@ body {
   background-color: var(--semi-color-bg-0);
 }
 
-/* 桌面端禁止 body 纵向滚动 - 防止 VChart tooltip 触发页面滚动条 */
+/* 桌面端禁止 app-layout 纵向溢出 - 防止 VChart tooltip 触发页面滚动条 */
+/* 注意：不能设在 body 上，否则首页等公开页面也会无法滚动 */
 @media (min-width: 768px) {
-  body {
+  body:has(.app-layout) {
     overflow-y: hidden;
   }
 }
