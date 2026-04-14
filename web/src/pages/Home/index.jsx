@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useState, useEffect } from 'react';
 import { Button } from '@douyinfe/semi-ui';
 import { useNavigate } from 'react-router-dom';
+import { copy, showSuccess } from '../../helpers/utils.jsx';
 import {
   Moonshot,
   OpenAI,
@@ -112,6 +113,12 @@ const Home = () => {
 
   const handleGetKey = () => navigate(isLoggedIn ? '/console/token' : '/login');
 
+  const apiUrl = `${window.location.origin}/v1/chat/completions`;
+  const handleCopyUrl = async () => {
+    await copy(apiUrl);
+    showSuccess('已复制');
+  };
+
   return (
     <div style={{ width: '100%', overflowX: 'hidden', background: '#ffffff', fontFamily: 'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' }}>
 
@@ -166,7 +173,7 @@ const Home = () => {
           background: 'rgba(22,119,255,0.05)',
           border: '1px solid rgba(22,119,255,0.14)',
           borderRadius: '10px',
-          padding: '8px 18px',
+          padding: '8px 14px 8px 18px',
           margin: '0 0 36px 0',
         }}>
           <span style={{
@@ -184,8 +191,31 @@ const Home = () => {
             letterSpacing: '0.02em',
             userSelect: 'all',
           }}>
-            https://hub.zgci.org/v1/chat/completions
+            {apiUrl}
           </span>
+          <button
+            onClick={handleCopyUrl}
+            title='复制'
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '2px',
+              color: 'rgba(22,119,255,0.55)',
+              flexShrink: 0,
+              lineHeight: 1,
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#1677ff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(22,119,255,0.55)'}
+          >
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <rect x='9' y='9' width='13' height='13' rx='2' ry='2' />
+              <path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' />
+            </svg>
+          </button>
         </div>
 
       </section>
