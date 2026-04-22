@@ -514,3 +514,14 @@ func CreateDefaultTokenForUser(userId int, username string) error {
 	}
 	return token.Insert()
 }
+
+// GetUserTokenByName returns the first non-deleted token with the given name for the user,
+// or nil (with no error) if not found.
+func GetUserTokenByName(userId int, name string) (*Token, error) {
+	var token Token
+	err := DB.Where("user_id = ? AND name = ?", userId, name).First(&token).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &token, err
+}
