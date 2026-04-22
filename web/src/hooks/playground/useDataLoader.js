@@ -31,9 +31,12 @@ export const useDataLoader = (
 ) => {
   const { t } = useTranslation();
 
-  const loadModels = useCallback(async () => {
+  const loadModels = useCallback(async (group) => {
     try {
-      const res = await API.get(API_ENDPOINTS.USER_MODELS);
+      const url = group
+        ? `${API_ENDPOINTS.USER_MODELS}?group=${encodeURIComponent(group)}`
+        : API_ENDPOINTS.USER_MODELS;
+      const res = await API.get(url, { disableDuplicate: true });
       const { success, message, data } = res.data;
 
       if (success) {
@@ -80,13 +83,19 @@ export const useDataLoader = (
     }
   }, [userState, inputs.group, handleInputChange, setGroups, t]);
 
-  // 自动加载数据
+  // 初始加载分组和模型
   useEffect(() => {
     if (userState?.user) {
-      loadModels();
       loadGroups();
     }
-  }, [userState?.user, loadModels, loadGroups]);
+  }, [userState?.user]);
+
+  // 分组确定后加载模型；分组切换时重新加载
+  useEffect(() => {
+    if (userState?.user && inputs.group !== undefined) {
+      loadModels(inputs.group);
+    }
+  }, [userState?.user, inputs.group]);
 
   return {
     loadModels,

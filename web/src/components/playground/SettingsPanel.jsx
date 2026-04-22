@@ -23,6 +23,7 @@ import { Sparkles, Users, ToggleLeft, X, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { renderGroupOption, selectFilter } from '../../helpers';
 import ConfigManager from './ConfigManager';
+import ImageUrlInput from './ImageUrlInput';
 
 const SettingsPanel = ({
   inputs,
@@ -30,6 +31,7 @@ const SettingsPanel = ({
   groups,
   styleState,
   showDebugPanel,
+  customRequestMode,
   onInputChange,
   onCloseSettings,
   onConfigImport,
@@ -160,6 +162,15 @@ const SettingsPanel = ({
             />
           </div>
         </div>
+
+        {/* 图片输入 */}
+        <ImageUrlInput
+          imageUrls={inputs.imageUrls || []}
+          imageEnabled={inputs.imageEnabled || false}
+          onImageUrlsChange={(urls) => onInputChange('imageUrls', urls)}
+          onImageEnabledChange={(enabled) => onInputChange('imageEnabled', enabled)}
+          disabled={customRequestMode}
+        />
       </div>
 
       {/* 桌面端的配置管理放在底部 */}

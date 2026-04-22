@@ -505,9 +505,25 @@ func GetUserModels(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	groups := service.GetUserUsableGroups(user.Group)
+	usableGroups := service.GetUserUsableGroups(user.Group)
+
+	// If a specific group is requested, validate access and return only that group's models.
+	if requestedGroup := c.Query("group"); requestedGroup != "" {
+		if _, ok := usableGroups[requestedGroup]; !ok {
+			common.ApiErrorI18n(c, i18n.MsgForbidden)
+			return
+		}
+		models := model.GetGroupEnabledModels(requestedGroup)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+			"data":    models,
+		})
+		return
+	}
+
 	var models []string
-	for group := range groups {
+	for group := range usableGroups {
 		for _, g := range model.GetGroupEnabledModels(group) {
 			if !common.StringsContains(models, g) {
 				models = append(models, g)
