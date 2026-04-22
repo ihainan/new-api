@@ -8,6 +8,7 @@ upload
 build
 *.db-journal
 logs
+logs-local/backup-cron.log
 web/dist
 .env
 .env.local
@@ -27,6 +28,7 @@ plans
 electron/node_modules
 electron/dist
 data/
+backups-local/
 .gomodcache/
 .gocache-temp
 .gopath
