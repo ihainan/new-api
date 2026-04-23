@@ -209,11 +209,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const chatMenuItems = useMemo(() => {
     const items = [
       {
-        text: t('Chat'),
-        itemKey: 'playground',
-        to: '/playground',
-      },
-      {
         text: t('聊天'),
         itemKey: 'chat',
         items: chatItems,
@@ -445,16 +440,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             setOpenedKeys(data.openKeys);
           }}
         >
-          {/* 聊天区域 */}
-          {hasSectionVisibleModules('chat') && (
-            <div className='sidebar-section'>
-              {!collapsed && (
-                <div className='sidebar-group-label'>{t('聊天')}</div>
-              )}
-              {chatMenuItems.map((item) => renderSubItem(item))}
-            </div>
-          )}
-
           {/* 控制台区域 */}
           {hasSectionVisibleModules('console') && (
             <>
