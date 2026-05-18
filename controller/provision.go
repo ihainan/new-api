@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"errors"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
@@ -11,10 +13,12 @@ import (
 )
 
 const libreChatTokenName = "librechat-auto"
+const provisionTokenNameMaxLength = 50
 
 type ProvisionTokenRequest struct {
-	DingTalkId  string `json:"dingtalk_id"`
-	UserId      int    `json:"user_id"`
+	DingTalkId string `json:"dingtalk_id"`
+	UserId     int    `json:"user_id"`
+	TokenName  string `json:"token_name"`
 	// Optional fields used to auto-create the user when not found by dingtalk_id.
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
@@ -27,13 +31,41 @@ type ProvisionTokenRequest struct {
 // the optional username / display_name / email fields.
 // Returns an existing "librechat-auto" token when valid, otherwise creates a new one.
 func ProvisionUserToken(c *gin.Context) {
+	provisionUserToken(c, libreChatTokenName, false)
+}
+
+// ProvisionUserAPIKey is an admin-only generic endpoint used by platform integrations
+// to obtain a named personal API token for a new-api user identified by DingTalk
+// unionId or user_id. The requested token_name is required and is created
+// idempotently when no enabled, unexpired token with that name exists.
+func ProvisionUserAPIKey(c *gin.Context) {
+	provisionUserToken(c, "", true)
+}
+
+func provisionUserToken(c *gin.Context, defaultTokenName string, requireTokenName bool) {
 	var req ProvisionTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
 
+	tokenName := strings.TrimSpace(req.TokenName)
+	if !requireTokenName {
+		tokenName = defaultTokenName
+	} else if tokenName == "" {
+		tokenName = defaultTokenName
+	}
+	if requireTokenName && tokenName == "" {
+		common.ApiErrorMsg(c, "token_name is required")
+		return
+	}
+	if err := validateProvisionTokenName(tokenName); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
 	var user model.User
+	userCreated := false
 	if req.DingTalkId != "" {
 		user.DingTalkId = req.DingTalkId
 		err := user.FillUserByDingTalkId()
@@ -59,6 +91,7 @@ func ProvisionUserToken(c *gin.Context) {
 			}
 			// GORM populates the primary key on the struct after Create.
 			user = newUser
+			userCreated = true
 		}
 	} else if req.UserId != 0 {
 		found, err := model.GetUserById(req.UserId, false)
@@ -72,18 +105,22 @@ func ProvisionUserToken(c *gin.Context) {
 		return
 	}
 
-	existing, err := model.GetUserTokenByName(user.Id, libreChatTokenName)
+	existing, err := model.GetValidUserTokenByName(user.Id, tokenName)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	if existing != nil && existing.Status == common.TokenStatusEnabled &&
-		(existing.ExpiredTime == -1 || existing.ExpiredTime > common.GetTimestamp()) {
-		common.ApiSuccess(c, gin.H{
+	if existing != nil {
+		response := gin.H{
 			"token_key": existing.GetFullKey(),
 			"user_id":   user.Id,
 			"created":   false,
-		})
+		}
+		if requireTokenName {
+			response["token_name"] = tokenName
+			response["user_created"] = userCreated
+		}
+		common.ApiSuccess(c, response)
 		return
 	}
 
@@ -94,7 +131,7 @@ func ProvisionUserToken(c *gin.Context) {
 	}
 	newToken := model.Token{
 		UserId:         user.Id,
-		Name:           libreChatTokenName,
+		Name:           tokenName,
 		Key:            key,
 		CreatedTime:    common.GetTimestamp(),
 		AccessedTime:   common.GetTimestamp(),
@@ -106,11 +143,16 @@ func ProvisionUserToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	common.ApiSuccess(c, gin.H{
+	response := gin.H{
 		"token_key": newToken.GetFullKey(),
 		"user_id":   user.Id,
 		"created":   true,
-	})
+	}
+	if requireTokenName {
+		response["token_name"] = tokenName
+		response["user_created"] = userCreated
+	}
+	common.ApiSuccess(c, response)
 }
 
 // safeUsername returns a username that fits within UserNameMaxLength and falls back to
@@ -129,4 +171,24 @@ func truncateRunes(s string, max int) string {
 	}
 	runes := []rune(s)
 	return string(runes[:max])
+}
+
+func validateProvisionTokenName(name string) error {
+	if name == "" {
+		return errors.New("token_name is required")
+	}
+	if len(name) > provisionTokenNameMaxLength {
+		return errors.New("token_name is too long")
+	}
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.' {
+			continue
+		}
+		return errors.New("token_name may only contain lowercase letters, numbers, hyphen, underscore, or dot")
+	}
+	first := name[0]
+	if !((first >= 'a' && first <= 'z') || (first >= '0' && first <= '9')) {
+		return errors.New("token_name must start with a lowercase letter or number")
+	}
+	return nil
 }

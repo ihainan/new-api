@@ -132,6 +132,7 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.DELETE("/:id/2fa", controller.AdminDisable2FA)
 
 				adminRoute.POST("/provision_token", controller.ProvisionUserToken)
+				adminRoute.POST("/provision_api_key", controller.ProvisionUserAPIKey)
 			}
 		}
 

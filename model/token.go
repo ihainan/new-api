@@ -525,3 +525,18 @@ func GetUserTokenByName(userId int, name string) (*Token, error) {
 	}
 	return &token, err
 }
+
+// GetValidUserTokenByName returns the newest enabled, unexpired, non-deleted token
+// with the given name for the user, or nil if no usable token exists.
+func GetValidUserTokenByName(userId int, name string) (*Token, error) {
+	var token Token
+	now := common.GetTimestamp()
+	err := DB.Where("user_id = ? AND name = ? AND status = ? AND (expired_time = -1 OR expired_time > ?)",
+		userId, name, common.TokenStatusEnabled, now).
+		Order("id desc").
+		First(&token).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &token, err
+}
