@@ -1,61 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Button,
   Table,
-  Tag,
-  Toast,
   Typography,
   Empty,
+  Toast,
 } from '@douyinfe/semi-ui';
-import { IconCopy, IconEyeOpened, IconEyeClosedSolid } from '@douyinfe/semi-icons';
 import { API } from '../../../helpers';
 
 const { Title, Text } = Typography;
 
-function maskKey(key) {
-  if (!key) return '***';
-  if (key.length > 10) return key.substring(0, 6) + '***' + key.slice(-4);
-  return '***';
-}
-
-// HTTP 环境下 navigator.clipboard 不可用，用 execCommand 兜底。
-// Safari 不接受 opacity:0 的隐藏元素，需移到屏幕外；iOS Safari 需用 Selection API 选中内容。
-function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    return navigator.clipboard.writeText(text);
-  }
-  return new Promise((resolve, reject) => {
-    const el = document.createElement('textarea');
-    el.value = text;
-    el.setAttribute('readonly', '');
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
-    el.style.top = '-9999px';
-    document.body.appendChild(el);
-    // iOS Safari 需通过 Selection/Range API 选中内容
-    if (/ipad|iphone/i.test(navigator.userAgent)) {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      el.setSelectionRange(0, 999999);
-    } else {
-      el.focus();
-      el.select();
-    }
-    const ok = document.execCommand('copy');
-    document.body.removeChild(el);
-    ok ? resolve() : reject(new Error('execCommand failed'));
-  });
-}
-
 const ReadonlyTokensTable = () => {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tokenKeys, setTokenKeys] = useState({});
-  const [copyingId, setCopyingId] = useState(null);
-  const [revealedIds, setRevealedIds] = useState(new Set());
 
   useEffect(() => {
     const fetchTokens = async () => {
@@ -64,7 +20,7 @@ const ReadonlyTokensTable = () => {
         const res = await API.get('/api/token/?p=0&size=100');
         const { success, data } = res.data;
         if (success) {
-          // API returns paginated { items, total, ... }, not a plain array
+          // API returns paginated { items, total, ... }, not a plain array.
           setTokens(data?.items || []);
         }
       } catch (e) {
@@ -76,45 +32,6 @@ const ReadonlyTokensTable = () => {
     fetchTokens();
   }, []);
 
-  const fetchKey = async (record) => {
-    let key = tokenKeys[record.id];
-    if (!key) {
-      // GET /api/token/:id 返回 masked key，需用 POST /api/token/:id/key 获取明文
-      const res = await API.post(`/api/token/${record.id}/key`);
-      const { success, data } = res.data;
-      if (!success || !data?.key) throw new Error('获取 Key 失败，请重试');
-      key = data.key;
-      setTokenKeys((prev) => ({ ...prev, [record.id]: key }));
-    }
-    return key;
-  };
-
-  const handleCopy = async (record) => {
-    setCopyingId(record.id);
-    try {
-      const key = await fetchKey(record);
-      await copyToClipboard(key);
-      Toast.success('已复制到剪贴板');
-    } catch (e) {
-      Toast.error(e.message || '复制失败，请手动复制');
-    } finally {
-      setCopyingId(null);
-    }
-  };
-
-  const handleToggleReveal = async (record) => {
-    if (revealedIds.has(record.id)) {
-      setRevealedIds((prev) => { const s = new Set(prev); s.delete(record.id); return s; });
-      return;
-    }
-    try {
-      await fetchKey(record);
-      setRevealedIds((prev) => new Set(prev).add(record.id));
-    } catch (e) {
-      Toast.error(e.message || '获取 Key 失败');
-    }
-  };
-
   const columns = [
     {
       title: 'Key Name',
@@ -124,57 +41,6 @@ const ReadonlyTokensTable = () => {
           {name}
         </Text>
       ),
-    },
-    {
-      title: 'Key',
-      dataIndex: 'key',
-      render: (key, record) => {
-        const revealed = revealedIds.has(record.id);
-        const displayKey = revealed && tokenKeys[record.id]
-          ? tokenKeys[record.id]
-          : maskKey(key);
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Tag
-              style={{
-                fontFamily: 'monospace',
-                fontSize: '13px',
-                padding: '4px 10px',
-                background: 'var(--semi-color-fill-0)',
-                border: '1px solid var(--semi-color-border)',
-                borderRadius: '6px',
-                ...(revealed ? {
-                  whiteSpace: 'nowrap',
-                } : {
-                  maxWidth: '320px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }),
-              }}
-            >
-              {displayKey}
-            </Tag>
-            <Button
-              size='small'
-              icon={revealed ? <IconEyeClosedSolid /> : <IconEyeOpened />}
-              onClick={() => handleToggleReveal(record)}
-              style={{ borderRadius: '999px' }}
-              theme='borderless'
-              type='tertiary'
-            />
-            <Button
-              size='small'
-              icon={<IconCopy />}
-              loading={copyingId === record.id}
-              onClick={() => handleCopy(record)}
-              style={{ borderRadius: '999px' }}
-            >
-              Copy
-            </Button>
-          </div>
-        );
-      },
     },
   ];
 
