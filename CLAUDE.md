@@ -130,3 +130,49 @@ For request structs that are parsed from client JSON and then re-marshaled to up
   - field absent in client JSON => `nil` => omitted on marshal;
   - field explicitly set to zero/false => non-`nil` pointer => must still be sent upstream.
 - Avoid using non-pointer scalars with `omitempty` for optional request parameters, because zero values (`0`, `0.0`, `false`) will be silently dropped during marshal.
+
+## Build & Deploy (this fork's gateway deployment) — hard-won gotchas
+
+This fork runs on the gateway host as a **locally-built** image, driven by
+`docker-compose.local.yml` (NOT the stock `docker-compose.yml`). Notes below are
+from real breakage during the 2026-08-26 rebuild+redeploy. Read before building.
+
+### Which compose file is real
+- **`docker-compose.local.yml` is the live deployment**: service `new-api`,
+  `image: new-api-local` (local build), `container_name: new-api-local`,
+  host port **`52100:3000`**, volumes `./data-local:/data` + `./logs-local:/app/logs`,
+  `env_file: .env.local`, DB is **SQLite in `data-local/`** (no separate DB container).
+- **`docker-compose.yml` is the upstream EXAMPLE only** — it declares a different
+  service (`calciumion/new-api:latest` + postgres). **Never `up -d` with it here**;
+  it would spin up a foreign container. Always pass `-f docker-compose.local.yml`.
+- This host has **`docker-compose` (v1)** only; `docker compose` (v2 plugin) is NOT
+  installed and silently prints docker usage instead of running.
+
+### Building the image (CN network)
+- **`.dockerignore` MUST exclude runtime dirs** `data-local/`, `logs-local/`,
+  `backups-local/`. They are multi-GB (backups-local alone ~17GB); if not ignored,
+  `docker build` tries to send a ~20GB build context and appears to hang forever.
+- **`GOPROXY=https://goproxy.cn,direct`** is required (set in the Dockerfile builder
+  stage). `proxy.golang.org` is unreachable/stalls from the gateway — `go mod download`
+  hangs with 0 bytes and no error.
+- **apt in the final stage must use a CN mirror** (e.g. `mirrors.tuna.tsinghua.edu.cn`):
+  `deb.debian.org` stalls on the ~8.7MB package index. The Dockerfile rewrites
+  `debian.sources` before `apt-get update`.
+- Build with `docker build --network=host ...` so RUN steps use the host's working
+  egress. Backups of the originals: `.dockerignore.bak-*`, `Dockerfile.bak-*`.
+
+### Deploy / rollback (single container ⇒ ~5s downtime, not instant)
+1. Backup the running image first: `docker tag new-api-local:latest new-api-local:pre-<change>-<date>`.
+2. Build a distinct tag, then point latest at it: `docker tag new-api-local:<newtag> new-api-local:latest`.
+3. `docker-compose -f docker-compose.local.yml up -d` — recreates the container
+   (~5s downtime: SQLite open + migrations + server boot). There is no zero-downtime
+   path with a single container; for true no-impact use a blue/green swap behind nginx.
+4. **Readiness check hits host port `52100`** (`curl http://127.0.0.1:52100/api/status`),
+   NOT `3000` (that is the container port; it is not published on the host loopback).
+5. **Rollback (seconds):** `docker tag new-api-local:pre-<change>-<date> new-api-local:latest`
+   then `docker-compose -f docker-compose.local.yml up -d`.
+
+### Traffic reality
+- The gateway is used ~24/7 (real users + OpenClaw/Hermes agents); there is often **no
+  multi-minute idle window** even at night. Plan restarts as "brief accepted downtime"
+  or blue/green, not "wait for zero traffic".
