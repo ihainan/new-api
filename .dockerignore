@@ -8,3 +8,7 @@ docs
 .eslintcache
 .gocache
 /web/node_modules
+data-local
+logs-local
+backups-local
+bin/__pycache__
