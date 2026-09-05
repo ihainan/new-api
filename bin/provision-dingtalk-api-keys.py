@@ -2,7 +2,8 @@
 """Batch provision New-API users and named API keys from DingTalk names.
 
 This script intentionally contains no private URLs, tokens, or credentials.
-Provide sensitive values through environment variables or a local env file.
+Provide sensitive values through environment variables or a local env file
+(.env.local and .env.provision.local are loaded by default; both are gitignored).
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from typing import Any
 DEFAULT_TOKEN_NAME = "agent-openclaw-auto"
 DEFAULT_MODEL = "smart-router"
 DEFAULT_BASE_URL = "http://127.0.0.1:52100"
+DEFAULT_ENV_FILES = (".env.local", ".env.provision.local")
 KEY_CHARS = string.digits + string.ascii_lowercase + string.ascii_uppercase
 
 
@@ -109,7 +111,13 @@ def parse_args() -> argparse.Namespace:
         default=f"/tmp/new-api-agent-openclaw-keys-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}.md",
         help="Markdown output path. Contains full API keys; default is under /tmp.",
     )
-    parser.add_argument("--env-file", default=".env.local", help="Optional env file to load without overriding existing env.")
+    parser.add_argument(
+        "--env-file",
+        action="append",
+        default=[],
+        help="Env file to load without overriding existing env. Repeatable. "
+        f"Defaults to {', '.join(DEFAULT_ENV_FILES)}.",
+    )
     parser.add_argument(
         "--mcp-url",
         default=os.environ.get("DINGTALK_MCP_URL", ""),
@@ -849,7 +857,8 @@ def write_markdown(path: str, results: list[PersonResult], args: argparse.Namesp
 
 def main() -> int:
     args = parse_args()
-    load_env_file(args.env_file)
+    for env_file in args.env_file or DEFAULT_ENV_FILES:
+        load_env_file(env_file)
     if not args.mcp_url:
         args.mcp_url = os.environ.get("DINGTALK_MCP_URL", "")
     if not args.mcp_url:

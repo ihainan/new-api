@@ -12,6 +12,7 @@ logs-local/backup-cron.log
 web/dist
 .env
 .env.local
+.env.provision.local
 one-api
 new-api
 /__debug_bin*
