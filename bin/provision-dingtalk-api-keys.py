@@ -14,6 +14,7 @@ import json
 import os
 import random
 import secrets
+import socket
 import sqlite3
 import stat
 import string
@@ -32,6 +33,22 @@ DEFAULT_MODEL = "smart-router"
 DEFAULT_BASE_URL = "http://127.0.0.1:52100"
 DEFAULT_ENV_FILES = (".env.local", ".env.provision.local")
 KEY_CHARS = string.digits + string.ascii_lowercase + string.ascii_uppercase
+
+
+def force_ipv4() -> None:
+    """Pin outbound connections to IPv4.
+
+    DingTalk open APIs enforce a per-app IP allowlist. oapi.dingtalk.com answers
+    with AAAA records first, so on a dual-stack host the request leaves over IPv6
+    and is rejected with errcode 88 ("visiting ip is not in the allowlist") even
+    though the host's IPv4 egress is allowlisted.
+    """
+    original_getaddrinfo = socket.getaddrinfo
+
+    def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
+    socket.getaddrinfo = getaddrinfo_ipv4
 
 
 class ProvisionError(Exception):
@@ -158,6 +175,12 @@ def parse_args() -> argparse.Namespace:
         help="If provision_api_key is 404, write user/token directly to SQLite.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Resolve DingTalk users but do not create users or keys.")
+    parser.add_argument(
+        "--allow-ipv6",
+        action="store_true",
+        help="Do not pin outbound connections to IPv4. The DingTalk IP allowlist "
+        "normally covers only the IPv4 egress, so IPv4 is forced by default.",
+    )
     return parser.parse_args()
 
 
@@ -859,6 +882,8 @@ def main() -> int:
     args = parse_args()
     for env_file in args.env_file or DEFAULT_ENV_FILES:
         load_env_file(env_file)
+    if not args.allow_ipv6:
+        force_ipv4()
     if not args.mcp_url:
         args.mcp_url = os.environ.get("DINGTALK_MCP_URL", "")
     if not args.mcp_url:
