@@ -165,7 +165,8 @@ from real breakage during the 2026-08-26 rebuild+redeploy. Read before building.
 1. Backup the running image first: `docker tag new-api-local:latest new-api-local:pre-<change>-<date>`.
 2. Build a distinct tag, then point latest at it: `docker tag new-api-local:<newtag> new-api-local:latest`.
 3. `docker-compose -f docker-compose.local.yml up -d` — recreates the container
-   (~5s downtime: SQLite open + migrations + server boot). There is no zero-downtime
+   (~5s downtime: SQLite open + migrations + server boot; **measured 1.1s** on
+   2026-09-05 with a 0.1s probe, so 5s is a ceiling, not a typical value). There is no zero-downtime
    path with a single container; for true no-impact use a blue/green swap behind nginx.
 4. **Readiness check hits host port `52100`** (`curl http://127.0.0.1:52100/api/status`),
    NOT `3000` (that is the container port; it is not published on the host loopback).
@@ -176,3 +177,40 @@ from real breakage during the 2026-08-26 rebuild+redeploy. Read before building.
 - The gateway is used ~24/7 (real users + OpenClaw/Hermes agents); there is often **no
   multi-minute idle window** even at night. Plan restarts as "brief accepted downtime"
   or blue/green, not "wait for zero traffic".
+
+### Bulk admin-API operations — the API is rate limited (2026-09-05)
+
+- `router/api-router.go` applies `middleware.GlobalAPIRateLimit()` to the whole
+  `/api` group: `GLOBAL_API_RATE_LIMIT=180` requests per
+  `GLOBAL_API_RATE_LIMIT_DURATION=180` seconds, **per source IP** (~1 req/s).
+- Backfilling tokens by looping over `POST /api/user/provision_api_key` at ~33 req/s
+  tripped it after ~6 seconds; the remaining 431 calls returned 429, and every other
+  `/api/*` call from that same IP (including `/api/status` health probes) was refused
+  until the window rolled over (~30s).
+- **Relay traffic was unaffected**: `/v1/*` is a different router, real chat requests
+  stayed 200 throughout, and Web-UI users sit in their own per-IP buckets. Do not
+  assume a 429 storm on `/api/*` means the gateway is down — check
+  `docker logs new-api-local | grep relay` before concluding anything.
+- **For backfills touching hundreds of users, write the rows to SQLite directly**
+  instead of looping over the admin API. Token rows produced by `provision_api_key`
+  and by a direct insert are column-for-column identical (verified 2026-09-05:
+  `status`/`expired_time`/`remain_quota`/`unlimited_quota`/`group`/`allow_ips`/
+  `cross_group_retry` all match). One `begin immediate` transaction created 431
+  tokens in 0.1s with zero API load. Reuse `ensure_initial_token()` /
+  `insert_row()` / `unique_token_key()` from `bin/provision-dingtalk-api-keys.py`.
+- If the HTTP API really is required, throttle to well under 1 req/s and remember the
+  budget is shared with everything else calling `/api/*` from that IP.
+
+### Initial token (`<username>的初始令牌`) — which paths create it
+
+- Created by: `Register`, OAuth login (including DingTalk), and — since `97b01745` —
+  `provisionUserToken` when `provision_api_key` auto-creates a user.
+- **Still not created by** admin `CreateUser` (`POST /api/user`) or `WeChatAuth`.
+  Deliberate: neither path is used on this deployment (378 of 379 accounts are
+  DingTalk-bound). Fix them if that ever changes.
+- Only ever created for **newly created** users. The service never backfills an
+  existing user; that is a manual job (216 accounts needed it on 2026-09-05, all
+  opened through `provision_api_key` before the fix).
+- `validateProvisionTokenName` restricts `token_name` to `[a-z0-9._-]`, so a caller
+  can never request the Chinese default name — no collision is possible between a
+  requested token and the initial token.
