@@ -92,6 +92,10 @@ func provisionUserToken(c *gin.Context, defaultTokenName string, requireTokenNam
 			// GORM populates the primary key on the struct after Create.
 			user = newUser
 			userCreated = true
+			// 生成初始令牌，与注册/OAuth 建号保持一致（非致命，失败仅记录日志）
+			if tokenErr := model.CreateDefaultTokenForUser(user.Id, user.Username); tokenErr != nil {
+				common.SysLog("failed to create default token for provisioned user: " + tokenErr.Error())
+			}
 		}
 	} else if req.UserId != 0 {
 		found, err := model.GetUserById(req.UserId, false)
