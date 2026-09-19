@@ -31,8 +31,11 @@ For commercial licensing, please contact support@quantumnous.com
  *      别名和上游经常对不上（见下面 minimax 的 note）。
  *   3. context / params 只填有据可查的。自部署模型的上下文由上游启动参数决定，
  *      不知道就留空，页面会显示「以上游部署为准」——那是实话，编一个数字不是。
- *      实测办法见 bin/probe-context-window.sh：用超限的 max_tokens 让服务端
- *      在推理前报出真实上限，不产生计费。
+ *      实测办法见 bin/probe-upstream-context.py：直连上游，用超限的 max_tokens
+ *      让服务端在推理前报出真实上限，不产生计费。
+ *      2026-09-19 实测：smart-router / qwen / minimax 三个上游自报 262144。
+ *      本地集群那几个（gemma4、bge-*、qwen3-embedding）测不出来——那层转发
+ *      既不报错也不明确截断，超长输入照样返回 200，见交付说明。
  *
  * 数据来源：channels 表的 model_mapping + abilities 表（2026-09-19 核对）。
  */
@@ -59,7 +62,7 @@ export const MODELS = [
     detail:
       '按请求特征（提示词长度、是否带工具调用、是否需要长链路推理）在后端模型之间自动分发，调用方只写这一个 ID。适合刚接入、还没摸清各模型脾气的场景，也适合不想为模型升级改代码的服务。',
     params: '随实际路由到的模型而定',
-    context: '200K tokens',
+    context: '256K tokens',
     io: '文本 → 文本',
     upstream: '由路由服务按请求动态选择',
   },
@@ -73,7 +76,8 @@ export const MODELS = [
     detail:
       '日常问答、改写、总结、代码辅助的主力。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天承接了平台绝大部分对话请求，稳定性有实际流量背书。',
     params: 'FP8 量化私有化部署',
-    context: null,
+    context: '≥ 132K tokens（实测未触顶）',
+    maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: 'glm-5.2-fp8-private（私有化推理接入点）',
   },
@@ -87,7 +91,8 @@ export const MODELS = [
     detail:
       '后端与 glm 是同一个部署，区别只在请求格式。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '同 glm',
-    context: null,
+    context: '≥ 132K tokens（同 glm）',
+    maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: '同 glm（同一推理接入点）',
   },
@@ -101,7 +106,7 @@ export const MODELS = [
     detail:
       '350 亿总参数的 MoE 模型，每次推理只激活约 30 亿，同样算力下比同级稠密模型快得多。适合批量处理、对延迟敏感的在线场景，以及需要跑大量请求的离线任务。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    context: null,
+    context: '256K tokens',
     io: '文本 → 文本',
     upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
   },
@@ -115,7 +120,7 @@ export const MODELS = [
     detail:
       '这个别名的名字和它实际调到的模型对不上：网关当前把它映射到了 Qwen3.6-35B-A3B，效果等同于 qwen。新接入请直接写 qwen，这个 ID 只为兼容已经写死它的旧代码而保留。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    context: null,
+    context: '256K tokens',
     io: '文本 → 文本',
     upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
     note: '别名与实际模型不一致，新代码请用 qwen。',

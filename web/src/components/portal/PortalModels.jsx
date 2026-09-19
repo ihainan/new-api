@@ -154,6 +154,9 @@ function ModelRow({ m, open, onToggle }) {
             {/* 自部署模型的上下文由上游启动参数决定，网关这边看不到真值，
                 所以不填数字而是说明它取决于哪里——比编一个数字诚实。 */}
             <SpecItem label='上下文长度' value={m.context || '以上游部署为准'} />
+            {/* 上游只对 max_tokens 设了硬上限时单独列出来：它决定一次能吐多少，
+                和上下文不是一回事，混在一起看会写出超限的调用。 */}
+            <SpecItem label='单次输出上限' value={m.maxOutput} />
             <SpecItem label='输入 / 输出' value={m.io} />
             <SpecItem
               label='调用协议'
