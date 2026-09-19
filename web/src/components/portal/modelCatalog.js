@@ -31,6 +31,8 @@ For commercial licensing, please contact support@quantumnous.com
  *      别名和上游经常对不上（见下面 minimax 的 note）。
  *   3. context / params 只填有据可查的。自部署模型的上下文由上游启动参数决定，
  *      不知道就留空，页面会显示「以上游部署为准」——那是实话，编一个数字不是。
+ *      实测办法见 bin/probe-context-window.sh：用超限的 max_tokens 让服务端
+ *      在推理前报出真实上限，不产生计费。
  *
  * 数据来源：channels 表的 model_mapping + abilities 表（2026-09-19 核对）。
  */
@@ -57,7 +59,7 @@ export const MODELS = [
     detail:
       '按请求特征（提示词长度、是否带工具调用、是否需要长链路推理）在后端模型之间自动分发，调用方只写这一个 ID。适合刚接入、还没摸清各模型脾气的场景，也适合不想为模型升级改代码的服务。',
     params: '随实际路由到的模型而定',
-    context: null,
+    context: '200K tokens',
     io: '文本 → 文本',
     upstream: '由路由服务按请求动态选择',
   },
