@@ -41,6 +41,7 @@ import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
 import { isAdmin } from '../../helpers/utils.jsx';
 import SimpleHeader from './SimpleHeader';
+import UserPortalLayout from '../portal/UserPortalLayout';
 const { Sider, Content, Header } = Layout;
 
 const PageLayout = () => {
@@ -110,8 +111,10 @@ const PageLayout = () => {
     if (systemName) {
       document.title = systemName;
     }
+    // 只有后台显式配置过 Logo 时才覆盖 favicon。默认情况下保留 index.html 里
+    // 声明的矢量图标：那份是按尺寸调过的，用位图顶掉它在 16px 下会发虚。
     let logo = getLogo();
-    if (logo) {
+    if (logo && logo !== '/logo.png') {
       let linkElement = document.querySelector("link[rel~='icon']");
       if (linkElement) {
         linkElement.href = logo;
@@ -146,18 +149,31 @@ const PageLayout = () => {
     }
   }, [i18n, userState?.user?.setting]);
 
-  // 非管理员：独立的精简布局，完全不复用 admin 的 Header/Sider
+  // 非管理员：员工门户，完全不复用 admin 的 Header/Sider。
+  // 登录页、OAuth 回调这些没有导航的页面不该套门户外壳。
   if (!isAdmin()) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <SimpleHeader />
-        <main style={{ flex: 1 }}>
+    const bare = ['/login', '/register', '/reset', '/user/reset', '/oauth', '/setup'].some(
+      (p) => location.pathname.startsWith(p),
+    );
+    if (bare) {
+      return (
+        <div style={{ minHeight: '100vh' }}>
           <ErrorBoundary>
             <App />
           </ErrorBoundary>
-        </main>
+          <ToastContainer />
+        </div>
+      );
+    }
+    return (
+      <>
+        <UserPortalLayout>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </UserPortalLayout>
         <ToastContainer />
-      </div>
+      </>
     );
   }
 

@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import ModelGallery from '../ModelGallery';
+import PortalModels from '../../components/portal/PortalModels';
+import { isAdmin } from '../../helpers/utils.jsx';
 
-const Pricing = () => <ModelGallery />;
+// 管理员继续走原来的组件，普通员工走门户页。两条路径互不影响。
+const Page = () => (isAdmin() ? <ModelGallery /> : <PortalModels />);
 
-export default Pricing;
+export default Page;

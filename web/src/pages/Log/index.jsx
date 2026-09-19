@@ -19,11 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import UsageLogsTable from '../../components/table/usage-logs';
+import PortalRecords from '../../components/portal/PortalRecords';
+import { isAdmin } from '../../helpers/utils.jsx';
 
-const Token = () => (
-  <div className='mt-[60px] px-2'>
-    <UsageLogsTable />
-  </div>
-);
+// 管理员继续走原来的组件，普通员工走门户页。两条路径互不影响。
+const Page = () => (isAdmin() ? <div className='mt-[60px] px-2'><UsageLogsTable /></div> : <PortalRecords />);
 
-export default Token;
+export default Page;

@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import TokensTable from '../../components/table/tokens';
-import ReadonlyTokensTable from '../../components/table/tokens/ReadonlyTokensTable.jsx';
+import PortalKeys from '../../components/portal/PortalKeys';
 import { isAdmin } from '../../helpers/utils.jsx';
 
 const Token = () => {
@@ -30,11 +30,8 @@ const Token = () => {
       </div>
     );
   }
-  return (
-    <div className='px-6 sm:px-10 lg:px-16 py-8 max-w-7xl mx-auto'>
-      <ReadonlyTokensTable />
-    </div>
-  );
+  // 管理员分支在上面提前返回，这里只服务普通员工。
+  return <PortalKeys />;
 };
 
 export default Token;
