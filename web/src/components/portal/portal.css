@@ -206,6 +206,9 @@
   .pt-sidebar {
     position: static;
     width: auto;
+    /* 基础规则里的 align-self: flex-start 是给宽屏竖栏用的；换成横条之后
+       它会让横条缩到内容宽度、右侧露出页面底色，必须显式拉满。 */
+    align-self: stretch;
     height: auto;
     flex-direction: row;
     align-items: center;
@@ -476,32 +479,184 @@
   min-width: 220px;
 }
 
-.pt-model-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
+/* 模型页。行式卡片而不是卡片网格：模型介绍是成段的文字，
+   等宽方块会把长短不一的介绍撑得参差不齐，横向铺开才读得顺。 */
+.pt-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
-.pt-model {
+.pt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--pt-border-strong);
+  border-radius: var(--pt-radius-md);
   background: var(--pt-bg-card);
-  border: 1px solid var(--pt-border);
-  border-radius: var(--pt-radius-lg);
-  padding: 13px 14px;
+  color: var(--pt-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.pt-chip:hover { background: var(--pt-bg-hover); }
+.pt-chip.on {
+  background: var(--pt-ink);
+  border-color: var(--pt-ink);
+  color: #fff;
+}
+.pt-chip-n {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--pt-text-muted);
+}
+.pt-chip.on .pt-chip-n { color: rgba(255, 255, 255, 0.7); }
+
+.pt-mdl-group { margin-bottom: 26px; }
+.pt-mdl-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pt-text-secondary);
+  margin: 0 0 8px;
+}
+.pt-mdl-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.pt-model-id {
+
+.pt-mdl {
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-lg);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.pt-mdl:hover { border-color: var(--pt-border-strong); }
+.pt-mdl.open {
+  border-color: var(--pt-border-strong);
+  box-shadow: var(--pt-shadow-sm);
+}
+.pt-mdl-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.pt-mdl-head:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: -2px;
+  border-radius: var(--pt-radius-lg);
+}
+.pt-mdl-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  border-radius: var(--pt-radius-sm);
+  overflow: hidden;
+}
+/* 认不出品牌时留一个同尺寸的浅色方块，列表不会因为少一个图标而错位。 */
+.pt-mdl-icon-none { background: var(--pt-bg-subtle); }
+
+.pt-mdl-body { flex: 1; min-width: 0; }
+.pt-mdl-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pt-mdl-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+.pt-mdl-id {
   font-family: var(--pt-mono);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--pt-text-secondary);
+  background: var(--pt-bg-subtle);
+  padding: 1px 6px;
+  border-radius: var(--pt-radius-sm);
   word-break: break-all;
 }
-.pt-model-foot {
+.pt-mdl-sum {
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--pt-text-secondary);
+}
+.pt-mdl-meta {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: var(--pt-text-muted);
+}
+.pt-mdl-act {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  margin-top: auto;
+  color: var(--pt-text-muted);
+}
+.pt-chev { transition: transform 0.15s; }
+.pt-chev.open { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+  .pt-chev { transition: none; }
+}
+
+.pt-mdl-detail {
+  border-top: 1px solid var(--pt-border);
+  padding: 14px 16px 16px;
+}
+.pt-mdl-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--pt-text-secondary);
+}
+.pt-mdl-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pt-warn-text);
+  background: var(--pt-warn-bg);
+  border-radius: var(--pt-radius-md);
+  padding: 8px 12px;
+}
+.pt-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 24px;
+  margin: 16px 0 0;
+}
+.pt-spec { min-width: 0; }
+.pt-spec dt {
+  font-size: 12px;
+  color: var(--pt-text-muted);
+  margin-bottom: 3px;
+}
+.pt-spec dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pt-text-primary);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  /* 窄屏下按钮和标题抢不到宽度，把操作区挪到整行底部。 */
+  .pt-mdl-head {
+    flex-wrap: wrap;
+    padding: 13px 14px;
+  }
+  .pt-mdl-act {
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 38px;
+  }
+  .pt-specs { grid-template-columns: 1fr; gap: 10px; }
 }
 
 .pt-pager {
