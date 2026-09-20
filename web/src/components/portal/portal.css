@@ -18,6 +18,10 @@
   --pt-text-primary: #14181f;
   --pt-text-secondary: #585f6a;
   --pt-text-muted: #8a909b;
+  /* 小字承载真实信息时用这个。取值按 4.5:1 反推，在页面用到的四种底色
+     （卡片白、页面底、subtle、hover）上都达标；--pt-text-muted 的 3.2:1
+     只够做纯装饰性弱化。 */
+  --pt-text-meta: #646d7c;
   --pt-border: #e7e9ec;
   --pt-border-strong: #d6d9de;
   --pt-ok-text: #157f3c;
@@ -509,7 +513,7 @@
 .pt-chip-n {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
-  color: var(--pt-text-muted);
+  color: var(--pt-text-meta);
 }
 .pt-chip.on .pt-chip-n { color: rgba(255, 255, 255, 0.7); }
 
@@ -540,14 +544,36 @@
 .pt-mdl-head {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
   padding: 14px 16px;
+}
+/* 展开控件是一个真 <button>，把浏览器默认外观清掉，让它长得像一行内容。
+   复制按钮是它的同级，不再嵌在里面——嵌套会吞掉键盘激活。 */
+.pt-mdl-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.pt-mdl-head:focus-visible {
+.pt-mdl-main:focus-visible {
   outline: 2px solid var(--pt-accent);
-  outline-offset: -2px;
-  border-radius: var(--pt-radius-lg);
+  outline-offset: 3px;
+  border-radius: var(--pt-radius-md);
+}
+.pt-mdl-act {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pt-text-muted);
 }
 .pt-mdl-icon {
   flex: none;
@@ -560,8 +586,11 @@
 }
 /* 认不出品牌时留一个同尺寸的浅色方块，列表不会因为少一个图标而错位。 */
 .pt-mdl-icon-none { background: var(--pt-bg-subtle); }
+/* 图标自带 <title>（Zhipu / Alibaba / BAAI…），悬停会弹出厂商名。
+   这个页面按要求不写厂商，所以连原生提示一起挡掉。 */
+.pt-mdl-icon svg { pointer-events: none; }
 
-.pt-mdl-body { flex: 1; min-width: 0; }
+.pt-mdl-body { flex: 1; min-width: 0; display: block; }
 .pt-mdl-title {
   display: flex;
   align-items: baseline;
@@ -572,6 +601,8 @@
   font-size: 14.5px;
   font-weight: 600;
   letter-spacing: -0.1px;
+  /* 目录没覆盖到的模型名可能很长又没有空格，不给断点会把整行撑破 */
+  overflow-wrap: anywhere;
 }
 .pt-mdl-id {
   font-family: var(--pt-mono);
@@ -583,22 +614,19 @@
   word-break: break-all;
 }
 .pt-mdl-sum {
+  display: block;
   margin: 5px 0 0;
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--pt-text-secondary);
 }
 .pt-mdl-meta {
+  display: block;
   margin: 5px 0 0;
   font-size: 12.5px;
-  color: var(--pt-text-muted);
-}
-.pt-mdl-act {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--pt-text-muted);
+  /* 这一行现在带着上下文长度，是挑模型的关键信息，不能用 --pt-text-muted
+     那个 3.2:1 的灰——12.5px 正文要 4.5:1。 */
+  color: var(--pt-text-meta);
 }
 .pt-chev { transition: transform 0.15s; }
 .pt-chev.open { transform: rotate(180deg); }
@@ -634,7 +662,7 @@
 .pt-spec { min-width: 0; }
 .pt-spec dt {
   font-size: 12px;
-  color: var(--pt-text-muted);
+  color: var(--pt-text-meta);
   margin-bottom: 3px;
 }
 .pt-spec dd {
@@ -651,10 +679,10 @@
     flex-wrap: wrap;
     padding: 13px 14px;
   }
+  .pt-mdl-main { flex: 1 1 100%; }
   .pt-mdl-act {
     width: 100%;
-    justify-content: space-between;
-    padding-left: 38px;
+    justify-content: flex-end;
   }
   .pt-specs { grid-template-columns: 1fr; gap: 10px; }
 }

@@ -55,6 +55,8 @@ export const CATEGORIES = [
   { key: 'audio', label: '语音' },
   { key: 'video', label: '视频生成' },
   { key: 'retrieval', label: '向量与重排' },
+  // 目录还没覆盖到的模型落这里，不硬猜类别
+  { key: 'other', label: '其他' },
 ];
 
 // icon 取 @lobehub/icons 的导出名，在 PortalModels.jsx 里映射成组件。
@@ -69,9 +71,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '不确定用哪个模型时的默认入口，网关替你选后端。',
     detail:
-      '按请求特征（提示词长度、是否带工具调用、是否需要长链路推理）在后端模型之间自动分发，调用方只写这一个 ID。适合刚接入、还没摸清各模型脾气的场景，也适合不想为模型升级改代码的服务。',
-    params: '随实际路由到的模型而定',
-    context: '256K tokens',
+      '按请求特征在后端模型之间自动分发，调用方只写这一个 ID，后端换了也不必改代码。代价是你不知道某一次请求实际落在哪个模型上——要确定性就直接写具体模型 ID。',
+    params: null,
+    deployment: '随实际路由到的模型而定',
+    context: '262,144 tokens',
     io: '文本 → 文本',
     upstream: '由路由服务按请求动态选择',
   },
@@ -83,9 +86,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '平台调用量最大的通用对话模型，私有化部署。',
     detail:
-      '日常问答、改写、总结、代码辅助的主力。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天承接了平台绝大部分对话请求，稳定性有实际流量背书。',
-    params: 'FP8 量化私有化部署',
-    context: '≥ 272K tokens（实测未触顶）',
+      '日常问答、改写、总结、代码辅助都能用。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
+    params: '未公布',
+    deployment: 'FP8 量化，私有化部署',
+    context: '≥ 278,059 tokens（实测未触顶）',
     official: '1,000,000 tokens',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
@@ -100,8 +104,9 @@ export const MODELS = [
     summary: '和 glm 同一个模型，换成 Anthropic Messages 协议。',
     detail:
       '后端与 glm 是同一个部署，区别只在请求格式。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
-    params: '同 glm',
-    context: '≥ 272K tokens（同 glm）',
+    params: '未公布',
+    deployment: '与 glm 同一部署',
+    context: '≥ 278,059 tokens（同 glm）',
     official: '1,000,000 tokens',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
@@ -115,7 +120,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '混合专家架构，激活参数小、吞吐高的对话模型。',
     detail:
-      '350 亿总参数的 MoE 模型，每次推理只激活约 30 亿，同样算力下比同级稠密模型快得多。适合批量处理、对延迟敏感的在线场景，以及需要跑大量请求的离线任务。',
+      '350 亿总参数的混合专家模型，每次推理只激活约 30 亿参数。上下文 262,144 token，是平台上仅次于 glm 的长文选择。',
     params: '35B 总参数 / 3B 激活（MoE）',
     context: '262,144 tokens',
     official: '262,144 原生，可扩至约 1M',
@@ -148,7 +153,7 @@ export const MODELS = [
     detail:
       '260 亿参数的开放权重模型，部署在本地推理集群。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意当前部署的上下文只有 2048 token（约 3000 个汉字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
     params: '26B 参数',
-    context: '2,048 tokens（部署上限）',
+    context: '2,048 tokens（部署上限，中文约 3,400 字）',
     official: '256K tokens',
     io: '文本 → 文本',
     upstream: 'gemma4:26b（本地集群部署）',
@@ -217,9 +222,9 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '多语言向量模型，做检索和知识库的第一步。超长文本会被静默截断。',
     detail:
-      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。当前部署的上下文是 2048 token（约 3000 个汉字），超出的部分会被直接丢掉且不报错——长文档必须自己先切段，否则拿到的是残缺向量。',
+      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。当前部署只给到 2048 token（中文约 3,400 字，随内容浮动），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
     params: '约 568M 参数',
-    context: '2,048 tokens（部署上限）',
+    context: '2,048 tokens（部署上限，中文约 3,400 字）',
     official: '8,192 tokens',
     io: '文本 → 1024 维向量',
     upstream: 'bge-m3（本地集群部署）',
@@ -232,9 +237,9 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '更大的向量模型，能吃下 BGE-M3 两倍长的文本。',
     detail:
-      '同样是把文本转向量，上下文比 BGE-M3 大一倍（4096 token，约 6000 个汉字），同样的文档少切几刀，但一样会静默截断。代价是更慢、更占显存。追求召回质量选它，追求吞吐选 BGE-M3。',
+      '同样是把文本转向量。当前部署给到 4096 token（中文约 8,000 字），是 BGE-M3 的两倍，同样的文档少切几刀，但超出部分一样被静默丢弃。参数量更大，因此更慢、更占显存。',
     params: '4B 参数',
-    context: '4,096 tokens（部署上限）',
+    context: '4,096 tokens（部署上限，中文约 8,000 字）',
     official: '32K tokens',
     io: '文本 → 向量',
     upstream: 'qwen3-embedding:4b（本地集群部署）',
@@ -247,7 +252,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '重排模型，给向量召回的结果做第二轮精排。',
     detail:
-      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。单篇文档可以到 8192 token，比 BGE-M3 宽裕得多。',
+      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。8,192 token 是问题加文档的总预算，不是每篇文档各自的额度。',
     params: '约 568M 参数',
     context: '8,192 tokens',
     io: '（问题, 文档）→ 相关性分数',
@@ -258,16 +263,19 @@ export const MODELS = [
 // 协议标签。endpoints 来自 /api/pricing 的 supported_endpoint_types，
 // 目录里的值是对照渠道类型写的，两者不一致时以接口返回为准。
 export const ENDPOINT_LABELS = {
+  // 取值对齐 constant/endpoint_type.go，别自己造名字：认不出来的会把
+  // 内部枚举原样显示给员工看。
   openai: 'OpenAI 兼容',
+  'openai-response': 'OpenAI Responses',
+  'openai-response-compact': 'OpenAI Responses',
   anthropic: 'Anthropic',
+  gemini: 'Gemini',
+  'jina-rerank': '重排接口',
+  'image-generation': '图像生成接口',
+  embeddings: '向量接口',
   'openai-video': '异步视频任务',
-  'openai-image': '图像接口',
-  'openai-audio': '音频接口',
-  jina: 'Jina',
 };
 
-// 数组顺序就是页面内的展示顺序：推荐入口在前，兼容用的旧别名垫底。
-// /api/pricing 的返回顺序不可控，不能拿来当展示顺序。
 const BY_ID = new Map(MODELS.map((m, i) => [m.id, { ...m, order: i }]));
 
 // 网关上了新模型但这个文件还没跟上时的兜底：只显示 ID 和分组，
@@ -278,7 +286,7 @@ export function describe(id) {
       id,
       name: id,
       icon: null,
-      category: 'chat',
+      category: 'other',
       endpoints: [],
       summary: '',
       detail: '',
