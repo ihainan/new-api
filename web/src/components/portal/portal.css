@@ -911,3 +911,7 @@
   margin-top: 10px;
   word-break: break-all;
 }
+
+/* 模态一项一行。用分隔符连起来的话，中英文该用什么符号是两套规则，
+   不如各占一行——也更好扫。 */
+.pt-modality { display: block; }

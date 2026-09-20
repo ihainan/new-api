@@ -115,7 +115,7 @@ function CapGrid({ caps }) {
               {path}
             </svg>
             <span>{t(label)}</span>
-            {tag ? <em className='pt-cap-tag'>{tag}</em> : null}
+            {tag ? <em className='pt-cap-tag'>{t(tag)}</em> : null}
           </span>
         );
       })}
@@ -125,10 +125,21 @@ function CapGrid({ caps }) {
 
 function ModalityItem({ label, items }) {
   if (!items || !items.length) return null;
+  /*
+   * 一个模态一行，不用分隔符把它们连起来。
+   * 试过 Intl.ListFormat，但没有一个配置同时适合中英：中文的 unit 样式
+   * 根本不给分隔符（「文本图像」），conjunction 又变成「文本和图像」而不是顿号。
+   * 与其为此维护一张按语言分的分隔符表，不如照参照设计每项单独一行——
+   * 本来也更好读。
+   */
   return (
     <div className='pt-spec'>
       <dt>{label}</dt>
-      <dd>{items.join('、')}</dd>
+      <dd>
+        {items.map((x) => (
+          <span key={x} className='pt-modality'>{x}</span>
+        ))}
+      </dd>
     </div>
   );
 }
@@ -174,7 +185,7 @@ function ModelRow({ m, open, onToggle }) {
           <ModelIcon icon={m.icon} />
           <span className='pt-mdl-body'>
             <span className='pt-mdl-title'>
-              <span className='pt-mdl-name'>{m.name}</span>
+              <span className='pt-mdl-name'>{t(m.name)}</span>
               <code className='pt-mdl-id'>{m.id}</code>
             </span>
             {m.summary ? <span className='pt-mdl-sum'>{t(m.summary)}</span> : null}
