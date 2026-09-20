@@ -691,9 +691,9 @@
   font-size: 13.5px;
   line-height: 1.7;
   color: var(--pt-text-secondary);
-  /* 1em ≈ 一个汉字宽，所以这个数就是每行的汉字数。42 太窄，
-     卡片有 1300px 宽却每行都写不满，右边空一大片 */
-  max-width: 58em;
+  /* 1em ≈ 一个汉字宽，所以这个数就是每行的汉字数。给到 80：
+     58 在 1900px 的窗口下还是断得太早，卡片右边要空掉三分之一。 */
+  max-width: 80em;
 }
 .pt-mdl-full { display: block; }
 /* 折叠时截两行；展开时是同一段，只是去掉截断 */
