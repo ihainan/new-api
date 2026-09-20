@@ -174,6 +174,9 @@ export const MODELS = [
     note: '别名与实际模型不一致，新代码请用 qwen。',
   },
   {
+    // 待复查（2026-09-20）：图像输入报 500 是转发层的问题，运维正在修。
+    // 修好之后重跑 bin/probe-capabilities.py，把 vision 翻成 true，
+    // 并删掉 detail 里那句「发图片请求会直接报 500」。
     id: 'gemma4:26b',
     name: 'Gemma 4 26B',
     icon: 'Gemma',
