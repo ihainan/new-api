@@ -402,6 +402,24 @@ function SpecItem({ label, value, wide }) {
   );
 }
 
+/*
+ * 描述里的模型 ID 和字段名用反引号标出来，渲染成行内代码——
+ * 「`response_format`」这种东西混在正文里，不换个字体根本认不出是要照抄的字符串。
+ */
+function withCode(text) {
+  return String(text)
+    .split(/`([^`]+)`/)
+    .map((part, i) =>
+      i % 2 ? (
+        <code key={i} className='pt-inline-code'>
+          {part}
+        </code>
+      ) : (
+        part
+      ),
+    );
+}
+
 function ModelRow({ m, open, onToggle }) {
   const { t } = useTranslation();
   const endpoints = m.endpoints || [];
@@ -479,10 +497,10 @@ function ModelRow({ m, open, onToggle }) {
        */}
       {m.detail ? (
         <p className={`pt-mdl-desc ${open ? 'pt-mdl-full' : 'pt-mdl-brief'}`}>
-          {t(m.detail)}
+          {withCode(t(m.detail))}
         </p>
       ) : m.summary ? (
-        <p className='pt-mdl-desc pt-mdl-sum'>{t(m.summary)}</p>
+        <p className='pt-mdl-desc pt-mdl-sum'>{withCode(t(m.summary))}</p>
       ) : null}
 
       {/* 指标条放在卡片层级，不在那个可点击的主按钮里面：
@@ -525,7 +543,7 @@ function ModelRow({ m, open, onToggle }) {
             {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
               加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
             {m.highlight ? (
-              <p className='pt-mdl-highlight'>{t(m.highlight)}</p>
+              <p className='pt-mdl-highlight'>{withCode(t(m.highlight))}</p>
             ) : null}
             {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
             {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}

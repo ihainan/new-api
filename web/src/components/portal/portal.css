@@ -704,6 +704,17 @@
   overflow: hidden;
 }
 
+/* 正文里的行内代码：模型 ID、字段名这类要原样照抄的字符串 */
+.pt-inline-code {
+  font-family: var(--pt-mono);
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--pt-bg-hover);
+  color: var(--pt-text-primary);
+  /* 长 ID 不给断点会把整行撑破 */
+  overflow-wrap: anywhere;
+}
 .pt-mdl-sum {
   display: block;
   font-size: 13.5px;
