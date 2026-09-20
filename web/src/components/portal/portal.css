@@ -660,25 +660,56 @@
   border-radius: var(--pt-radius-md);
   padding: 8px 12px;
 }
+/* 关键规格：列要够宽。之前 190px 的列把「200,000 tokens（建议单次请求不超过）」
+   从括号中间断开，数字反而读不出来。 */
 .pt-specs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px 24px;
-  margin: 16px 0 0;
+  /*
+   * 用 flex 不用 grid：字段数因模型而异（视频模型只有两个，对话模型有四个）。
+   * grid 的 auto-fit + 1fr 会把两个字段拉成各占半屏；给列宽设上限又会让
+   * 四个字段挤不下、折成两行。flex 的「可伸缩但有上限」两种情况都成立。
+   */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 40px;
+  margin: 18px 0 0;
 }
+.pt-specs > .pt-spec { flex: 1 1 200px; max-width: 320px; }
+.pt-specs > .pt-spec.wide { flex-basis: 100%; max-width: none; }
 .pt-spec { min-width: 0; }
 .pt-spec dt {
   font-size: 12px;
   color: var(--pt-text-meta);
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 .pt-spec dd {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--pt-text-primary);
   word-break: break-word;
 }
+/* 括号里的限定语降一级：数字是主角，「建议单次请求不超过」是脚注 */
+.pt-spec-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pt-text-meta);
+}
+
+/* 次要信息整体弱化，不跟关键规格抢注意力。
+   列比上面窄：这些值短，用关键规格那个宽度会剩下一个孤零零的单元格。 */
+.pt-specs-more {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pt-border);
+  gap: 14px 24px;
+}
+.pt-specs-more > .pt-spec { flex: 1 1 160px; max-width: 250px; }
+.pt-specs-more > .pt-spec.wide { flex-basis: 100%; max-width: none; }
+.pt-specs-more dd { font-size: 13px; color: var(--pt-text-secondary); }
+.pt-specs-more .pt-spec-note { font-size: 11.5px; }
 
 @media (max-width: 640px) {
   /* 窄屏下按钮和标题抢不到宽度，把操作区挪到整行底部。 */

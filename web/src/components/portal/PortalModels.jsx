@@ -123,33 +123,22 @@ function CapGrid({ caps }) {
   );
 }
 
-function ModalityItem({ label, items }) {
-  if (!items || !items.length) return null;
-  /*
-   * 一个模态一行，不用分隔符把它们连起来。
-   * 试过 Intl.ListFormat，但没有一个配置同时适合中英：中文的 unit 样式
-   * 根本不给分隔符（「文本图像」），conjunction 又变成「文本和图像」而不是顿号。
-   * 与其为此维护一张按语言分的分隔符表，不如照参照设计每项单独一行——
-   * 本来也更好读。
-   */
+/*
+ * 规格单元。值里结尾的括号是限定语（「建议单次请求不超过」「实测：超出部分被
+ * 丢弃」），拆到第二行用弱化字号显示：挤在一起会从括号中间断行，数字反而看不清。
+ * 限定语本身不能删——它区分的是「实测值」「平台配置值」和「建议值」。
+ */
+function SpecItem({ label, value, wide }) {
+  if (!value) return null;
+  const m = /^(.*?)（(.+)）$/.exec(value);
+  const [main, note] = m ? [m[1].trim(), m[2]] : [value, null];
   return (
-    <div className='pt-spec'>
+    <div className={`pt-spec${wide ? ' wide' : ''}`}>
       <dt>{label}</dt>
       <dd>
-        {items.map((x) => (
-          <span key={x} className='pt-modality'>{x}</span>
-        ))}
+        {main}
+        {note ? <span className='pt-spec-note'>{note}</span> : null}
       </dd>
-    </div>
-  );
-}
-
-function SpecItem({ label, value }) {
-  if (!value) return null;
-  return (
-    <div className='pt-spec'>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
     </div>
   );
 }
@@ -159,10 +148,21 @@ function ModelRow({ m, open, onToggle }) {
   const endpoints = m.endpoints || [];
   const protocols = endpoints.map((e) => t(ENDPOINT_LABELS[e] || e)).join(' / ');
   // 元信息挤在一行，用间隔点分开；空值直接不进数组，避免出现「· ·」。
+  // 输入输出一律从 inputs/outputs 推，不用目录里那个写死的 io 字段——
+  // 两处并存时会不一致（smart-router 的 io 写「文本 → 文本」，
+  // 但它的 inputs 是文本和图像）。
+  const io = (m.inputs || []).length
+    ? (m.inputs || []).map(t).join(t('、')) +
+      ' → ' +
+      (m.outputs || []).map(t).join(t('、'))
+    : null;
+  // 折叠行里上下文只留数字，括号里的限定语放到展开后的规格里说，
+  // 否则一行挤三样东西，最该看的数字反而不显眼。
+  const contextBrief = m.context ? t(m.context).replace(/（.+）$/, '') : null;
   const meta = [
     m.params && !/未公布|而定/.test(m.params) ? t(m.params) : null,
-    m.context ? t(m.context) : null,
-    m.io ? t(m.io) : null,
+    contextBrief,
+    io,
     protocols,
   ].filter(Boolean);
   const panelId = `mdl-${m.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
@@ -217,12 +217,13 @@ function ModelRow({ m, open, onToggle }) {
         <div className='pt-mdl-detail' id={panelId}>
           {m.detail ? <p className='pt-mdl-text'>{t(m.detail)}</p> : null}
           {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
+          {/*
+            * 分三层，不再九个字段平铺：
+            * 关键规格（挑模型时真正要看的）→ 能力 → 次要信息。
+            * 之前一律平铺成五列，「上下文长度」和「可用分组」一样重，
+            * 而列宽又不够，「200,000 tokens（建议单次请求不」会从括号中间断行。
+            */}
           <dl className='pt-specs'>
-            <ModalityItem label={t('输入模态')} items={(m.inputs || []).map(t)} />
-            <ModalityItem label={t('输出模态')} items={(m.outputs || []).map(t)} />
-            {/* 上下文只对吃文本的模型有意义；出图、语音、视频那几个没有这个概念，
-                给它们填「以上游部署为准」只是一行看不懂的噪音。
-                文本模型里没测出来的才回退到那句话——比编一个数字诚实。 */}
             <SpecItem
               label={t('上下文长度')}
               value={
@@ -231,22 +232,9 @@ function ModelRow({ m, open, onToggle }) {
                   : m.context && t(m.context)
               }
             />
-            {/* 部署给到的和模型本身的规格不是一回事。一致就不必多说一遍，
-                不一致才是使用者要知道的——他会以为自己有官方那么大的窗口。 */}
-            {/* 实测验证过什么，单独一栏。运维口径的数字和我亲手验到的长度
-                不是一回事，混在一格里会让人以为整条都验过。 */}
-            <SpecItem label={t('实测验证')} value={m.verified && t(m.verified)} />
-            <SpecItem
-              label={t('模型官方规格')}
-              value={m.official && m.official !== m.context ? t(m.official) : null}
-            />
             <SpecItem label={t('单次输出上限')} value={m.maxOutput && t(m.maxOutput)} />
-            <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
-            <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
-            <SpecItem label={t('部署方式')} value={m.deployment && t(m.deployment)} />
+            <SpecItem label={t('输入 / 输出')} value={io} />
             <SpecItem label={t('调用协议')} value={protocols} />
-            <SpecItem label={t('实际上游')} value={m.upstream && t(m.upstream)} />
-            <SpecItem label={t('可用分组')} value={(m.groups || []).join(' / ')} />
           </dl>
 
           {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
@@ -256,6 +244,22 @@ function ModelRow({ m, open, onToggle }) {
               <CapGrid caps={m.caps} />
             </div>
           ) : null}
+
+          {/* 次要信息：部署细节和出处。想深究的人才会看到这里，
+              所以字号更小、颜色更弱，不跟上面的关键规格抢注意力。 */}
+          <dl className='pt-specs pt-specs-more'>
+            <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
+            <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
+            <SpecItem label={t('部署方式')} value={m.deployment && t(m.deployment)} />
+            <SpecItem label={t('实际上游')} value={m.upstream && t(m.upstream)} />
+            <SpecItem label={t('可用分组')} value={(m.groups || []).join(' / ')} />
+            <SpecItem
+              label={t('模型官方规格')}
+              value={m.official && m.official !== m.context ? t(m.official) : null}
+            />
+            {/* 实测到什么程度，单独占一整行：它是一句话，塞进窄格里会断得很碎 */}
+            <SpecItem wide label={t('实测验证')} value={m.verified && t(m.verified)} />
+          </dl>
         </div>
       ) : null}
     </div>
