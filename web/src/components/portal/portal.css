@@ -547,7 +547,7 @@
 .pt-mdl-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .pt-mdl {
@@ -564,8 +564,8 @@
 .pt-mdl-head {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 18px 20px;
 }
 /* 展开控件是一个真 <button>，把浏览器默认外观清掉，让它长得像一行内容。
    复制按钮是它的同级，不再嵌在里面——嵌套会吞掉键盘激活。 */
@@ -615,7 +615,8 @@
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 9px;
+  margin-bottom: 2px;
 }
 .pt-mdl-name {
   font-size: 14.5px;
@@ -639,10 +640,13 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-top: 4px;
+  margin-top: 9px;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.75;
   color: var(--pt-text-meta);
+  /* 给一个阅读宽度上限：铺满一千多像素时眼睛找不回行首，
+     右边也一点余地都不剩，整行看着就闷。 */
+  max-width: 62em;
 }
 
 .pt-mdl-sum {
@@ -658,13 +662,13 @@
  * 定的是 flex-basis 不是固定宽度：窄屏下还能换行。
  */
 .pt-metrics {
+  margin-top: 14px;
   /* 固定列宽的网格：每一行的列位都一样，同一个指标才能纵向对齐。
      flex 做不到跨行对齐——上一行少一项，下面全跟着挪。 */
   display: grid;
   /* 上下文和单次输出缩写之后短了不少，列宽跟着收 */
   grid-template-columns: 150px 155px 150px 120px minmax(0, 1fr);
   gap: 6px 16px;
-  margin-top: 8px;
 }
 /* 图标和文字要居中对齐。用 baseline 的话 svg 的底边会去对文字基线，
    图标整体偏下，和右边的数字差半个字高。 */
@@ -714,7 +718,7 @@
 
 .pt-mdl-detail {
   border-top: 1px solid var(--pt-border);
-  padding: 14px 16px 16px;
+  padding: 18px 20px 20px;
 }
 /* 当前指向哪个版本——这一条里最容易过期、也最该被看到的信息 */
 .pt-mdl-highlight {
@@ -728,7 +732,8 @@
 .pt-mdl-text {
   margin: 0;
   font-size: 13.5px;
-  line-height: 1.7;
+  line-height: 1.8;
+  max-width: 62em;
   color: var(--pt-text-secondary);
 }
 .pt-mdl-note {
