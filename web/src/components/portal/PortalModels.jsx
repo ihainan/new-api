@@ -310,11 +310,16 @@ function stripQualifier(text) {
 
 function abbrValue(text) {
   if (typeof text !== 'string') return { text, full: null };
-  const m = /(\d[\d,]*)/.exec(text);
-  if (!m) return { text, full: null };
-  const short = abbrNumber(Number(m[1].replace(/,/g, '')));
-  if (!short) return { text, full: null };
-  return { text: text.replace(m[1], short), full: text };
+  // 每个数字都缩写，不能只缩第一个：「Qwen 262,144；GLM 1,000,000」只缩前一个
+  // 会变成「Qwen 256K；GLM 1,000,000」，两个后端没法比。
+  let changed = false;
+  const shortened = text.replace(/\d[\d,]*/g, (num) => {
+    const s = abbrNumber(Number(num.replace(/,/g, '')));
+    if (!s) return num;
+    changed = true;
+    return s;
+  });
+  return changed ? { text: shortened, full: text } : { text, full: null };
 }
 
 /*
