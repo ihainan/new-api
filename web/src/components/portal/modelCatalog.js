@@ -98,7 +98,7 @@ export const MODELS = [
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
     params: 'GLM 约 743B / 39B 激活；Qwen 35B / 3B 激活',
-    size: 'GLM 约 756 GB；Qwen 约 37.5 GB',
+    size: '官方 FP8 权重：GLM 约 756 GB，Qwen 约 37.5 GB',
     context: '262,144 tokens（落到 Qwen 时；落到 GLM 时是 1,000,000）',
     io: '文本 → 文本',
   },
@@ -140,8 +140,8 @@ export const MODELS = [
     detail:
       '模型与 `glm` 完全相同（当前为 GLM-5.2），区别只在请求格式。需要注意两者支持的参数并不一致：Anthropic 协议没有 `response_format`，需要结构化输出时要改用工具调用。这个 ID 是为只支持 Anthropic 接口的客户端准备的，例如 Claude Code、Anthropic 官方 SDK，以及其他只发送 `/v1/messages` 的工具；使用 OpenAI SDK 时请直接选择 `glm`。`glm-anthropic` 这个模型 ID 长期保持不变，实际指向的模型版本与 `glm` 同步。',
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
-    size: '同 glm',
-    context: '1,000,000 tokens（同 glm）',
+    size: '官方 FP8 权重约 756 GB',
+    context: '1,000,000 tokens（平台配置值）',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
   },
@@ -257,7 +257,7 @@ export const MODELS = [
     detail:
       '将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。一百多种语言共享同一向量空间，中文查询可以直接召回英文文档，输出 1024 维。单次最多处理 2K token（中文约 3,400 字），**超出部分会被直接丢弃且不会报错**，返回的向量只代表截断后的内容，长文档需要自行切分。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。',
     params: '约 568M 参数',
-    size: '官方权重约 2.3 GB',
+    size: '官方 FP32 权重约 2.3 GB',
     context: '2,048 tokens（实测：超出部分被丢弃）',
     official: '8,192 tokens',
     io: '文本 → 1024 维向量',
@@ -270,9 +270,9 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '向量模型，单次可处理的文本长度是 BGE-M3 的两倍。',
+    summary: '向量模型，单次可处理 4K token，用于检索与知识库。',
     detail:
-      '同样用于将文本转换为向量。单次可处理 4K token（中文约 6,800 字），是 `bge-m3` 的两倍，同一份文档需要切分的次数更少；超出部分同样会被静默丢弃。参数量是 `bge-m3` 的七倍，显存占用也更高。**两个向量模型的输出不能混用**，同一套索引只能由同一个模型生成。',
+      '将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。单次最多处理 4K token（中文约 6,800 字），**超出部分会被直接丢弃且不会报错**，返回的向量只代表截断后的内容，长文档需要自行切分。4B 参数，显存占用高于小型向量模型。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。',
     params: '4B 参数',
     size: '官方 BF16 权重约 8 GB',
     context: '4,096 tokens（实测：超出部分被丢弃）',
@@ -287,11 +287,11 @@ export const MODELS = [
     outputs: ['分数'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '重排模型，对向量检索召回的结果做二次精排。',
+    summary: '重排模型，按与问题的相关性给候选文档重新打分排序。',
     detail:
-      '用在向量检索之后：先由 `bge-m3` 粗召回数十条候选，再由它逐条与问题比对并重新打分，把最相关的排到前面。它不输出向量，只给出相关性分数，单独使用没有意义。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8K token **会直接返回错误**，而不像向量模型那样静默截断。',
+      '用在检索流程的最后一步：把已经取到的数十条候选文档逐条与问题比对并重新打分，把最相关的排到前面。候选由谁召回不限——向量检索、关键词检索、数据库筛选都可以，它只负责排序，不参与召回。它不输出向量，只给出相关性分数，因此需要先有候选集才能使用。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8K token **会直接返回错误**，不会静默截断。',
     params: '约 568M 参数',
-    size: '官方权重约 2.3 GB',
+    size: '官方 FP32 权重约 2.3 GB',
     context: '8,192 tokens（实测：超出直接报错，不静默截断）',
     io: '（问题、文档）→ 相关性分数',
   },
@@ -321,6 +321,8 @@ export const ENDPOINT_LABELS = {
 export const HIDDEN = new Set([
   // 这个别名实际打到 Qwen3.6-35B-A3B，与名字不符，运维计划删除
   'minimax',
+  // 暂时下架，不是永久删除：MODELS 里的条目原样留着，恢复只需删掉这一行
+  'gemma4:26b',
 ]);
 
 const BY_ID = new Map(MODELS.map((m, i) => [m.id, { ...m, order: i }]));

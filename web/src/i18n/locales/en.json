@@ -2799,7 +2799,7 @@
     "管理员未开启在线充值！": "The administrator has not enabled online recharge!",
     "管理员未开启在线支付功能，请联系管理员配置。": "Online payment is not enabled by the admin. Please contact the administrator.",
     "管理员未设置用户可选分组": "Administrator has not set user-selectable groups",
-    "管理员登录": "",
+    "管理员登录": "Administrator sign-in",
     "管理员给用户分配的分组（如 vip）不仅决定用户身份，还会影响后续两个功能：": "The group assigned to a user (e.g., vip) not only determines their identity, but also affects the following two features:",
     "管理员设置了外部链接，点击下方按钮访问": "Administrator has set up external links, click the button below to access",
     "管理员账号": "Admin account",
@@ -3959,6 +3959,23 @@
     "当前指向 MiniMax-H3，根据文字描述生成视频，也支持由单张图片生成。未指定参数时输出 4 秒、9:16、短边 768 的视频。生成耗时通常在几分钟，接口为异步任务形式：提交后先取回任务 ID，再轮询结果，**不要按同步请求设置超时**。任务进度可在「使用记录 → 任务」中查看。": "Currently MiniMax-H3, generating video from a text description or from a single image. Without parameters it produces 4 seconds at 9:16 with a 768px short edge. Generation usually takes minutes and runs as an async task: submit, keep the task id, poll for the result, and **do not set a synchronous timeout**. Progress is under Activity → Tasks.",
     "将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。一百多种语言共享同一向量空间，中文查询可以直接召回英文文档，输出 1024 维。单次最多处理 2K token（中文约 3,400 字），**超出部分会被直接丢弃且不会报错**，返回的向量只代表截断后的内容，长文档需要自行切分。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。": "Turns text into vectors for semantic search, similarity matching and RAG. More than a hundred languages share one vector space, so a Chinese query retrieves English documents directly; the output is 1024-dimensional. One request takes at most 2K tokens (roughly 3,400 Chinese characters); **the rest is dropped without an error**, and the vector you get back describes only what survived, so split long documents yourself. Switching to another embedding model changes the vector space and forces a full reindex.",
     "同样用于将文本转换为向量。单次可处理 4K token（中文约 6,800 字），是 `bge-m3` 的两倍，同一份文档需要切分的次数更少；超出部分同样会被静默丢弃。参数量是 `bge-m3` 的七倍，显存占用也更高。**两个向量模型的输出不能混用**，同一套索引只能由同一个模型生成。": "Also turns text into vectors. It accepts 4K tokens (roughly 6,800 Chinese characters), twice what `bge-m3` takes, so a document needs fewer splits; anything beyond is still dropped silently. It has seven times the parameters of `bge-m3` and uses more memory. **The two embedding models cannot be mixed**: one index has to come from one model.",
-    "用在向量检索之后：先由 `bge-m3` 粗召回数十条候选，再由它逐条与问题比对并重新打分，把最相关的排到前面。它不输出向量，只给出相关性分数，单独使用没有意义。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8K token **会直接返回错误**，而不像向量模型那样静默截断。": "Use it after vector search: `bge-m3` pulls back a few dozen candidates, then this model compares each against the question, rescores it and puts the closest first. It produces no vectors, only relevance scores, so it is useless on its own. The window belongs to each question-and-document pair rather than being shared across candidates; a pair over 8K tokens **comes back as an error** instead of being quietly truncated the way the embedding models do."
+    "用在向量检索之后：先由 `bge-m3` 粗召回数十条候选，再由它逐条与问题比对并重新打分，把最相关的排到前面。它不输出向量，只给出相关性分数，单独使用没有意义。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8K token **会直接返回错误**，而不像向量模型那样静默截断。": "Use it after vector search: `bge-m3` pulls back a few dozen candidates, then this model compares each against the question, rescores it and puts the closest first. It produces no vectors, only relevance scores, so it is useless on its own. The window belongs to each question-and-document pair rather than being shared across candidates; a pair over 8K tokens **comes back as an error** instead of being quietly truncated the way the embedding models do.",
+    "请输入用户名和密码": "Enter your username and password",
+    "登录失败": "Sign-in failed",
+    "登录成功": "Signed in",
+    "请输入认证器应用显示的验证码完成登录。": "Enter the code from your authenticator app to finish signing in.",
+    "仅限管理员账号。": "Administrator accounts only.",
+    "登录中…": "Signing in…",
+    "返回钉钉登录": "Back to DingTalk",
+    "使用企业钉钉扫码，在职成员自动开通访问。": "Scan with the company DingTalk app; current staff are granted access automatically.",
+    "钉钉扫码登录": "Sign in with DingTalk",
+    "钉钉登录未开启": "DingTalk sign-in is off",
+    "内部系统 · 密钥请勿外传": "Internal system · keep your key to yourself",
+    "官方 FP32 权重约 2.3 GB": "Official FP32 weights, ~2.3 GB",
+    "将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。单次最多处理 4K token（中文约 6,800 字），**超出部分会被直接丢弃且不会报错**，返回的向量只代表截断后的内容，长文档需要自行切分。4B 参数，显存占用高于小型向量模型。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。": "Turns text into vectors for semantic search, similarity matching and RAG. One request takes at most 4K tokens (roughly 6,800 Chinese characters); **anything beyond is dropped without an error**, and the vector you get back describes only what survived, so split long documents yourself. At 4B parameters it needs more memory than the smaller embedding models. Switching to another embedding model changes the vector space and forces a full reindex.",
+    "重排模型，按与问题的相关性给候选文档重新打分排序。": "Reranker: rescores and reorders candidate documents by how well they answer the question.",
+    "向量模型，单次可处理 4K token，用于检索与知识库。": "Embedding model taking 4K tokens per request, for search and knowledge bases.",
+    "用在检索流程的最后一步：把已经取到的数十条候选文档逐条与问题比对并重新打分，把最相关的排到前面。候选由谁召回不限——向量检索、关键词检索、数据库筛选都可以，它只负责排序，不参与召回。它不输出向量，只给出相关性分数，因此需要先有候选集才能使用。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8K token **会直接返回错误**，不会静默截断。": "The last step of a retrieval pipeline: it takes the few dozen candidates you already have, compares each against the question, rescores them and puts the closest first. Where the candidates came from does not matter — vector search, keyword search, a database filter — it only orders them and never retrieves. It produces no vectors, only relevance scores, so it needs a candidate set to work on. The window belongs to each question-and-document pair rather than being shared across candidates; a pair over 8K tokens **comes back as an error** instead of being truncated silently.",
+    "官方 FP8 权重：GLM 约 756 GB，Qwen 约 37.5 GB": "Official FP8 weights: GLM ~756 GB, Qwen ~37.5 GB"
   }
 }

@@ -5,9 +5,13 @@
  *
  * 变量前缀 --pt- 而非直接用 --semi-*：Semi Design 的调色板是给管理端那套界面用的，
  * 这里不去覆盖它，避免影响管理员界面。
+ *
+ * 变量挂在这两个根节点上而不是 :root，同样是为了不碰管理端。登录页不在门户外壳
+ * 里面，所以得单独列出来——漏了它，整页的 var() 全部取空，等于没有样式。
  */
 
-.pt-shell {
+.pt-shell,
+.pt-login {
   --pt-ink: #14181f;
   --pt-ink-hover: #2b313b;
   --pt-accent: #2563d4;
@@ -51,7 +55,9 @@
   position: sticky;
   top: 0;
   align-self: flex-start;
-  width: 232px;
+  /* 264 而不是 232：应用名「ZGCAI Self-Hosted Models」需要 177px，
+     232 的侧栏只给得出 157px，名字会被截成省略号 */
+  width: 264px;
   flex: none;
   height: 100vh;
   background: var(--pt-bg-card);
@@ -1344,3 +1350,107 @@
   padding: 12px;
 }
 .pt-two-col .pt-card { display: flex; flex-direction: column; }
+
+/* ---------- 登录页 ---------- */
+/*
+ * 只有两条路：钉钉扫码（员工）和用户名密码（管理员）。卡片居中、单列，
+ * 不放插画和宣传语——这是内部系统的门，不是落地页。
+ */
+.pt-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pt-bg-page);
+  padding: 24px;
+}
+.pt-login-box {
+  width: 100%;
+  max-width: 360px;
+}
+.pt-login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-bottom: 22px;
+  color: var(--pt-ink);
+}
+.pt-login-name {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--pt-text-primary);
+}
+.pt-login-card {
+  background: var(--pt-bg-card);
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-lg);
+  box-shadow: var(--pt-shadow-sm);
+  padding: 26px 24px;
+}
+.pt-login-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--pt-text-primary);
+}
+.pt-login-hint {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--pt-text-secondary);
+}
+/* 已登录提示：一行浅底，不做弹窗——它是信息，不是拦截 */
+.pt-login-signed {
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border-radius: var(--pt-radius-md);
+  background: var(--pt-bg-subtle);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--pt-text-secondary);
+}
+.pt-login-input {
+  width: 100%;
+  height: 40px;
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--pt-border-strong);
+  border-radius: var(--pt-radius-md);
+  background: var(--pt-bg-card);
+  color: var(--pt-text-primary);
+  font-size: 14px;
+  outline: none;
+}
+.pt-login-input:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 1px;
+}
+.pt-login-submit {
+  width: 100%;
+  height: 40px;
+  margin-top: 4px;
+  font-size: 14px;
+  justify-content: center;
+  gap: 8px;
+}
+.pt-login-alt {
+  margin-top: 16px;
+  text-align: center;
+}
+.pt-login-link {
+  border: 0;
+  background: none;
+  padding: 4px;
+  font-size: 13px;
+  color: var(--pt-accent);
+  cursor: pointer;
+}
+.pt-login-link:hover { text-decoration: underline; }
+.pt-login-foot {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--pt-text-muted);
+}
