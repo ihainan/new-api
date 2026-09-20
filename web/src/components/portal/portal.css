@@ -662,7 +662,7 @@
  * 定的是 flex-basis 不是固定宽度：窄屏下还能换行。
  */
 .pt-metrics {
-  margin-top: 14px;
+  margin-top: 18px;
   /*
    * 自然流排 + 每种指标各自的最小宽度。
    * 之前用固定列位的网格来求对齐，结果缺项的行会留一个空列：
@@ -672,12 +672,26 @@
    */
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 26px;
+  gap: 18px 0;
 }
-.pt-metric.m-context { min-width: 152px; }
-.pt-metric.m-output { min-width: 166px; }
-.pt-metric.m-in { min-width: 118px; }
-.pt-metric.m-out { min-width: 100px; }
+/*
+ * 竖细线把相邻两对隔开。上下堆叠解决了「谁是名字谁是值」，
+ * 但一排五对挨着时，「这一对到哪结束」还是要靠眼睛量间距——一条线就够了。
+ * 这是数据分隔，不是装饰：和表格的列线一个性质。
+ * 只在宽屏给：窄屏会折行，第二行的第一项左边挂一条线是没来由的。
+ */
+@media (min-width: 901px) {
+  .pt-metric + .pt-metric {
+    border-left: 1px solid var(--pt-border);
+  }
+  .pt-metric { padding: 0 22px; }
+  .pt-metric:first-child { padding-left: 0; }
+  .pt-metric:last-child { padding-right: 0; }
+}
+.pt-metric.m-context { min-width: 190px; }
+.pt-metric.m-output { min-width: 202px; }
+.pt-metric.m-in { min-width: 154px; }
+.pt-metric.m-out { min-width: 138px; }
 
 .pt-metric {
   display: flex;
@@ -688,7 +702,7 @@
 .pt-metric-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 4px;
   min-width: 0;
 }
 /* 图标对齐到标签那一行，不要跟着整块居中 */
@@ -699,14 +713,14 @@
 }
 .pt-metric-label {
   font-size: 11.5px;
-  line-height: 1.4;
+  line-height: 1.5;
   font-weight: 400;
   color: var(--pt-text-meta);
   white-space: nowrap;
 }
 .pt-metric-value {
-  font-size: 13.5px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--pt-text-primary);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -722,7 +736,8 @@
 
 /* 窄屏放弃跨行对齐——宽度不够，挤在一起反而读不出来，改成一行一项 */
 @media (max-width: 900px) {
-  .pt-metrics { gap: 10px 20px; }
+  .pt-metrics { gap: 16px 28px; }
+  .pt-metric { padding: 0; border-left: 0; }
   .pt-metric,
   .pt-metric.m-context,
   .pt-metric.m-output,
