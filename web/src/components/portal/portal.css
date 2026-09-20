@@ -11,9 +11,12 @@
   --pt-ink: #14181f;
   --pt-ink-hover: #2b313b;
   --pt-accent: #2563d4;
-  --pt-bg-page: #fbfbfc;
+  /* 和卡片白只差 1.5%，卡片等于没有边界。压深一档，让白色卡片自己浮起来。
+     次要文字 #646d7c 压在这个底色上对比度 4.8:1，仍然过线。 */
+  --pt-bg-page: #f4f5f7;
   --pt-bg-card: #ffffff;
-  --pt-bg-subtle: #f3f4f6;
+  /* 页面底色压深之后，这个灰和底色几乎一样，卡片内的分区看着像断开了 */
+  --pt-bg-subtle: #f7f8fa;
   --pt-bg-hover: #eef0f2;
   --pt-text-primary: #14181f;
   --pt-text-secondary: #585f6a;
@@ -22,7 +25,7 @@
      （卡片白、页面底、subtle、hover）上都达标；--pt-text-muted 的 3.2:1
      只够做纯装饰性弱化。 */
   --pt-text-meta: #646d7c;
-  --pt-border: #e7e9ec;
+  --pt-border: #e2e5ea;
   --pt-border-strong: #d6d9de;
   --pt-ok-text: #157f3c;
   --pt-ok-bg: #e7f4ec;
@@ -477,6 +480,17 @@
 }
 .pt-select:focus,
 .pt-input:focus { border-color: var(--pt-ink); }
+/* 只改边框色，键盘用户在 1px 的变化里看不出焦点在哪 */
+.pt-select:focus-visible,
+.pt-input:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 1px;
+}
+/* 代码块能横向滚动，浏览器会让它可聚焦，那就得看得见 */
+.pt-code:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 2px;
+}
 
 .pt-keyrow {
   display: flex;
@@ -556,6 +570,7 @@
   background: var(--pt-bg-card);
   border: 1px solid var(--pt-border);
   border-radius: var(--pt-radius-lg);
+  box-shadow: var(--pt-shadow-sm);
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 .pt-mdl:hover { border-color: var(--pt-border-strong); }
@@ -606,6 +621,21 @@
   gap: 8px;
   color: var(--pt-text-muted);
 }
+.pt-mdl-chev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 点击区按 32px 给足，图标本身只有 16px */
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pt-radius-sm);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.pt-mdl-chev:hover { background: var(--pt-bg-subtle); }
 .pt-mdl-icon {
   flex: none;
   display: inline-flex;
@@ -794,6 +824,21 @@
   .pt-chev { transition: none; }
 }
 
+/* 展开/收起做高度过渡。height:auto 不能插值，所以用 grid 的 0fr→1fr，
+   内层必须 overflow:hidden + min-height:0，否则内容会顶破收起状态。 */
+.pt-mdl-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+.pt-mdl-panel.open { grid-template-rows: 1fr; }
+.pt-mdl-panel > .pt-mdl-panel-in {
+  overflow: hidden;
+  min-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pt-mdl-panel { transition: none; }
+}
 .pt-mdl-detail {
   border-top: 1px solid var(--pt-border);
   padding: 18px 20px 20px;
@@ -882,16 +927,19 @@
 .pt-specs-more > .pt-spec.wide { flex-basis: 100%; }
 .pt-specs-more dt {
   margin: 0;
-  font-size: 11.5px;
+  /* 标签和值在同一行并排，字号必须一致，否则一行里两种大小很刺眼；
+     配对关系靠颜色和字重区分就够 */
+  font-size: 13px;
   color: var(--pt-text-meta);
   white-space: nowrap;
 }
 .pt-specs-more dd {
   margin: 0;
   font-size: 13px;
+  font-weight: 500;
   color: var(--pt-text-secondary);
 }
-.pt-specs-more .pt-spec-note { font-size: 11.5px; }
+.pt-specs-more .pt-spec-note { font-size: 13px; font-weight: 400; }
 
 @media (max-width: 640px) {
   /* 窄屏下按钮和标题抢不到宽度，把操作区挪到整行底部。 */
@@ -1113,9 +1161,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
   font-size: 13.5px;
   color: var(--pt-text-secondary);
 }
+/* 默认 13px 的方框在触屏上太小 */
+.pt-check input { width: 15px; height: 15px; margin: 0; cursor: pointer; }
 
 /* 窄屏：一条记录一张卡 */
 .pt-rec-cards { padding: 4px; }

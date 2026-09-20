@@ -150,7 +150,8 @@ export default function UserPortalLayout({ children }) {
   return (
     <div className='pt-shell'>
       <aside className='pt-sidebar'>
-        <Link to='/console/dashboard' className='pt-brand'>
+        {/* 窄屏下文字被隐藏，只剩图标；不给 aria-label 的话读屏念不出是哪一项 */}
+        <Link to='/console/dashboard' className='pt-brand' aria-label={systemName}>
           <BrandMark size={24} />
           <span className='pt-wordmark'>{systemName}</span>
         </Link>
@@ -162,6 +163,7 @@ export default function UserPortalLayout({ children }) {
               to={item.to}
               className={isActive(item) ? 'active' : ''}
               aria-current={isActive(item) ? 'page' : undefined}
+              aria-label={t(item.label)}
             >
               <Icon path={ICONS[item.icon]} />
               <span className='pt-lbl'>{t(item.label)}</span>

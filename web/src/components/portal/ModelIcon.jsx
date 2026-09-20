@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { Alibaba, BAAI, Gemma, Minimax, Qwen, Zhipu } from '@lobehub/icons';
 import BrandMark from './BrandMark';
 import { describe } from './modelCatalog';
@@ -32,7 +32,44 @@ import { describe } from './modelCatalog';
 
 const ICONS = { Zhipu, Qwen, Minimax, Gemma, BAAI, Alibaba };
 
+/*
+ * 图标库里的 SVG 带写死的 id（渐变、蒙版之类）。同一页出现两个同款图标就有了
+ * 重复 id——HTML 不允许，而且 url(#id) 只会认第一个，谁先渲染谁说了算。
+ * 挂载后把这棵子树里的 id 和对它的引用一起改名，保证每个实例互不相干。
+ */
+function useUniqueSvgIds(ref, uid) {
+  useEffect(() => {
+    const svg = ref.current?.querySelector('svg');
+    if (!svg) return;
+    const map = new Map();
+    svg.querySelectorAll('[id]').forEach((n) => {
+      if (n.id.startsWith(uid)) return;
+      map.set(n.id, `${uid}-${n.id}`);
+    });
+    if (!map.size) return;
+    svg.querySelectorAll('*').forEach((el) => {
+      for (const attr of el.getAttributeNames()) {
+        const v = el.getAttribute(attr);
+        if (!v || !v.includes('#')) continue;
+        let next = v;
+        for (const [from, to] of map) {
+          next = next.split(`#${from}`).join(`#${to}`);
+        }
+        if (next !== v) el.setAttribute(attr, next);
+      }
+    });
+    map.forEach((to, from) => {
+      const n = svg.querySelector(`[id="${from}"]`);
+      if (n) n.id = to;
+    });
+  });
+}
+
 export default function ModelIcon({ icon, model, size = 26 }) {
+  const ref = useRef(null);
+  // useId 带冒号，放进 CSS 选择器要转义，干脆去掉
+  const uid = `i${useId().replace(/:/g, '')}`;
+  useUniqueSvgIds(ref, uid);
   // 传 model 时自己查目录，调用方不必关心映射关系
   const name = icon !== undefined ? icon : model ? describe(model).icon : null;
   const Comp = name === 'brand' ? null : name ? ICONS[name] : null;
@@ -49,6 +86,7 @@ export default function ModelIcon({ icon, model, size = 26 }) {
   }
   return (
     <span
+      ref={ref}
       className='pt-mdl-icon'
       style={{ width: size, height: size }}
       aria-hidden='true'

@@ -134,11 +134,48 @@ function Chevron({ open }) {
  */
 const CAPS = [
   ['stream', '流式输出', <path d='M4 7h16M4 12h11M4 17h7' />],
-  ['tools', '函数调用', <><path d='M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h2' /><path d='M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2h-2' /></>],
-  ['json', 'JSON 模式', <><path d='M9 4H7a2 2 0 00-2 2v4l-2 2 2 2v4a2 2 0 002 2h2' /><path d='M15 4h2a2 2 0 012 2v4l2 2-2 2v4a2 2 0 01-2 2h-2' /></>],
-  ['vision', '图像输入', <><rect x='3' y='5' width='18' height='14' rx='2' /><circle cx='8.5' cy='10' r='1.5' /><path d='M21 16l-5-5-6 6' /></>],
-  ['reasoning', '深度思考', <><path d='M9 18h6' /><path d='M10 21h4' /><path d='M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z' /></>],
-  ['cache', '提示缓存', <><path d='M20 11a8 8 0 10-2.3 5.7' /><path d='M20 5v6h-6' /></>],
+  [
+    'tools',
+    '函数调用',
+    <>
+      <path d='M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h2' />
+      <path d='M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2h-2' />
+    </>,
+  ],
+  [
+    'json',
+    'JSON 模式',
+    <>
+      <path d='M9 4H7a2 2 0 00-2 2v4l-2 2 2 2v4a2 2 0 002 2h2' />
+      <path d='M15 4h2a2 2 0 012 2v4l2 2-2 2v4a2 2 0 01-2 2h-2' />
+    </>,
+  ],
+  [
+    'vision',
+    '图像输入',
+    <>
+      <rect x='3' y='5' width='18' height='14' rx='2' />
+      <circle cx='8.5' cy='10' r='1.5' />
+      <path d='M21 16l-5-5-6 6' />
+    </>,
+  ],
+  [
+    'reasoning',
+    '深度思考',
+    <>
+      <path d='M9 18h6' />
+      <path d='M10 21h4' />
+      <path d='M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z' />
+    </>,
+  ],
+  [
+    'cache',
+    '提示缓存',
+    <>
+      <path d='M20 11a8 8 0 10-2.3 5.7' />
+      <path d='M20 5v6h-6' />
+    </>,
+  ],
 ];
 
 function CapGrid({ caps }) {
@@ -170,7 +207,11 @@ function CapGrid({ caps }) {
             {/* 状态符号。光靠颜色深浅和删除线，支持和不支持隔一米就分不出来了；
                 ✓ / ✕ 是不依赖颜色也能读的那一层。 */}
             <b className='pt-cap-mark' aria-hidden='true'>
-              {state === 'on' ? '✓' : state === 'unknown' || state === 'na' ? '–' : '✕'}
+              {state === 'on'
+                ? '✓'
+                : state === 'unknown' || state === 'na'
+                  ? '–'
+                  : '✕'}
             </b>
             <svg
               width='16'
@@ -210,10 +251,16 @@ function CapGrid({ caps }) {
  */
 function abbrNumber(n) {
   if (!Number.isFinite(n) || n < 1000) return null;
-  for (const [unit, base] of [['M', 1048576], ['K', 1024]]) {
+  for (const [unit, base] of [
+    ['M', 1048576],
+    ['K', 1024],
+  ]) {
     if (n % base === 0) return n / base + unit;
   }
-  for (const [unit, base] of [['M', 1000000], ['K', 1000]]) {
+  for (const [unit, base] of [
+    ['M', 1000000],
+    ['K', 1000],
+  ]) {
     if (n % base === 0) return n / base + unit;
   }
   return null;
@@ -252,7 +299,10 @@ function Metric({ label, value, abbr }) {
     document.addEventListener('pointerdown', away, true);
     document.addEventListener('keydown', esc);
     // 滚动时气泡会跟着按钮跑，但视觉上像块浮在页面上的脏东西，直接收掉
-    window.addEventListener('scroll', () => setOpen(false), { once: true, passive: true });
+    window.addEventListener('scroll', () => setOpen(false), {
+      once: true,
+      passive: true,
+    });
     return () => {
       document.removeEventListener('pointerdown', away, true);
       document.removeEventListener('keydown', esc);
@@ -283,7 +333,9 @@ function Metric({ label, value, abbr }) {
           onBlur={() => setOpen(false)}
         >
           {shown.text}
-          <span className='pt-tip' role='tooltip'>{shown.full}</span>
+          <span className='pt-tip' role='tooltip'>
+            {shown.full}
+          </span>
         </button>
       ) : (
         <span className='pt-metric-value'>{shown.text}</span>
@@ -305,7 +357,9 @@ function SpecItem({ label, value, wide }) {
 function ModelRow({ m, open, onToggle }) {
   const { t } = useTranslation();
   const endpoints = m.endpoints || [];
-  const protocols = endpoints.map((e) => t(ENDPOINT_LABELS[e] || e)).join(' / ');
+  const protocols = endpoints
+    .map((e) => t(ENDPOINT_LABELS[e] || e))
+    .join(' / ');
   // 元信息挤在一行，用间隔点分开；空值直接不进数组，避免出现「· ·」。
   // 输入和输出各占一格。写成「文本 → 文本」是把两件事塞进一格，
   // 纵向也对不齐——箭头左右的内容长度不一样，列就错位了。
@@ -351,18 +405,30 @@ function ModelRow({ m, open, onToggle }) {
           >
             {t('复制 ID')}
           </button>
-          {/* 纯指示器，展开由整行的主按钮负责，不做成第二个可聚焦控件 */}
-          <Chevron open={open} />
+          {/*
+           * 箭头长得像按钮，就得真能点。但它和标题行是同一个动作，
+           * 所以不进 Tab 顺序、也不报给读屏——键盘和读屏走标题行那一个控件，
+           * 鼠标点哪个都行。
+           */}
+          <button
+            type='button'
+            className='pt-mdl-chev'
+            tabIndex={-1}
+            aria-hidden='true'
+            onClick={onToggle}
+          >
+            <Chevron open={open} />
+          </button>
         </div>
       </div>
 
       {/*
-        * 描述必须长在按钮外面：浏览器不让人选中 <button> 里的文字，
-        * 放进去就复制不了。代价是点描述不再展开，点标题行或箭头才行。
-        *
-        * 折叠时直接给详述的前两行，不再另外摆一句摘要——两者开头说的是
-        * 同一件事，并排放着就是同一句话写两遍。summary 字段保留，搜索还在用。
-        */}
+       * 描述必须长在按钮外面：浏览器不让人选中 <button> 里的文字，
+       * 放进去就复制不了。代价是点描述不再展开，点标题行或箭头才行。
+       *
+       * 折叠时直接给详述的前两行，不再另外摆一句摘要——两者开头说的是
+       * 同一件事，并排放着就是同一句话写两遍。summary 字段保留，搜索还在用。
+       */}
       {m.detail ? (
         <p className={`pt-mdl-desc ${open ? 'pt-mdl-full' : 'pt-mdl-brief'}`}>
           {t(m.detail)}
@@ -394,35 +460,50 @@ function ModelRow({ m, open, onToggle }) {
         <Metric label={t('协议')} value={protocols} />
       </div>
 
-      {open ? (
-        <div className='pt-mdl-detail' id={panelId}>
-          {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
+      {/*
+       * 详情区常驻 DOM，靠 grid-template-rows 0fr→1fr 做高度过渡；
+       * 条件渲染没法过渡，height:auto 也不能插值。收起时用 inert 把里面的
+       * 控件移出 Tab 顺序和读屏，视觉之外的行为和「不存在」一致。
+       */}
+      <div
+        className={`pt-mdl-panel${open ? ' open' : ''}`}
+        id={panelId}
+        aria-hidden={open ? undefined : 'true'}
+        inert={open ? undefined : ''}
+      >
+        {/* 裁切层不带内边距：内边距会算进 grid 行的最小高度，收起时收不干净 */}
+        <div className='pt-mdl-panel-in'>
+          <div className='pt-mdl-detail'>
+            {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
               加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
-          {m.highlight ? (
-            <p className='pt-mdl-highlight'>{t(m.highlight)}</p>
-          ) : null}
-          {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
-          {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
-          {m.category === 'chat' ? (
-            <div className='pt-caps-wrap'>
-              <div className='pt-caps-label'>{t('能力')}</div>
-              <CapGrid caps={m.caps} />
-            </div>
-          ) : null}
+            {m.highlight ? (
+              <p className='pt-mdl-highlight'>{t(m.highlight)}</p>
+            ) : null}
+            {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
+            {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
+            {m.category === 'chat' ? (
+              <div className='pt-caps-wrap'>
+                <div className='pt-caps-label'>{t('能力')}</div>
+                <CapGrid caps={m.caps} />
+              </div>
+            ) : null}
 
-          {/* 次要信息：部署细节和出处。想深究的人才会看到这里，
+            {/* 次要信息：部署细节和出处。想深究的人才会看到这里，
               所以字号更小、颜色更弱，不跟上面的关键规格抢注意力。 */}
-          <dl className='pt-specs pt-specs-more'>
-            <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
-            <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
-            <SpecItem
-              label={t('模型官方规格')}
-              value={m.official && m.official !== m.context ? t(m.official) : null}
-            />
-            {/* 实测到什么程度，单独占一整行：它是一句话，塞进窄格里会断得很碎 */}
-          </dl>
+            <dl className='pt-specs pt-specs-more'>
+              <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
+              <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
+              <SpecItem
+                label={t('模型官方规格')}
+                value={
+                  m.official && m.official !== m.context ? t(m.official) : null
+                }
+              />
+              {/* 实测到什么程度，单独占一整行：它是一句话，塞进窄格里会断得很碎 */}
+            </dl>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -517,7 +598,9 @@ export default function PortalModels() {
       CATEGORIES.map((c) => ({
         ...c,
         items: matched
-          .filter((m) => m.category === c.key && (cat === 'all' || cat === c.key))
+          .filter(
+            (m) => m.category === c.key && (cat === 'all' || cat === c.key),
+          )
           .sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999)),
       })).filter((g) => g.items.length),
     [matched, cat],
@@ -557,7 +640,9 @@ export default function PortalModels() {
     <div>
       <PageHead
         title={t('模型')}
-        sub={t('平台当前开放的模型。复制模型 ID 填进代码即可调用，无需单独申请。')}
+        sub={t(
+          '平台当前开放的模型。复制模型 ID 填进代码即可调用，无需单独申请。',
+        )}
       />
 
       {available.length === 0 ? (
@@ -593,7 +678,8 @@ export default function PortalModels() {
                   aria-pressed={cat === c.key}
                   onClick={() => setCat(c.key)}
                 >
-                  {t(c.label)} <span className='pt-chip-n'>{counts[c.key]}</span>
+                  {t(c.label)}{' '}
+                  <span className='pt-chip-n'>{counts[c.key]}</span>
                 </button>
               ))}
             </div>

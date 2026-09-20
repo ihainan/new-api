@@ -97,7 +97,7 @@ export const MODELS = [
       '按请求特征在后端模型之间自动分发，调用方只写这一个 ID，后端变更时无需改动代码。代价是单次请求落在哪个模型上不可知——需要确定性时请直接指定具体模型 ID。',
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
-    params: '随后端而定（GLM 744B MoE / Qwen 35B MoE）',
+    params: '随后端而定（GLM 743B MoE / Qwen 35B MoE）',
     size: '随后端而定',
     context: '200,000 tokens（建议单次请求不超过）',
     io: '文本 → 文本',
@@ -118,8 +118,8 @@ export const MODELS = [
     detail:
       '通用对话模型，当前指向 GLM-5.3。适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，为平台上最大，近 30 天平台上绝大部分对话请求由它承接。',
     // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
-    params: '约 744B 总参数 / 约 40B 激活（MoE）',
-    size: '理论估算约 744 GB',
+    params: '约 743B 总参数 / 约 39B 激活（MoE）',
+    size: '官方 FP8 权重约 756 GB',
     context: '1,000,000 tokens（平台配置值）',
     maxOutput: '131,072 tokens（单次最多输出）',
     io: '文本 → 文本',
@@ -141,7 +141,7 @@ export const MODELS = [
     highlight: '当前指向 GLM-5.3，后续会持续更新，模型 ID 保持不变。',
     detail:
       '与 glm 同一模型，当前指向 GLM-5.3，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
-    params: '约 744B 总参数 / 约 40B 激活（MoE）',
+    params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '同 glm',
     context: '1,000,000 tokens（同 glm）',
     maxOutput: '131,072 tokens',
@@ -162,7 +162,7 @@ export const MODELS = [
     detail:
       '350 亿总参数的混合专家模型，单次推理约激活 30 亿参数。上下文 262,144 token，长文场景下仅次于 glm。会输出思考过程，字段名为 reasoning——注意不是 glm 使用的 reasoning_content。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    size: '官方 FP8 仓库 37.5 GB',
+    size: '官方 FP8 权重约 37.5 GB',
     context: '262,144 tokens',
     official: '262,144 原生，可扩至约 1M',
     io: '文本 → 文本',
@@ -181,9 +181,9 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '开放权重模型。上下文 2K，超出部分会被静默丢弃。',
     detail:
-      '260 亿参数的开放权重模型。模型本身带视觉投影层，但当前发图片请求会直接报 500，实际用不了。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
-    params: '26B 参数',
-    size: '19 GB（Q4_K_M，含 1.2 GB 视觉投影层）',
+      '260 亿总参数的开放权重模型，单次推理约激活 40 亿参数。模型本身带视觉投影层，但当前发图片请求会直接报 500，实际用不了。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
+    params: '约 26B 总参数 / 约 4B 激活（MoE）',
+    size: '官方 BF16 权重约 52 GB',
     context: '2,048 tokens（实测：超出部分被丢弃）',
     official: '256K tokens',
     io: '文本 → 文本',
@@ -260,7 +260,7 @@ export const MODELS = [
     detail:
       '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。只给到 2048 token（中文约 3,400 字，随内容浮动），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
     params: '约 568M 参数',
-    size: '1.2 GB',
+    size: '官方权重约 2.3 GB',
     context: '2,048 tokens（实测：超出部分被丢弃）',
     official: '8,192 tokens',
     io: '文本 → 1024 维向量',
@@ -277,7 +277,7 @@ export const MODELS = [
     detail:
       '同样用于将文本转为向量。可用 4096 token（中文约 8,000 字），为 BGE-M3 的两倍，同一份文档需要切分的次数更少，但超出部分同样被静默丢弃。参数量更大，因此更慢、更占显存。',
     params: '4B 参数',
-    size: '2.5 GB',
+    size: '官方 BF16 权重约 8 GB',
     context: '4,096 tokens（实测：超出部分被丢弃）',
     official: '32K tokens',
     io: '文本 → 向量',
@@ -294,7 +294,7 @@ export const MODELS = [
     detail:
       '接在向量检索之后使用：先由 BGE-M3 粗召回数十条，再逐条与问题比对并重新打分，将最相关的排到前面。它不产出向量，只输出相关性分数，单独使用没有意义。窗口由每个「问题＋文档」对各自占用，并非所有候选文档共享一份。',
     params: '约 568M 参数',
-    size: '约 1.2 GB',
+    size: '官方权重约 2.3 GB',
     context: '实测在 12,000～14,000 字之间被截断',
     io: '（问题、文档）→ 相关性分数',
   },
