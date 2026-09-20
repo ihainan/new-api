@@ -565,7 +565,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 18px 20px;
+  padding: 18px 20px 16px;
 }
 /* 展开控件是一个真 <button>，把浏览器默认外观清掉，让它长得像一行内容。
    复制按钮是它的同级，不再嵌在里面——嵌套会吞掉键盘激活。 */
@@ -634,7 +634,15 @@
   border-radius: var(--pt-radius-sm);
   word-break: break-all;
 }
-/* 折叠时的详细描述：截两行，展开后是完整的同一段 */
+/* 描述。折叠时截两行，展开时是完整的同一段——同一个元素，只差一个截断。 */
+.pt-mdl-full {
+  display: block;
+  margin-top: 9px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--pt-text-meta);
+  max-width: 62em;
+}
 .pt-mdl-brief {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -661,55 +669,44 @@
  * 「哪个模型上下文最大」靠扫一列就能看出来，这是流水句做不到的。
  * 定的是 flex-basis 不是固定宽度：窄屏下还能换行。
  */
+/*
+ * 指标条是一条完整的横条，不是浮在卡片里的半张表。
+ *
+ * 之前的毛病：竖线把这块做成了表格的样子，可这张「表」没有边界——
+ * 最后一项右边空着五百多像素，线悬在半空，而它上面又是自由排布的段落，
+ * 两套视觉语言叠在一起就别扭。现在给它浅底、占满整行、各项均分，
+ * 线画在条子内部。底色是分区用的（把数据区和正文分开），不是纹理。
+ *
+ * 也去掉了每项前面的小图标：它挂在标签左边、突出于「标签＋值」那一列之外，
+ * 一排下来左边缘是锯齿状；而标签本身已经是「上下文」「输入」这些字，
+ * 图标并没有多告诉什么。
+ */
 .pt-metrics {
-  margin-top: 18px;
-  /*
-   * 自然流排 + 每种指标各自的最小宽度。
-   * 之前用固定列位的网格来求对齐，结果缺项的行会留一个空列：
-   * 路由没有「单次输出」就空出三百多像素，出图、语音连上下文都没有，
-   * 整行从中间开始，看起来像排版坏了。
-   * 现在指标集相同的行（比如所有对话模型）照样对齐，缺项的往前顶。
-   */
+  /* 卡片本身不带内边距（表格要贴边），这一条是它的直接子元素，自己留边距 */
+  margin: 0 20px 18px;
   display: flex;
   flex-wrap: wrap;
-  gap: 18px 0;
+  gap: 16px 0;
+  background: var(--pt-bg-subtle);
+  border-radius: var(--pt-radius-md);
+  padding: 13px 0;
 }
-/*
- * 竖细线把相邻两对隔开。上下堆叠解决了「谁是名字谁是值」，
- * 但一排五对挨着时，「这一对到哪结束」还是要靠眼睛量间距——一条线就够了。
- * 这是数据分隔，不是装饰：和表格的列线一个性质。
- * 只在宽屏给：窄屏会折行，第二行的第一项左边挂一条线是没来由的。
- */
-@media (min-width: 901px) {
-  .pt-metric + .pt-metric {
-    border-left: 1px solid var(--pt-border);
-  }
-  .pt-metric { padding: 0 22px; }
-  .pt-metric:first-child { padding-left: 0; }
-  .pt-metric:last-child { padding-right: 0; }
-}
-.pt-metric.m-context { min-width: 190px; }
-.pt-metric.m-output { min-width: 202px; }
-.pt-metric.m-in { min-width: 154px; }
-.pt-metric.m-out { min-width: 138px; }
-
 .pt-metric {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  min-width: 0;
-}
-.pt-metric-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  /* 均分整条：靠左挤成一团、右边空一大片，正是「不协调」的来源 */
+  flex: 1 1 0;
+  padding: 0 18px;
 }
-/* 图标对齐到标签那一行，不要跟着整块居中 */
-.pt-metric svg {
-  flex: none;
-  color: var(--pt-text-muted);
-  margin-top: 1px;
+/*
+ * 竖细线隔开相邻两项。上下堆叠解决了「谁是名字谁是值」，
+ * 没解决「这一项到哪结束」——一排五个还是得靠眼睛量间距。
+ * 这是数据分隔，和表格的列线一个性质。
+ */
+@media (min-width: 901px) {
+  .pt-metric + .pt-metric { border-left: 1px solid var(--pt-border-strong); }
 }
 .pt-metric-label {
   font-size: 11.5px;
@@ -734,15 +731,10 @@
   cursor: help;
 }
 
-/* 窄屏放弃跨行对齐——宽度不够，挤在一起反而读不出来，改成一行一项 */
+/* 窄屏一条横条塞不下五项，改成两列；折行之后竖线会落在行首，去掉 */
 @media (max-width: 900px) {
-  .pt-metrics { gap: 16px 28px; }
-  .pt-metric { padding: 0; border-left: 0; }
-  .pt-metric,
-  .pt-metric.m-context,
-  .pt-metric.m-output,
-  .pt-metric.m-in,
-  .pt-metric.m-out { min-width: 0; }
+  .pt-metrics { gap: 14px 0; margin: 0 14px 14px; }
+  .pt-metric { flex: 0 0 50%; border-left: 0; padding: 0 14px; }
 }
 .pt-chev { transition: transform 0.15s; }
 .pt-chev.open { transform: rotate(180deg); }

@@ -199,19 +199,6 @@ function CapGrid({ caps }) {
  * 丢弃」），拆到第二行用弱化字号显示：挤在一起会从括号中间断行，数字反而看不清。
  * 限定语本身不能删——它区分的是「实测值」「平台配置值」和「建议值」。
  */
-/*
- * 折叠行里的指标条。取代原来那句用间隔点连起来的灰色流水句：
- * 位置固定、带标签、带图标，才能一列一列横向比较——
- * 「哪个模型上下文最大」本来就是扫列表时最先想知道的事。
- * 关键指标放在这里之后，展开区不再重复，只讲能力和部署细节。
- */
-const METRIC_ICONS = {
-  context: <><path d='M4 7h16' /><path d='M4 12h10' /><path d='M4 17h16' /></>,
-  output: <><path d='M14 5l7 7-7 7' /><path d='M21 12H8' /><path d='M3 4v16' /></>,
-  in: <><path d='M3 12h13' /><path d='M12 7l5 5-5 5' /><path d='M21 4v16' /></>,
-  out: <><path d='M8 12h13' /><path d='M17 7l5 5-5 5' /><path d='M3 4v16' /></>,
-  protocol: <><rect x='3' y='4' width='18' height='16' rx='2' /><path d='M8 10l-2 2 2 2' /><path d='M16 10l2 2-2 2' /></>,
-};
 
 /*
  * 大数字缩写：1,000,000 → 1M、262,144 → 256K。
@@ -242,40 +229,20 @@ function abbrValue(text) {
   return { text: text.replace(m[1], short), full: text };
 }
 
-function Metric({ icon, label, value, abbr }) {
+function Metric({ label, value, abbr }) {
   if (!value) return null;
   const shown = abbr ? abbrValue(value) : { text: value, full: null };
-  /*
-   * 对齐靠的是「每种指标有各自的最小宽度」，不是写死列位。
-   * 写死列位时，缺某项的行会留下一个空列——路由没有「单次输出」，
-   * 那里就是三百多像素的窟窿；出图、语音那些连上下文都没有，整行从中间起步。
-   * 按种类给最小宽度的话，指标集相同的行自然对齐，缺项的直接往前顶。
-   */
   return (
-    <div className={`pt-metric m-${icon}`}>
-      <svg
-        width='16'
-        height='16'
-        viewBox='0 0 24 24'
-        fill='none'
-        stroke='currentColor'
-        strokeWidth='1.7'
-        strokeLinecap='round'
-        strokeLinejoin='round'
-        aria-hidden='true'
+    <div className='pt-metric'>
+      {/* 标签在上、值在下：横排时两者只差几像素，对比撑不起「配对」这件事。
+          不再放小图标——它挂在标签左边、突出于这一列之外，一排下来左边缘
+          是锯齿状，而标签本身已经是「上下文」「输入」这些字。 */}
+      <span className='pt-metric-label'>{label}</span>
+      <span
+        className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
+        title={shown.full || undefined}
       >
-        {METRIC_ICONS[icon]}
-      </svg>
-      <span className='pt-metric-body'>
-        {/* 标签在上、值在下。横着排时标签和值只差 6px、项与项差 14px，
-            对比不够，一行读下来就是一串词，看不出谁是名字谁是值。 */}
-        <span className='pt-metric-label'>{label}</span>
-        <span
-          className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
-          title={shown.full || undefined}
-        >
-          {shown.text}
-        </span>
+        {shown.text}
       </span>
     </div>
   );
@@ -331,32 +298,16 @@ function ModelRow({ m, open, onToggle }) {
               * 两者开头说的是同一件事，并排放着就是同一句话写两遍。
               * summary 字段保留，搜索还在用它。
               */}
-            {open ? null : m.detail ? (
-              <span className='pt-mdl-brief'>{t(m.detail)}</span>
+            {/* 描述始终长在这里，展开只是去掉截断。
+                之前展开时改由下面的详情区渲染，顺序就变成了
+                「标题 → 指标条 → 描述」，和折叠态反过来。 */}
+            {m.detail ? (
+              <span className={open ? 'pt-mdl-full' : 'pt-mdl-brief'}>
+                {t(m.detail)}
+              </span>
             ) : m.summary ? (
               <span className='pt-mdl-sum'>{t(m.summary)}</span>
             ) : null}
-            <span className='pt-metrics'>
-              <Metric
-                abbr
-                icon='context'
-                label={t('上下文')}
-                value={
-                  TEXT_CATEGORIES.has(m.category)
-                    ? contextBrief || t('以上游部署为准')
-                    : contextBrief
-                }
-              />
-              <Metric
-                abbr
-                icon='output'
-                label={t('单次输出')}
-                value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
-              />
-              <Metric icon='in' label={t('输入')} value={inputs} />
-              <Metric icon='out' label={t('输出')} value={outputs} />
-              <Metric icon='protocol' label={t('协议')} value={protocols} />
-            </span>
           </span>
         </button>
         <div className='pt-mdl-act'>
@@ -378,9 +329,31 @@ function ModelRow({ m, open, onToggle }) {
         </div>
       </div>
 
+      {/* 指标条放在卡片层级，不在那个可点击的主按钮里面：
+          它是整行的数据带，不该被按钮的宽度截断（右边停在「复制 ID」之前），
+          也本来就不该算进切换按钮的可读名称。 */}
+      <div className='pt-metrics'>
+        <Metric
+          abbr
+          label={t('上下文')}
+          value={
+            TEXT_CATEGORIES.has(m.category)
+              ? contextBrief || t('以上游部署为准')
+              : contextBrief
+          }
+        />
+        <Metric
+          abbr
+          label={t('单次输出')}
+          value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
+        />
+        <Metric label={t('输入')} value={inputs} />
+        <Metric label={t('输出')} value={outputs} />
+        <Metric label={t('协议')} value={protocols} />
+      </div>
+
       {open ? (
         <div className='pt-mdl-detail' id={panelId}>
-          {m.detail ? <p className='pt-mdl-text'>{t(m.detail)}</p> : null}
           {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
               加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
           {m.highlight ? (
