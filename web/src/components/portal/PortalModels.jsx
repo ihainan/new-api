@@ -266,12 +266,16 @@ function Metric({ icon, label, value, abbr }) {
       >
         {METRIC_ICONS[icon]}
       </svg>
-      <span className='pt-metric-label'>{label}</span>
-      <span
-        className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
-        title={shown.full || undefined}
-      >
-        {shown.text}
+      <span className='pt-metric-body'>
+        {/* 标签在上、值在下。横着排时标签和值只差 6px、项与项差 14px，
+            对比不够，一行读下来就是一串词，看不出谁是名字谁是值。 */}
+        <span className='pt-metric-label'>{label}</span>
+        <span
+          className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
+          title={shown.full || undefined}
+        >
+          {shown.text}
+        </span>
       </span>
     </div>
   );
