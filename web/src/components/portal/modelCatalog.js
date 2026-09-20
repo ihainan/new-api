@@ -87,6 +87,8 @@ export const MODELS = [
     icon: 'brand',
     inputs: ['文本', '图像'],
     outputs: ['文本'],
+    // 取决于落到哪个后端，本来就没有一个固定值
+    maxOutput: '随后端而定',
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],

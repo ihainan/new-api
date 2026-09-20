@@ -242,13 +242,17 @@ function abbrValue(text) {
   return { text: text.replace(m[1], short), full: text };
 }
 
-function Metric({ icon, label, value, col, abbr }) {
+function Metric({ icon, label, value, abbr }) {
   if (!value) return null;
   const shown = abbr ? abbrValue(value) : { text: value, full: null };
-  // 列位写死：某个模型缺某项指标时（比如路由没有「单次输出」），
-  // 后面的不能顶上来，否则纵向就对不齐了，指标条也就白做了。
+  /*
+   * 对齐靠的是「每种指标有各自的最小宽度」，不是写死列位。
+   * 写死列位时，缺某项的行会留下一个空列——路由没有「单次输出」，
+   * 那里就是三百多像素的窟窿；出图、语音那些连上下文都没有，整行从中间起步。
+   * 按种类给最小宽度的话，指标集相同的行自然对齐，缺项的直接往前顶。
+   */
   return (
-    <div className='pt-metric' style={{ gridColumn: col }}>
+    <div className={`pt-metric m-${icon}`}>
       <svg
         width='16'
         height='16'
@@ -331,7 +335,6 @@ function ModelRow({ m, open, onToggle }) {
             <span className='pt-metrics'>
               <Metric
                 abbr
-                col={1}
                 icon='context'
                 label={t('上下文')}
                 value={
@@ -342,14 +345,13 @@ function ModelRow({ m, open, onToggle }) {
               />
               <Metric
                 abbr
-                col={2}
                 icon='output'
                 label={t('单次输出')}
                 value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
               />
-              <Metric col={3} icon='in' label={t('输入')} value={inputs} />
-              <Metric col={4} icon='out' label={t('输出')} value={outputs} />
-              <Metric col={5} icon='protocol' label={t('协议')} value={protocols} />
+              <Metric icon='in' label={t('输入')} value={inputs} />
+              <Metric icon='out' label={t('输出')} value={outputs} />
+              <Metric icon='protocol' label={t('协议')} value={protocols} />
             </span>
           </span>
         </button>

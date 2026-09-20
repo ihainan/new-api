@@ -663,15 +663,22 @@
  */
 .pt-metrics {
   margin-top: 14px;
-  /* 固定列宽的网格：每一行的列位都一样，同一个指标才能纵向对齐。
-     flex 做不到跨行对齐——上一行少一项，下面全跟着挪。 */
-  display: grid;
-  /* 上下文和单次输出缩写之后短了不少，列宽跟着收 */
-  grid-template-columns: 150px 155px 150px 120px minmax(0, 1fr);
-  gap: 6px 16px;
+  /*
+   * 自然流排 + 每种指标各自的最小宽度。
+   * 之前用固定列位的网格来求对齐，结果缺项的行会留一个空列：
+   * 路由没有「单次输出」就空出三百多像素，出图、语音连上下文都没有，
+   * 整行从中间开始，看起来像排版坏了。
+   * 现在指标集相同的行（比如所有对话模型）照样对齐，缺项的往前顶。
+   */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
 }
-/* 图标和文字要居中对齐。用 baseline 的话 svg 的底边会去对文字基线，
-   图标整体偏下，和右边的数字差半个字高。 */
+.pt-metric.m-context { min-width: 152px; }
+.pt-metric.m-output { min-width: 166px; }
+.pt-metric.m-in { min-width: 118px; }
+.pt-metric.m-out { min-width: 100px; }
+
 .pt-metric {
   display: flex;
   align-items: baseline;
@@ -705,10 +712,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* 窄屏放弃跨行对齐——列宽不够，挤在一起反而读不出来，改成一行一项 */
+/* 窄屏放弃跨行对齐——宽度不够，挤在一起反而读不出来，改成一行一项 */
 @media (max-width: 900px) {
-  .pt-metrics { grid-template-columns: 1fr; gap: 3px; }
-  .pt-metric { grid-column: auto !important; }
+  .pt-metrics { flex-direction: column; gap: 4px; }
+  .pt-metric,
+  .pt-metric.m-context,
+  .pt-metric.m-output,
+  .pt-metric.m-in,
+  .pt-metric.m-out { min-width: 0; }
 }
 .pt-chev { transition: transform 0.15s; }
 .pt-chev.open { transform: rotate(180deg); }
