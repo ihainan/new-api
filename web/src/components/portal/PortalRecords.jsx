@@ -127,7 +127,7 @@ export default function PortalRecords() {
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className='pt-page-wide'>
+    <div>
       <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
       <Tabs items={TABS} value={tab} onChange={setTab} />
