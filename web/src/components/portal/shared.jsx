@@ -39,7 +39,9 @@ export function Stat({ label, value, hint, unavailable }) {
   return (
     <div className='pt-stat'>
       <div className='pt-stat-label'>{label}</div>
-      <div className={`pt-stat-value${unavailable ? ' pt-na' : ''}`}>{value}</div>
+      <div className={`pt-stat-value${unavailable ? ' pt-na' : ''}`}>
+        {value}
+      </div>
       {hint ? <div className='pt-stat-hint'>{hint}</div> : null}
     </div>
   );
@@ -60,7 +62,10 @@ export function Skeleton({ rows = 4 }) {
         <div
           key={i}
           className='pt-skel'
-          style={{ width: `${[100, 70, 88, 55][i % 4]}%`, marginTop: i ? 12 : 0 }}
+          style={{
+            width: `${[100, 70, 88, 55][i % 4]}%`,
+            marginTop: i ? 12 : 0,
+          }}
         />
       ))}
     </div>
@@ -79,7 +84,9 @@ export function CodeBlock({ code }) {
           type='button'
           className='pt-btn sm'
           onClick={async () => {
-            (await copy(code)) ? showSuccess(t('已复制')) : showError(t('复制失败'));
+            (await copy(code))
+              ? showSuccess(t('已复制'))
+              : showError(t('复制失败'));
           }}
         >
           {t('复制')}
@@ -142,7 +149,9 @@ export function fmtLogTime(sec) {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n) => String(n).padStart(2, '0');
   const md = `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-  return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()} ${md}`;
+  return d.getFullYear() === new Date().getFullYear()
+    ? md
+    : `${d.getFullYear()} ${md}`;
 }
 
 export function fmtTime(sec) {

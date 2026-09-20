@@ -34,7 +34,13 @@ export default function BrandMark({ size = 24 }) {
       style={{ display: 'block', borderRadius: 7, flex: 'none' }}
     >
       <rect width='24' height='24' rx='7' fill='#14181f' />
-      <g stroke='#fff' strokeWidth='1.8' strokeLinecap='round' fill='none' opacity='0.78'>
+      <g
+        stroke='#fff'
+        strokeWidth='1.8'
+        strokeLinecap='round'
+        fill='none'
+        opacity='0.78'
+      >
         <path d='M12 12 L12 6.6' />
         <path d='M12 12 L7.3 15.1' />
         <path d='M12 12 L16.7 15.1' />

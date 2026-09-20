@@ -20,6 +20,7 @@ import React, { useContext, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
+import { normalizeLanguage } from '../../i18n/language';
 import { UserContext } from '../../context/User';
 import { API, getSystemName, showError } from '../../helpers';
 import BrandMark from './BrandMark';
@@ -50,6 +51,14 @@ const Icon = ({ path }) => (
     {path}
   </svg>
 );
+
+/* 只给中英两种。其余语种的译文仍在仓库里（管理端在用），前台不列——
+   员工界面没人用得上，菜单里摆七行反而挡住下面的退出。
+   名字写它自己的语言：看不懂当前界面的人正是靠这一行找回来的。 */
+const LANGS = [
+  ['zh-CN', '中文'],
+  ['en', 'English'],
+];
 
 const ICONS = {
   overview: (
@@ -85,7 +94,12 @@ const ICONS = {
 // label 是中文原文，同时也是 i18n 的 key——这套方案缺翻译时回退成中文，
 // 不会变成空白或 key 名。
 const NAV = [
-  { key: 'overview', to: '/console/dashboard', label: '概览', icon: 'overview' },
+  {
+    key: 'overview',
+    to: '/console/dashboard',
+    label: '概览',
+    icon: 'overview',
+  },
   { key: 'keys', to: '/console/token', label: 'API 密钥', icon: 'keys' },
   { key: 'models', to: '/pricing', label: '模型', icon: 'models' },
   { key: 'records', to: '/console/log', label: '使用记录', icon: 'records' },
@@ -121,13 +135,31 @@ function Avatar({ name }) {
 }
 
 export default function UserPortalLayout({ children }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [userState, userDispatch] = useContext(UserContext);
 
   const user = userState?.user;
   const systemName = getSystemName();
+  const lang = normalizeLanguage(i18n.language);
+
+  /*
+   * 切语言：先立刻换界面，再把偏好存回账号——存不上也不影响这次切换，
+   * 本地那份 i18nextLng 会记住。
+   */
+  const switchLang = async (code) => {
+    if (code === lang) return;
+    i18n.changeLanguage(code);
+    localStorage.setItem('i18nextLng', code);
+    if (user?.id) {
+      try {
+        await API.put('/api/user/self', { language: code });
+      } catch (e) {
+        // 只是没记到账号上，下次换台机器要重选一次，不值得打断
+      }
+    }
+  };
 
   const isActive = (item) => {
     const path = location.pathname;
@@ -140,7 +172,9 @@ export default function UserPortalLayout({ children }) {
       await API.get('/api/user/logout');
     } catch (e) {
       // 服务端没确认也要清掉本地会话，但不假装一切正常。
-      showError(t('已退出本地登录，但服务端没有确认。请重新登录一次，确保状态正确。'));
+      showError(
+        t('已退出本地登录，但服务端没有确认。请重新登录一次，确保状态正确。'),
+      );
     }
     userDispatch({ type: 'logout' });
     localStorage.removeItem('user');
@@ -151,7 +185,11 @@ export default function UserPortalLayout({ children }) {
     <div className='pt-shell'>
       <aside className='pt-sidebar'>
         {/* 窄屏下文字被隐藏，只剩图标；不给 aria-label 的话读屏念不出是哪一项 */}
-        <Link to='/console/dashboard' className='pt-brand' aria-label={systemName}>
+        <Link
+          to='/console/dashboard'
+          className='pt-brand'
+          aria-label={systemName}
+        >
           <BrandMark size={24} />
           <span className='pt-wordmark'>{systemName}</span>
         </Link>
@@ -177,6 +215,22 @@ export default function UserPortalLayout({ children }) {
             position='topLeft'
             render={
               <Dropdown.Menu>
+                {/*
+                 * 语言。整站的文案早就有七种译文，但前台一直没有切换的地方，
+                 * 只能跟着浏览器走——这里是唯一的常驻菜单，就放在这。
+                 * 选中的那一项自己标出来，不然菜单里看不出当前是哪种。
+                 */}
+                <Dropdown.Title>{t('语言')}</Dropdown.Title>
+                {LANGS.map(([code, label]) => (
+                  <Dropdown.Item
+                    key={code}
+                    active={lang === code}
+                    onClick={() => switchLang(code)}
+                  >
+                    {label}
+                  </Dropdown.Item>
+                ))}
+                <Dropdown.Divider />
                 {/* 只有退出。个人设置那一屏是上游给管理员用的，员工用不到。 */}
                 <Dropdown.Item type='danger' onClick={logout}>
                   {t('退出登录')}

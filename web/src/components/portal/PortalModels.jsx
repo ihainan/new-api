@@ -178,8 +178,65 @@ const CAPS = [
   ],
 ];
 
-function CapGrid({ caps }) {
+/* 能力释义。名字本身不够自解释——「提示缓存」「深度思考」不说明白，
+   看的人只能猜。一句话说清「有了它你能干什么」，必要时带上字段名。 */
+const CAP_HELP = {
+  stream: '边生成边往回吐，不用等整段写完。请求里传 stream: true。',
+  tools:
+    '你把可调用的函数描述给它，它决定什么时候调、参数填什么，由你的代码去执行。',
+  json: '可以要求它只输出 JSON，不掺解释文字，用 response_format 约束。',
+  vision: '消息里可以带图片，让它看图回答。',
+  reasoning: '作答前先推理，返回里能拿到思考过程。',
+  cache: '重复的前缀（长系统提示、同一份文档）会命中缓存，第二次起更快也更省。',
+};
+
+function Cap({ cap, state, tag }) {
   const { t } = useTranslation();
+  const { open, setOpen, ref } = useTip();
+  const [key, label, path] = cap;
+  return (
+    <button
+      ref={ref}
+      type='button'
+      className={`pt-cap ${state}${open ? ' open' : ''}`}
+      aria-expanded={open}
+      onClick={() => setOpen((v) => !v)}
+      onBlur={() => setOpen(false)}
+    >
+      {/* 状态符号。光靠颜色深浅和删除线，支持和不支持隔一米就分不出来了；
+          ✓ / ✕ 是不依赖颜色也能读的那一层。 */}
+      <b className='pt-cap-mark' aria-hidden='true'>
+        {state === 'on'
+          ? '✓'
+          : state === 'unknown' || state === 'na'
+            ? '–'
+            : '✕'}
+      </b>
+      <svg
+        width='16'
+        height='16'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='1.7'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        aria-hidden='true'
+      >
+        {path}
+      </svg>
+      <span>{t(label)}</span>
+      {tag ? <em className='pt-cap-tag'>{t(tag)}</em> : null}
+      {CAP_HELP[key] ? (
+        <span className='pt-tip wide' role='tooltip'>
+          {t(CAP_HELP[key])}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function CapGrid({ caps }) {
   return (
     <div className='pt-caps'>
       {CAPS.map(([key, label, path]) => {
@@ -203,32 +260,7 @@ function CapGrid({ caps }) {
                 ? '无此参数'
                 : null;
         return (
-          <span key={key} className={`pt-cap ${state}`}>
-            {/* 状态符号。光靠颜色深浅和删除线，支持和不支持隔一米就分不出来了；
-                ✓ / ✕ 是不依赖颜色也能读的那一层。 */}
-            <b className='pt-cap-mark' aria-hidden='true'>
-              {state === 'on'
-                ? '✓'
-                : state === 'unknown' || state === 'na'
-                  ? '–'
-                  : '✕'}
-            </b>
-            <svg
-              width='16'
-              height='16'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='1.7'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              aria-hidden='true'
-            >
-              {path}
-            </svg>
-            <span>{t(label)}</span>
-            {tag ? <em className='pt-cap-tag'>{t(tag)}</em> : null}
-          </span>
+          <Cap key={key} cap={[key, label, path]} state={state} tag={tag} />
         );
       })}
     </div>
@@ -267,6 +299,16 @@ function abbrNumber(n) {
 }
 
 // 值里第一个带千分位的数字换成缩写，其余原样留着（单位、括号里的限定语）
+/*
+ * 去掉末尾括号里的限定语（「（建议单次请求不超过）」这类）。中英文括号都要认：
+ * 只认全角的话，英文译文里的半角括号会原样留在折叠行里，把那一格顶破。
+ */
+function stripQualifier(text) {
+  return typeof text === 'string'
+    ? text.replace(/\s*[（(][^（(]*[)）]\s*$/, '')
+    : text;
+}
+
 function abbrValue(text) {
   if (typeof text !== 'string') return { text, full: null };
   const m = /(\d[\d,]*)/.exec(text);
@@ -276,15 +318,15 @@ function abbrValue(text) {
   return { text: text.replace(m[1], short), full: text };
 }
 
-function Metric({ label, value, abbr }) {
+/*
+ * 点开的气泡要有正常的关法：点别处、按 Esc、翻页都得收起来，同一时间只开一个。
+ * pointerdown 而不是 click：点到别的按钮时要先收起来，别跟那次点击抢。
+ * 指标值和能力项共用这一套。
+ */
+function useTip() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  /*
-   * 气泡只有「再点一次同一个按钮」能关，等于关不掉：鼠标移开、点别处、
-   * 按 Esc 都没反应，还能同时开好几个。这里补齐常规的关闭路径。
-   * pointerdown 而不是 click：点到别的按钮时要先收起来，别跟那次点击抢。
-   */
   useEffect(() => {
     if (!open) return undefined;
     const away = (e) => {
@@ -298,7 +340,6 @@ function Metric({ label, value, abbr }) {
     };
     document.addEventListener('pointerdown', away, true);
     document.addEventListener('keydown', esc);
-    // 滚动时气泡会跟着按钮跑，但视觉上像块浮在页面上的脏东西，直接收掉
     window.addEventListener('scroll', () => setOpen(false), {
       once: true,
       passive: true,
@@ -308,6 +349,12 @@ function Metric({ label, value, abbr }) {
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
+
+  return { open, setOpen, ref };
+}
+
+function Metric({ label, value, abbr }) {
+  const { open, setOpen, ref } = useTip();
 
   if (!value) return null;
   const shown = abbr ? abbrValue(value) : { text: value, full: null };
@@ -332,7 +379,8 @@ function Metric({ label, value, abbr }) {
           onClick={() => setOpen((v) => !v)}
           onBlur={() => setOpen(false)}
         >
-          {shown.text}
+          {/* 文字单独一层来截断：按钮本身必须 overflow:visible，否则气泡被剪掉 */}
+          <span className='pt-metric-text'>{shown.text}</span>
           <span className='pt-tip' role='tooltip'>
             {shown.full}
           </span>
@@ -367,7 +415,7 @@ function ModelRow({ m, open, onToggle }) {
   const outputs = (m.outputs || []).map(t).join(t('、')) || null;
   // 折叠行里上下文只留数字，括号里的限定语放到展开后的规格里说，
   // 否则一行挤三样东西，最该看的数字反而不显眼。
-  const contextBrief = m.context ? t(m.context).replace(/（.+）$/, '') : null;
+  const contextBrief = m.context ? stripQualifier(t(m.context)) : null;
   const panelId = `mdl-${m.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
   return (
@@ -396,7 +444,7 @@ function ModelRow({ m, open, onToggle }) {
             type='button'
             className='pt-btn sm'
             // 一页十几个同名按钮，读屏念出来全是「复制 ID」，得带上是谁的。
-            aria-label={`复制模型 ID ${m.id}`}
+            aria-label={t('复制模型 ID {{id}}', { id: m.id })}
             onClick={async () => {
               (await copy(m.id))
                 ? showSuccess(t('已复制 {{id}}', { id: m.id }))
@@ -453,7 +501,7 @@ function ModelRow({ m, open, onToggle }) {
         <Metric
           abbr
           label={t('单次输出')}
-          value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
+          value={m.maxOutput && stripQualifier(t(m.maxOutput))}
         />
         <Metric label={t('输入')} value={inputs} />
         <Metric label={t('输出')} value={outputs} />

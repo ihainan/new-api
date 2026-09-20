@@ -19,7 +19,13 @@ For commercial licensing, please contact support@quantumnous.com
 
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { API, copy, getServerAddress, showError, showSuccess } from '../../helpers';
+import {
+  API,
+  copy,
+  getServerAddress,
+  showError,
+  showSuccess,
+} from '../../helpers';
 import { Card, CodeBlock, Empty, PageHead, Skeleton, Tabs } from './shared';
 
 /*
@@ -61,8 +67,11 @@ export default function PortalKeys() {
       const items = res.data.data?.items || [];
       // 员工只关心「我现在能用哪一把」：启用中的优先，同类里取最新。
       const usable = items.filter((it) => it.status === 1 && !it.deleted_at);
-      setToken((usable.length ? usable : items)
-        .sort((a, b) => (b.created_time || 0) - (a.created_time || 0))[0] || null);
+      setToken(
+        (usable.length ? usable : items).sort(
+          (a, b) => (b.created_time || 0) - (a.created_time || 0),
+        )[0] || null,
+      );
     } catch (e) {
       showError(t('获取密钥失败'));
     } finally {
@@ -70,20 +79,30 @@ export default function PortalKeys() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const fetchPlain = async () => {
     const res = await API.post(`/api/token/${token.id}/key`);
-    if (!res.data?.success) throw new Error(res.data?.message || '获取密钥失败');
+    if (!res.data?.success)
+      throw new Error(res.data?.message || t('获取密钥失败'));
     return withPrefix(res.data.data?.key || '');
   };
 
   const toggle = async () => {
-    if (plain) { setPlain(''); return; }
+    if (plain) {
+      setPlain('');
+      return;
+    }
     setBusy(true);
-    try { setPlain(await fetchPlain()); }
-    catch (e) { showError(e.message); }
-    finally { setBusy(false); }
+    try {
+      setPlain(await fetchPlain());
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const copyKey = async () => {
@@ -92,8 +111,11 @@ export default function PortalKeys() {
       // 复制不显示明文——这两件事是分开的。
       const v = plain || (await fetchPlain());
       (await copy(v)) ? showSuccess(t('已复制')) : showError(t('复制失败'));
-    } catch (e) { showError(e.message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const k = plain || 'YOUR_API_KEY';
@@ -131,14 +153,24 @@ print(msg.content[0].text)`,
     ],
   };
 
-  if (loading) return <div><PageHead title={t('API 密钥')} /><Skeleton rows={3} /></div>;
+  if (loading)
+    return (
+      <div>
+        <PageHead title={t('API 密钥')} />
+        <Skeleton rows={3} />
+      </div>
+    );
 
   if (!token) {
     return (
       <div>
         <PageHead title={t('API 密钥')} />
         <Card>
-          <Empty text={t('还没有密钥。密钥会在账号开通时自动发放，如果这里一直是空的，说明发放环节出了问题，请告知管理员。')} />
+          <Empty
+            text={t(
+              '还没有密钥。密钥会在账号开通时自动发放，如果这里一直是空的，说明发放环节出了问题，请告知管理员。',
+            )}
+          />
         </Card>
       </div>
     );
@@ -146,20 +178,39 @@ print(msg.content[0].text)`,
 
   return (
     <div>
-      <PageHead title={t('API 密钥')} sub={t('用它调用下面的接口，不需要额外申请')} />
+      <PageHead
+        title={t('API 密钥')}
+        sub={t('用它调用下面的接口，不需要额外申请')}
+      />
 
       <Card className='pad'>
         <div>
-          <div style={{ fontSize: 12, color: 'var(--pt-text-muted)', marginBottom: 8 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--pt-text-muted)',
+              marginBottom: 8,
+            }}
+          >
             {token.name}
           </div>
           <div className='pt-keyrow'>
             <code className='pt-keyval'>{plain || MASK}</code>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type='button' className='pt-btn' onClick={toggle} disabled={busy}>
+              <button
+                type='button'
+                className='pt-btn'
+                onClick={toggle}
+                disabled={busy}
+              >
                 {t(plain ? '隐藏' : '显示')}
               </button>
-              <button type='button' className='pt-btn primary' onClick={copyKey} disabled={busy}>
+              <button
+                type='button'
+                className='pt-btn primary'
+                onClick={copyKey}
+                disabled={busy}
+              >
                 {t('复制')}
               </button>
             </div>
@@ -170,11 +221,15 @@ print(msg.content[0].text)`,
       <div className='pt-section'>
         <h2 className='pt-section-title'>{t('怎么调用')}</h2>
         <p className='pt-section-sub'>
-          {t('选一种协议，复制走即可。示例里的 YOUR_API_KEY 在你点「显示」后会替换成真实密钥。')}
+          {t(
+            '选一种协议，复制走即可。示例里的 YOUR_API_KEY 在你点「显示」后会替换成真实密钥。',
+          )}
         </p>
         <Tabs items={PROTOCOLS} value={proto} onChange={setProto} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {snippets[proto].map((code, i) => <CodeBlock key={i} code={code} />)}
+          {snippets[proto].map((code, i) => (
+            <CodeBlock key={i} code={code} />
+          ))}
         </div>
       </div>
     </div>

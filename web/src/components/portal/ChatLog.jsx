@@ -125,14 +125,20 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                     <span className='pt-mono'>
                       {(o.request_path || '').replace(/^\//, '') || '—'}
                     </span>
-                    {r.group ? <span className='pt-sub'>分组 {r.group}</span> : null}
+                    {r.group ? (
+                      <span className='pt-sub'>
+                        {t('分组 {{name}}', { name: r.group })}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className='pt-sub pt-mono' style={{ whiteSpace: 'nowrap' }}>
                   {r.ip || '—'}
                 </td>
                 <td>
-                  <span className='pt-tag plain'>{t(r.is_stream ? '流式' : '非流式')}</span>
+                  <span className='pt-tag plain'>
+                    {t(r.is_stream ? '流式' : '非流式')}
+                  </span>
                 </td>
                 <td className='pt-num'>
                   <div className='pt-stack'>
@@ -142,16 +148,22 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                       <i className='pt-arrow out'>↑</i>
                       {fmtInt(r.completion_tokens)}
                     </span>
-                    <span className='pt-sub'>缓存 {fmtInt(cache)}</span>
+                    <span className='pt-sub'>
+                      {t('缓存 {{n}}', { n: fmtInt(cache) })}
+                    </span>
                   </div>
                 </td>
                 <td>
                   <div className='pt-cell-row'>
                     <i className={`pt-lat-bar ${latencyClass(r.use_time)}`} />
                     <div className='pt-stack'>
-                      <span className='pt-sub'>首字 {ms(frt)}</span>
                       <span className='pt-sub'>
-                        总耗时 {r.use_time ? r.use_time + 's' : '—'}
+                        {t('首字 {{v}}', { v: ms(frt) })}
+                      </span>
+                      <span className='pt-sub'>
+                        {t('总耗时 {{v}}', {
+                          v: r.use_time ? r.use_time + 's' : '—',
+                        })}
                       </span>
                     </div>
                   </div>
@@ -167,7 +179,9 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                       onClick={() => onToggleErr(r.id)}
                     >
                       {t(out.text)}
-                      <span aria-hidden='true'>{openId === r.id ? ' ▴' : ' ▾'}</span>
+                      <span aria-hidden='true'>
+                        {openId === r.id ? ' ▴' : ' ▾'}
+                      </span>
                     </button>
                   ) : (
                     <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
@@ -231,12 +245,30 @@ export function ChatCards({ rows }) {
               <div className='pt-err-box'>{r.content}</div>
             ) : null}
             <dl className='pt-rec-grid'>
-              <div><dt>{t('输入')}</dt><dd>{fmtInt(r.prompt_tokens)}</dd></div>
-              <div><dt>{t('输出')}</dt><dd>{fmtInt(r.completion_tokens)}</dd></div>
-              <div><dt>{t('缓存')}</dt><dd>{fmtInt(cache)}</dd></div>
-              <div><dt>{t('首字')}</dt><dd>{ms(frt)}</dd></div>
-              <div><dt>{t('总耗时')}</dt><dd>{r.use_time ? r.use_time + 's' : '—'}</dd></div>
-              <div><dt>{t('类型')}</dt><dd>{t(r.is_stream ? '流式' : '非流式')}</dd></div>
+              <div>
+                <dt>{t('输入')}</dt>
+                <dd>{fmtInt(r.prompt_tokens)}</dd>
+              </div>
+              <div>
+                <dt>{t('输出')}</dt>
+                <dd>{fmtInt(r.completion_tokens)}</dd>
+              </div>
+              <div>
+                <dt>{t('缓存')}</dt>
+                <dd>{fmtInt(cache)}</dd>
+              </div>
+              <div>
+                <dt>{t('首字')}</dt>
+                <dd>{ms(frt)}</dd>
+              </div>
+              <div>
+                <dt>{t('总耗时')}</dt>
+                <dd>{r.use_time ? r.use_time + 's' : '—'}</dd>
+              </div>
+              <div>
+                <dt>{t('类型')}</dt>
+                <dd>{t(r.is_stream ? '流式' : '非流式')}</dd>
+              </div>
             </dl>
             <div className='pt-rec-foot pt-sub pt-mono'>
               {(o.request_path || '').replace(/^\//, '') || '—'}

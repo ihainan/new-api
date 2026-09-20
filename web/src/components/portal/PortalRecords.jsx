@@ -62,11 +62,15 @@ export default function PortalRecords() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
 
-  const endpoint = useMemo(() => ({
-    chat: '/api/log/self',
-    draw: '/api/mj/self',
-    task: '/api/task/self',
-  }[tab]), [tab]);
+  const endpoint = useMemo(
+    () =>
+      ({
+        chat: '/api/log/self',
+        draw: '/api/mj/self',
+        task: '/api/task/self',
+      })[tab],
+    [tab],
+  );
 
   // 模型下拉的选项取自「当前可调用的模型」，不是从日志里现扒——
   // 日志里只有用过的，没用过的就筛不到，那个下拉会越用越短。
@@ -99,30 +103,39 @@ export default function PortalRecords() {
         if (model) q.push('model_name=' + encodeURIComponent(model));
         const hours = RANGES.find((r) => r.key === range)?.hours || 0;
         if (hours) {
-          q.push('start_timestamp=' + (Math.floor(Date.now() / 1000) - hours * 3600));
+          q.push(
+            'start_timestamp=' + (Math.floor(Date.now() / 1000) - hours * 3600),
+          );
           q.push('end_timestamp=' + Math.floor(Date.now() / 1000));
         }
       }
       const res = await API.get(`${endpoint}?${q.join('&')}`);
       if (!res.data?.success) {
         showError(res.data?.message || t('加载失败'));
-        setRows([]); setTotal(0);
+        setRows([]);
+        setTotal(0);
         return;
       }
       const d = res.data.data;
-      const items = Array.isArray(d) ? d : (d?.items || []);
+      const items = Array.isArray(d) ? d : d?.items || [];
       setRows(items);
       setTotal(Number(d?.total ?? items.length));
     } catch (e) {
       showError(t('加载失败'));
-      setRows([]); setTotal(0);
+      setRows([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   }, [endpoint, page, onlyFailed, tab, range, model]);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); setOpenErr(null); }, [tab, onlyFailed, range, model]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  useEffect(() => {
+    setPage(1);
+    setOpenErr(null);
+  }, [tab, onlyFailed, range, model]);
 
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -155,7 +168,9 @@ export default function PortalRecords() {
           >
             <option value=''>{t('全部模型')}</option>
             {models.map((m) => (
-              <option key={m} value={m}>{m}</option>
+              <option key={m} value={m}>
+                {m}
+              </option>
             ))}
           </select>
           <label className='pt-check'>
@@ -173,17 +188,21 @@ export default function PortalRecords() {
         {loading ? (
           <div className='pt-skel-card'>
             {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className='pt-skel' style={{ marginTop: i ? 12 : 0 }} />
+              <div
+                key={i}
+                className='pt-skel'
+                style={{ marginTop: i ? 12 : 0 }}
+              />
             ))}
           </div>
         ) : rows.length === 0 ? (
           <Empty
             text={
               onlyFailed
-                ? '这段时间没有失败记录'
+                ? t('这段时间没有失败记录')
                 : model
-                  ? `这段时间没有 ${model} 的调用记录`
-                  : '这段时间还没有调用记录'
+                  ? t('这段时间没有 {{model}} 的调用记录', { model })
+                  : t('这段时间还没有调用记录')
             }
           />
         ) : (
@@ -208,24 +227,43 @@ export default function PortalRecords() {
               <table className='pt-table'>
                 <thead>
                   <tr>
-                    <th>{t('提交时间')}</th><th>{t('类型')}</th><th>{t('状态')}</th><th>{t('进度')}</th><th>{t('结果')}</th>
+                    <th>{t('提交时间')}</th>
+                    <th>{t('类型')}</th>
+                    <th>{t('状态')}</th>
+                    <th>{t('进度')}</th>
+                    <th>{t('结果')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id || r.mj_id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(r.submit_time)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {fmtTime(r.submit_time)}
+                      </td>
                       <td>{r.action || '—'}</td>
                       <td>
-                        <span className={`pt-tag ${r.status === 'SUCCESS' ? 'ok' : r.status === 'FAILURE' ? 'bad' : 'plain'}`}>
+                        <span
+                          className={`pt-tag ${r.status === 'SUCCESS' ? 'ok' : r.status === 'FAILURE' ? 'bad' : 'plain'}`}
+                        >
                           {r.status || '—'}
                         </span>
                       </td>
                       <td>{r.progress || '—'}</td>
                       <td>
-                        {r.image_url
-                          ? <a className='pt-btn sm' href={r.image_url} target='_blank' rel='noreferrer'>{t('查看')}</a>
-                          : <span style={{ color: 'var(--pt-text-muted)' }}>—</span>}
+                        {r.image_url ? (
+                          <a
+                            className='pt-btn sm'
+                            href={r.image_url}
+                            target='_blank'
+                            rel='noreferrer'
+                          >
+                            {t('查看')}
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--pt-text-muted)' }}>
+                            —
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -237,25 +275,42 @@ export default function PortalRecords() {
               <table className='pt-table'>
                 <thead>
                   <tr>
-                    <th>{t('提交时间')}</th><th>{t('平台')}</th><th>{t('动作')}</th><th>{t('状态')}</th><th>{t('完成时间')}</th><th>{t('结果')}</th>
+                    <th>{t('提交时间')}</th>
+                    <th>{t('平台')}</th>
+                    <th>{t('动作')}</th>
+                    <th>{t('状态')}</th>
+                    <th>{t('完成时间')}</th>
+                    <th>{t('结果')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id || r.task_id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(r.submit_time)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {fmtTime(r.submit_time)}
+                      </td>
                       <td>{r.platform || '—'}</td>
                       <td>{r.action || '—'}</td>
                       <td>
-                        <span className={`pt-tag ${r.status === 'SUCCESS' ? 'ok' : r.status === 'FAILURE' ? 'bad' : 'plain'}`}>
+                        <span
+                          className={`pt-tag ${r.status === 'SUCCESS' ? 'ok' : r.status === 'FAILURE' ? 'bad' : 'plain'}`}
+                        >
                           {r.status || '—'}
                         </span>
                       </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(r.finish_time)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {fmtTime(r.finish_time)}
+                      </td>
                       <td>
-                        {r.fail_reason
-                          ? <span style={{ color: 'var(--pt-danger-text)' }}>{r.fail_reason}</span>
-                          : <span style={{ color: 'var(--pt-text-muted)' }}>—</span>}
+                        {r.fail_reason ? (
+                          <span style={{ color: 'var(--pt-danger-text)' }}>
+                            {r.fail_reason}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--pt-text-muted)' }}>
+                            —
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -267,11 +322,29 @@ export default function PortalRecords() {
 
         {!loading && rows.length > 0 && (
           <div className='pt-pager'>
-            <button type='button' className='pt-btn sm' disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}>{t('上一页')}</button>
-            <span>第 {page} / {maxPage} 页 · 共 {fmtInt(total)} 条</span>
-            <button type='button' className='pt-btn sm' disabled={page >= maxPage}
-              onClick={() => setPage((p) => p + 1)}>{t('下一页')}</button>
+            <button
+              type='button'
+              className='pt-btn sm'
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              {t('上一页')}
+            </button>
+            <span>
+              {t('第 {{page}} / {{max}} 页 · 共 {{total}} 条', {
+                page,
+                max: maxPage,
+                total: fmtInt(total),
+              })}
+            </span>
+            <button
+              type='button'
+              className='pt-btn sm'
+              disabled={page >= maxPage}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              {t('下一页')}
+            </button>
           </div>
         )}
       </Card>

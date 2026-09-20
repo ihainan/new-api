@@ -789,8 +789,16 @@
   align-self: flex-start;
   /* .pt-metric-value 为省略号设了 overflow:hidden，会把气泡剪掉 */
   overflow: visible;
+  max-width: 100%;
   border-bottom: 1px dotted var(--pt-border-strong);
   cursor: pointer;
+}
+/* 译文比中文长得多时（英文把限定语写成整句），按钮不能顶破那一格 */
+.pt-metric-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pt-tip {
   position: absolute;
@@ -844,6 +852,9 @@
   border-top: 1px solid var(--pt-border);
   padding: 18px 20px 20px;
 }
+/* 里面每块都带上外边距，轮到第一块时就和这里的上内边距叠在一起：
+   没有「当前指向」那行说明的卡片，分隔线到「能力」会空出 38px */
+.pt-mdl-detail > *:first-child { margin-top: 0; }
 /* 当前指向哪个版本——这一条里最容易过期、也最该被看到的信息 */
 .pt-mdl-highlight {
   margin: 10px 0 0;
@@ -1004,13 +1015,43 @@
   gap: 8px 14px;
 }
 .pt-cap {
+  /* 每一项都能点开一句解释，所以是真按钮；外观保持和原来一样 */
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 7px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
   font-size: 13px;
+  text-align: left;
   color: var(--pt-text-primary);
   min-width: 0;
+  cursor: pointer;
+}
+.pt-cap:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 3px;
+  border-radius: var(--pt-radius-sm);
+}
+/* 多行的气泡：能力解释是一句话，不能像数值那样一行摆开 */
+.pt-tip.wide {
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+  line-height: 1.55;
+}
+.pt-cap:hover .pt-tip,
+.pt-cap:focus-visible .pt-tip,
+.pt-cap.open .pt-tip {
+  display: block;
+}
+/* 右半边的项把气泡右对齐，否则 260px 会捅出卡片右沿 */
+.pt-caps > .pt-cap:nth-child(n + 4) .pt-tip {
+  left: auto;
+  right: 0;
 }
 /* 状态符号：✓ 支持、✕ 不支持、– 未验证或不适用。
    不依赖颜色也能读出来——色弱、截图转灰、隔一米看屏幕，都还在。 */
@@ -1032,16 +1073,18 @@
 /* 调用失败是「你发过去会报错」，比「模型没这能力」更该跳出来 */
 .pt-cap.err svg { color: var(--pt-danger-text); }
 /* 不支持的整项压到更淡，和支持的拉开距离 */
-.pt-cap.off { opacity: 0.55; }
+/* 不能用 opacity 压暗：它会把整棵子树连气泡一起冲淡，
+   解释文字变成灰底灰字。压暗交给下面的 color + 删除线。 */
 .pt-cap.off svg { color: var(--pt-text-muted); }
 .pt-cap svg { flex: none; }
 /* 能力名不换行：它后面可能跟一个状态标，标一长就会把名字挤成两行 */
-.pt-cap > span:not(.pt-cap-tag) { white-space: nowrap; }
+.pt-cap > span:not(.pt-cap-tag):not(.pt-tip) { white-space: nowrap; }
 /* 实测不支持：整项压暗并划掉，一眼能和支持的分开 */
 .pt-cap.off {
   color: var(--pt-text-muted);
 }
-.pt-cap.off > span { text-decoration: line-through; }
+/* 划掉的是能力名，别把气泡里的解释也划了 */
+.pt-cap.off > span:not(.pt-tip) { text-decoration: line-through; }
 /* 没验证过：不划掉，但明确标出来，不许冒充「不支持」 */
 .pt-cap.unknown { color: var(--pt-text-meta); }
 /* 协议本身没有这个参数：不划掉，它不是模型的缺陷 */

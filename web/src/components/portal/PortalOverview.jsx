@@ -23,7 +23,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { VChart } from '@visactor/react-vchart';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
-import { Card, Empty, PageHead, Skeleton, Stat, fmtCompact, fmtInt } from './shared';
+import {
+  Card,
+  Empty,
+  PageHead,
+  Skeleton,
+  Stat,
+  fmtCompact,
+  fmtInt,
+} from './shared';
 
 /*
  * 概览。只回答「我自己用了多少、体验如何」，不放公告、服务可用性、用户排行
@@ -58,10 +66,20 @@ function rangeBounds(v) {
  * 负责把扇区和右边的图例对应起来。之前压成六级灰阶，相邻两块几乎分不开，
  * 等于把图例这个功能弄没了。色值和模型页的分类图标同源，整站一套。
  */
-const PIE_COLORS = ['#2563d4', '#157f3c', '#8a5cd6', '#c9a227', '#1d8a8a', '#c8372f'];
+const PIE_COLORS = [
+  '#2563d4',
+  '#157f3c',
+  '#8a5cd6',
+  '#c9a227',
+  '#1d8a8a',
+  '#c8372f',
+];
 // 请求数是单条线；Token 拆三条——缓存输入是省下来的，
 // 未缓存输入和输出才是真跑了算力的，混成一条就看不出这个差别。
-const LINE_COLOR = { requests: ['#14181f'], tokens: ['#2563d4', '#157f3c', '#8a5cd6'] };
+const LINE_COLOR = {
+  requests: ['#14181f'],
+  tokens: ['#2563d4', '#157f3c', '#8a5cd6'],
+};
 const TOKEN_SERIES = [
   { key: 'uncached', label: '未缓存输入' },
   { key: 'cached', label: '缓存输入' },
@@ -115,7 +133,9 @@ export default function PortalOverview() {
     }
   }, [range, t]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // 最近调用和上面的统计各取各的：这一份不跟着时间范围变，
   // 永远是「最新几条」，出问题时要看的就是刚才那几次。
@@ -141,7 +161,8 @@ export default function PortalOverview() {
     const label = (p) =>
       new Date(p.ts * 1000).toLocaleString('zh-CN', {
         hour12: false,
-        month: '2-digit', day: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
         ...(range === '30d' ? {} : { hour: '2-digit', minute: '2-digit' }),
       });
     const src = data?.series || [];
@@ -152,27 +173,48 @@ export default function PortalOverview() {
             return [
               // 未缓存输入 = 输入总量 − 命中缓存的部分。夹一下 0：
               // 两个数来自不同的记录来源，理论上不该为负，但不值得赌。
-              { t: label(p), k: t('未缓存输入'), v: Math.max(0, (p.prompt_tokens || 0) - cached) },
+              {
+                t: label(p),
+                k: t('未缓存输入'),
+                v: Math.max(0, (p.prompt_tokens || 0) - cached),
+              },
               { t: label(p), k: t('缓存输入'), v: cached },
               { t: label(p), k: t('输出'), v: p.completion_tokens || 0 },
             ];
           })
         : src.map((p) => ({ t: label(p), k: t('请求数'), v: p.requests }));
     return {
-      type: 'line', data: [{ id: 'd', values: pts }],
-      xField: 't', yField: 'v', seriesField: 'k', color: LINE_COLOR[trend],
-      legends: trend === 'tokens'
-        ? { visible: true, orient: 'top', padding: { bottom: 6 },
-            item: { label: { style: { fontSize: 12 } } } }
-        : { visible: false },
+      type: 'line',
+      data: [{ id: 'd', values: pts }],
+      xField: 't',
+      yField: 'v',
+      seriesField: 'k',
+      color: LINE_COLOR[trend],
+      legends:
+        trend === 'tokens'
+          ? {
+              visible: true,
+              orient: 'top',
+              padding: { bottom: 6 },
+              item: { label: { style: { fontSize: 12 } } },
+            }
+          : { visible: false },
       point: { visible: false },
       line: { style: { lineWidth: 2 } },
       axes: [
-        { orient: 'bottom', label: { autoHide: true, style: { fill: '#8a909b', fontSize: 11 } },
-          domainLine: { style: { stroke: '#e7e9ec' } }, tick: { visible: false } },
-        { orient: 'left', label: { style: { fill: '#8a909b', fontSize: 11 } },
-          grid: { style: { stroke: '#eef0f2' } }, domainLine: { visible: false },
-          tick: { visible: false } },
+        {
+          orient: 'bottom',
+          label: { autoHide: true, style: { fill: '#8a909b', fontSize: 11 } },
+          domainLine: { style: { stroke: '#e7e9ec' } },
+          tick: { visible: false },
+        },
+        {
+          orient: 'left',
+          label: { style: { fill: '#8a909b', fontSize: 11 } },
+          grid: { style: { stroke: '#eef0f2' } },
+          domainLine: { visible: false },
+          tick: { visible: false },
+        },
       ],
 
       padding: { top: 8, right: 8, bottom: 4, left: 4 },
@@ -182,9 +224,18 @@ export default function PortalOverview() {
   const pieSpec = useMemo(() => {
     const top = (data?.models || []).slice(0, 6);
     return {
-      type: 'pie', data: [{ id: 'd', values: top.map((m) => ({ k: m.model_name, v: m.requests })) }],
-      categoryField: 'k', valueField: 'v', color: PIE_COLORS,
-      outerRadius: 0.9, innerRadius: 0.62,
+      type: 'pie',
+      data: [
+        {
+          id: 'd',
+          values: top.map((m) => ({ k: m.model_name, v: m.requests })),
+        },
+      ],
+      categoryField: 'k',
+      valueField: 'v',
+      color: PIE_COLORS,
+      outerRadius: 0.9,
+      innerRadius: 0.62,
       label: { visible: false },
       // 图例合进了下面的表格，这里不再单独画一份
       legends: { visible: false },
@@ -210,16 +261,21 @@ export default function PortalOverview() {
       : { value: `${v}${unit}`, unavailable: false };
 
   if (loading && !data) {
-    return <div><PageHead title={t('概览')} /><Skeleton rows={5} /></div>;
+    return (
+      <div>
+        <PageHead title={t('概览')} />
+        <Skeleton rows={5} />
+      </div>
+    );
   }
 
   const d = data || {};
-  const useTime = na(d.avg_use_time_sec, ' 秒', '暂无数据');
-  const frt = na(d.avg_first_token_ms, ' ms', '没有流式请求，无法统计');
-  const cache = na(d.cache_ratio_pct, '%', '暂无数据');
+  const useTime = na(d.avg_use_time_sec, t(' 秒'), t('暂无数据'));
+  const frt = na(d.avg_first_token_ms, ' ms', t('没有流式请求，无法统计'));
+  const cache = na(d.cache_ratio_pct, '%', t('暂无数据'));
   const fail = d.error_log_enabled
-    ? na(d.fail_ratio_pct, '%', '暂无数据')
-    : { value: '未开启错误日志', unavailable: true };
+    ? na(d.fail_ratio_pct, '%', t('暂无数据'))
+    : { value: t('未开启错误日志'), unavailable: true };
 
   return (
     <div>
@@ -245,13 +301,20 @@ export default function PortalOverview() {
             {t(r.label)}
           </button>
         ))}
-        {loading ? <span style={{ fontSize: 12, color: 'var(--pt-text-muted)' }}>{t('加载中…')}</span> : null}
+        {loading ? (
+          <span style={{ fontSize: 12, color: 'var(--pt-text-muted)' }}>
+            {t('加载中…')}
+          </span>
+        ) : null}
       </div>
 
       <div className='pt-stat-grid'>
         <Stat label={t('请求数')} value={fmtInt(d.requests)} />
         <Stat label={t('Token 总量')} value={fmtCompact(d.tokens)} />
-        <Stat label={t('输入 / 输出')} value={`${fmtCompact(d.prompt_tokens)} / ${fmtCompact(d.completion_tokens)}`} />
+        <Stat
+          label={t('输入 / 输出')}
+          value={`${fmtCompact(d.prompt_tokens)} / ${fmtCompact(d.completion_tokens)}`}
+        />
         <Stat
           label={t('累计 Token')}
           value={fmtCompact(d.lifetime_tokens)}
@@ -265,18 +328,50 @@ export default function PortalOverview() {
 
       <div className='pt-section'>
         <h2 className='pt-section-title'>{t('质量指标')}</h2>
-        <p className='pt-section-sub'>{t('这段时间的实际表现；样本太少时会标明，不会拿 0 充数')}</p>
+        <p className='pt-section-sub'>
+          {t('这段时间的实际表现；样本太少时会标明，不会拿 0 充数')}
+        </p>
         <div className='pt-stat-grid' style={{ marginBottom: 0 }}>
           {/* P95 跟平均值放一起：单看平均会把长尾藏起来，
               10 次里 9 次 2 秒、1 次 40 秒，平均 5.8 秒看着挺好。 */}
-          <Stat label={t('平均耗时')} {...useTime} hint={tailHint(d.p95_use_time_sec, ' 秒', d.use_time_samples, t('次'))} />
-          <Stat label={t('首字延迟')} {...frt} hint={tailHint(d.p95_first_token_ms, ' ms', d.stream_samples, t('次流式'))} />
-          <Stat label={t('客户端断开')} value={fmtInt(d.client_gone)} hint={t('记为成功，不计入失败')} />
-          <Stat label={t('缓存输入占比')} {...cache} hint='命中缓存的输入 Token 占比' />
+          <Stat
+            label={t('平均耗时')}
+            {...useTime}
+            hint={tailHint(
+              d.p95_use_time_sec,
+              t(' 秒'),
+              d.use_time_samples,
+              t('次'),
+            )}
+          />
+          <Stat
+            label={t('首字延迟')}
+            {...frt}
+            hint={tailHint(
+              d.p95_first_token_ms,
+              ' ms',
+              d.stream_samples,
+              t('次流式'),
+            )}
+          />
+          <Stat
+            label={t('客户端断开')}
+            value={fmtInt(d.client_gone)}
+            hint={t('记为成功，不计入失败')}
+          />
+          <Stat
+            label={t('缓存输入占比')}
+            {...cache}
+            hint={t('命中缓存的输入 Token 占比')}
+          />
           <Stat
             label={t('上游调用失败比例')}
             {...fail}
-            hint={d.error_log_enabled ? `${fmtInt(d.failed)} / ${fmtInt(d.fail_denom)}` : '需管理员开启'}
+            hint={
+              d.error_log_enabled
+                ? `${fmtInt(d.failed)} / ${fmtInt(d.fail_denom)}`
+                : t('需管理员开启')
+            }
           />
         </div>
       </div>
@@ -284,86 +379,91 @@ export default function PortalOverview() {
       {/* 分布和趋势并排：一个回答「用了哪些模型」，一个回答「什么时候用的」，
           放一起互相对照。窄屏自动落回上下排列。 */}
       <div className='pt-two-col'>
-      <div className='pt-section'>
-        <h2 className='pt-section-title'>{t('模型分布')}</h2>
-        <p className='pt-section-sub'>{t('按请求数，取前 6 个')}</p>
-        <Card>
-          {(d.models || []).length === 0 ? (
-            <Empty text={t('这段时间还没有调用记录')} />
-          ) : (
-            <div className='pt-dist'>
-              <div className='pt-dist-chart'>
-                <VChart spec={pieSpec} option={{ mode: 'desktop-browser' }} />
-              </div>
-              {/* 色点直接放在表格里，替掉环图右边那份独立图例——
+        <div className='pt-section'>
+          <h2 className='pt-section-title'>{t('模型分布')}</h2>
+          <p className='pt-section-sub'>{t('按请求数，取前 6 个')}</p>
+          <Card>
+            {(d.models || []).length === 0 ? (
+              <Empty text={t('这段时间还没有调用记录')} />
+            ) : (
+              <div className='pt-dist'>
+                <div className='pt-dist-chart'>
+                  <VChart spec={pieSpec} option={{ mode: 'desktop-browser' }} />
+                </div>
+                {/* 色点直接放在表格里，替掉环图右边那份独立图例——
                   两者列的是同一批模型名，并排时白占掉一百多像素，
                   挤得 Token 那列都显示不全。 */}
-              <div className='pt-table-wrap'>
-                <table className='pt-table'>
-                  <thead>
-                    <tr>
-                      <th>{t('模型')}</th>
-                      <th className='pt-num'>{t('请求')}</th>
-                      <th className='pt-num'>{t('占比')}</th>
-                      <th className='pt-num'>Token</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(d.models || []).slice(0, 6).map((m, i) => (
-                      <tr key={m.model_name}>
-                        <td>
-                          <span className='pt-dist-name'>
-                            <i
-                              className='pt-dot'
-                              style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
-                              aria-hidden='true'
-                            />
-                            <span className='pt-mono'>{m.model_name}</span>
-                          </span>
-                        </td>
-                        <td className='pt-num'>{fmtInt(m.requests)}</td>
-                        <td className='pt-num'>
-                          {d.requests ? ((m.requests / d.requests) * 100).toFixed(1) : '0.0'}%
-                        </td>
-                        <td className='pt-num'>{fmtCompact(m.tokens)}</td>
+                <div className='pt-table-wrap'>
+                  <table className='pt-table'>
+                    <thead>
+                      <tr>
+                        <th>{t('模型')}</th>
+                        <th className='pt-num'>{t('请求')}</th>
+                        <th className='pt-num'>{t('占比')}</th>
+                        <th className='pt-num'>Token</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {(d.models || []).slice(0, 6).map((m, i) => (
+                        <tr key={m.model_name}>
+                          <td>
+                            <span className='pt-dist-name'>
+                              <i
+                                className='pt-dot'
+                                style={{
+                                  background: PIE_COLORS[i % PIE_COLORS.length],
+                                }}
+                                aria-hidden='true'
+                              />
+                              <span className='pt-mono'>{m.model_name}</span>
+                            </span>
+                          </td>
+                          <td className='pt-num'>{fmtInt(m.requests)}</td>
+                          <td className='pt-num'>
+                            {d.requests
+                              ? ((m.requests / d.requests) * 100).toFixed(1)
+                              : '0.0'}
+                            %
+                          </td>
+                          <td className='pt-num'>{fmtCompact(m.tokens)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
-        </Card>
-      </div>
-      <div className='pt-section'>
-        <div className='pt-section-head'>
-          <h2 className='pt-section-title'>{t('调用趋势')}</h2>
-          {/* 请求数和 Token 是两个口径：请求多不等于烧得多，
-              一次长上下文调用抵得上几十次短问答。两个都得能看。 */}
-          <div className='pt-chips'>
-            {TREND_METRICS.map((x) => (
-              <button
-                key={x.key}
-                type='button'
-                className={`pt-chip${trend === x.key ? ' on' : ''}`}
-                aria-pressed={trend === x.key}
-                onClick={() => setTrend(x.key)}
-              >
-                {t(x.label)}
-              </button>
-            ))}
-          </div>
+            )}
+          </Card>
         </div>
-        <Card>
-          {(d.series || []).some((p) => p.requests > 0) ? (
-            <div className='pt-trend-chart'>
-              <VChart spec={lineSpec} option={{ mode: 'desktop-browser' }} />
+        <div className='pt-section'>
+          <div className='pt-section-head'>
+            <h2 className='pt-section-title'>{t('调用趋势')}</h2>
+            {/* 请求数和 Token 是两个口径：请求多不等于烧得多，
+              一次长上下文调用抵得上几十次短问答。两个都得能看。 */}
+            <div className='pt-chips'>
+              {TREND_METRICS.map((x) => (
+                <button
+                  key={x.key}
+                  type='button'
+                  className={`pt-chip${trend === x.key ? ' on' : ''}`}
+                  aria-pressed={trend === x.key}
+                  onClick={() => setTrend(x.key)}
+                >
+                  {t(x.label)}
+                </button>
+              ))}
             </div>
-          ) : (
-            <Empty text={t('这段时间还没有调用记录')} />
-          )}
-        </Card>
-      </div>
+          </div>
+          <Card>
+            {(d.series || []).some((p) => p.requests > 0) ? (
+              <div className='pt-trend-chart'>
+                <VChart spec={lineSpec} option={{ mode: 'desktop-browser' }} />
+              </div>
+            ) : (
+              <Empty text={t('这段时间还没有调用记录')} />
+            )}
+          </Card>
+        </div>
       </div>
 
       {recent.length ? (
