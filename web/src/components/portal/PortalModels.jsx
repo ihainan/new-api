@@ -86,6 +86,59 @@ function Chevron({ open }) {
   );
 }
 
+/*
+ * 能力矩阵。三态：支持、实测不支持、没测过。把没测过的画成不支持，
+ * 和编一个规格是同一类谎话，所以第三态必须存在且看得出来。
+ */
+const CAPS = [
+  ['stream', '流式输出', <path d='M4 7h16M4 12h11M4 17h7' />],
+  ['tools', '函数调用', <><path d='M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h2' /><path d='M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2h-2' /></>],
+  ['json', '结构化输出', <><path d='M9 4H7a2 2 0 00-2 2v4l-2 2 2 2v4a2 2 0 002 2h2' /><path d='M15 4h2a2 2 0 012 2v4l2 2-2 2v4a2 2 0 01-2 2h-2' /></>],
+  ['vision', '图像输入', <><rect x='3' y='5' width='18' height='14' rx='2' /><circle cx='8.5' cy='10' r='1.5' /><path d='M21 16l-5-5-6 6' /></>],
+  ['reasoning', '深度思考', <><path d='M9 18h6' /><path d='M10 21h4' /><path d='M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z' /></>],
+  ['cache', '提示缓存', <><path d='M20 11a8 8 0 10-2.3 5.7' /><path d='M20 5v6h-6' /></>],
+];
+
+function CapGrid({ caps }) {
+  return (
+    <div className='pt-caps'>
+      {CAPS.map(([key, label, path]) => {
+        const v = caps ? caps[key] : undefined;
+        const state = v === true ? 'on' : v === false ? 'off' : 'unknown';
+        return (
+          <span key={key} className={`pt-cap ${state}`}>
+            <svg
+              width='15'
+              height='15'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='1.7'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              aria-hidden='true'
+            >
+              {path}
+            </svg>
+            <span>{label}</span>
+            {state === 'unknown' ? <em className='pt-cap-tag'>未测</em> : null}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function ModalityItem({ label, items }) {
+  if (!items || !items.length) return null;
+  return (
+    <div className='pt-spec'>
+      <dt>{label}</dt>
+      <dd>{items.join('、')}</dd>
+    </div>
+  );
+}
+
 function SpecItem({ label, value }) {
   if (!value) return null;
   return (
@@ -159,8 +212,8 @@ function ModelRow({ m, open, onToggle }) {
           {m.detail ? <p className='pt-mdl-text'>{m.detail}</p> : null}
           {m.note ? <p className='pt-mdl-note'>{m.note}</p> : null}
           <dl className='pt-specs'>
-            <SpecItem label='参数规模' value={m.params} />
-            <SpecItem label='部署方式' value={m.deployment} />
+            <ModalityItem label='输入模态' items={m.inputs} />
+            <ModalityItem label='输出模态' items={m.outputs} />
             {/* 上下文只对吃文本的模型有意义；出图、语音、视频那几个没有这个概念，
                 给它们填「以上游部署为准」只是一行看不懂的噪音。
                 文本模型里没测出来的才回退到那句话——比编一个数字诚实。 */}
@@ -179,11 +232,21 @@ function ModelRow({ m, open, onToggle }) {
               value={m.official && m.official !== m.context ? m.official : null}
             />
             <SpecItem label='单次输出上限' value={m.maxOutput} />
-            <SpecItem label='输入 / 输出' value={m.io} />
+            <SpecItem label='参数规模' value={m.params} />
+            <SpecItem label='权重大小' value={m.size} />
+            <SpecItem label='部署方式' value={m.deployment} />
             <SpecItem label='调用协议' value={protocols} />
             <SpecItem label='实际上游' value={m.upstream} />
             <SpecItem label='可用分组' value={(m.groups || []).join(' / ')} />
           </dl>
+
+          {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
+          {m.category === 'chat' ? (
+            <div className='pt-caps-wrap'>
+              <div className='pt-caps-label'>能力</div>
+              <CapGrid caps={m.caps} />
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

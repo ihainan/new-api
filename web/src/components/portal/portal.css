@@ -711,3 +711,49 @@
 @media (prefers-reduced-motion: reduce) {
   .pt-skel { animation: none; }
 }
+
+/* 能力矩阵。不支持的项不删掉而是压暗——「这个模型不能做什么」和「能做什么」
+   同样是选型依据，删掉等于让人自己去试错。
+   三态用颜色 + 文字区分，不单靠颜色：未测的额外带一个「未测」标。 */
+.pt-caps-wrap {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pt-border);
+}
+.pt-caps-label {
+  font-size: 12px;
+  color: var(--pt-text-meta);
+  margin-bottom: 8px;
+}
+.pt-caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 20px;
+}
+.pt-cap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--pt-text-primary);
+  min-width: 0;
+}
+.pt-cap svg { flex: none; }
+/* 实测不支持：整项压暗并划掉，一眼能和支持的分开 */
+.pt-cap.off {
+  color: var(--pt-text-muted);
+}
+.pt-cap.off > span { text-decoration: line-through; }
+/* 没测过：不划掉，但明确标出来，不许冒充「不支持」 */
+.pt-cap.unknown { color: var(--pt-text-meta); }
+.pt-cap-tag {
+  font-style: normal;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: var(--pt-radius-sm);
+  background: var(--pt-bg-subtle);
+  color: var(--pt-text-meta);
+}
+@media (max-width: 640px) {
+  .pt-caps { grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+}
