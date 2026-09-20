@@ -140,7 +140,7 @@ export const MODELS = [
     ,
     highlight: '当前指向 GLM-5.3，后续会持续更新，模型 ID 保持不变。',
     detail:
-      '与 glm 同一模型，当前指向 GLM-5.3，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '与 glm 同一模型，当前指向 GLM-5.3，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
     size: '同 glm',
     context: '1,000,000 tokens（同 glm）',

@@ -621,7 +621,8 @@
   margin-bottom: 2px;
 }
 .pt-mdl-name {
-  font-size: 14.5px;
+  /* 与侧边栏导航项同号，只靠字重拉开层级 */
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.1px;
   /* 目录没覆盖到的模型名可能很长又没有空格，不给断点会把整行撑破 */
@@ -646,12 +647,14 @@
  */
 .pt-mdl-full,
 .pt-mdl-brief {
-  margin-top: 8px;
-  font-size: 14px;
-  line-height: 1.75;
+  margin-top: 7px;
+  /* 与侧边栏正文同号；行高 1.75 显得比左边大一圈，收到 1.7 */
+  font-size: 13.5px;
+  line-height: 1.7;
   color: var(--pt-text-secondary);
-  /* 1em ≈ 一个汉字宽，所以这个数就是每行的汉字数 */
-  max-width: 42em;
+  /* 1em ≈ 一个汉字宽，所以这个数就是每行的汉字数。42 太窄，
+     卡片有 1300px 宽却每行都写不满，右边空一大片 */
+  max-width: 58em;
 }
 .pt-mdl-full { display: block; }
 /* 折叠时截两行；展开时是同一段，只是去掉截断 */
