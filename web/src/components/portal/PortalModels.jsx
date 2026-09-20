@@ -35,6 +35,72 @@ import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
 // 只有这两类是按 token 吃上下文的
 const TEXT_CATEGORIES = new Set(['chat', 'retrieval']);
 
+/*
+ * 分类图标。作用是让人一眼认出滚到了哪一段——十几个模型分五类，
+ * 光靠一行小标题不够显眼。
+ * 颜色按分类给，是为了区分段落，不是为了好看：同一个色只对应同一类。
+ * 图标本身用线性描边，和侧栏导航那套保持一致。
+ */
+const CATEGORY_ICONS = {
+  chat: <path d='M20 15a2 2 0 01-2 2H8l-4 3V6a2 2 0 012-2h12a2 2 0 012 2z' />,
+  image: (
+    <>
+      <rect x='3' y='4' width='18' height='16' rx='2' />
+      <circle cx='8.5' cy='9.5' r='1.5' />
+      <path d='M21 16l-5-5-6 6' />
+    </>
+  ),
+  audio: (
+    <>
+      <path d='M12 3v18' />
+      <path d='M8 7v10' />
+      <path d='M16 7v10' />
+      <path d='M4 10v4' />
+      <path d='M20 10v4' />
+    </>
+  ),
+  video: (
+    <>
+      <rect x='2' y='5' width='14' height='14' rx='2' />
+      <path d='M22 8l-6 4 6 4z' />
+    </>
+  ),
+  retrieval: (
+    <>
+      <path d='M12 3l9 5-9 5-9-5z' />
+      <path d='M3 13l9 5 9-5' />
+    </>
+  ),
+  other: (
+    <>
+      <circle cx='5' cy='12' r='1.6' />
+      <circle cx='12' cy='12' r='1.6' />
+      <circle cx='19' cy='12' r='1.6' />
+    </>
+  ),
+};
+
+function CategoryIcon({ category }) {
+  const path = CATEGORY_ICONS[category];
+  if (!path) return null;
+  return (
+    <svg
+      className={`pt-cat-icon cat-${category}`}
+      width='16'
+      height='16'
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='1.7'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      aria-hidden='true'
+    >
+      {path}
+    </svg>
+  );
+}
+
 function Chevron({ open }) {
   return (
     <svg
@@ -448,7 +514,10 @@ export default function PortalModels() {
           ) : (
             groups.map((g) => (
               <section key={g.key} className='pt-mdl-group'>
-                <h2 className='pt-mdl-group-title'>{g.label}</h2>
+                <h2 className='pt-mdl-group-title'>
+                  <CategoryIcon category={g.key} />
+                  {t(g.label)}
+                </h2>
                 <div className='pt-mdl-list'>
                   {g.items.map((m) => (
                     <ModelRow

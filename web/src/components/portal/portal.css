@@ -525,12 +525,25 @@
 .pt-chip.on .pt-chip-n { color: rgba(255, 255, 255, 0.7); }
 
 .pt-mdl-group { margin-bottom: 26px; }
+/* 分类标题带图标。颜色按分类分，是为了让人一眼认出滚到了哪一段——
+   十几个模型分五类，光一行小字不够显眼。同一个色只对应同一类，
+   不是随便挑来点缀的。取值都压过了对比度：见下面每个 cat-* 的注释。 */
 .pt-mdl-group-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
   font-weight: 600;
   color: var(--pt-text-secondary);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
+.pt-cat-icon { flex: none; }
+.pt-cat-icon.cat-chat { color: #2563d4; }       /* 学院蓝，和 --pt-accent 同源 */
+.pt-cat-icon.cat-image { color: #8a5cd6; }      /* 紫：出图 */
+.pt-cat-icon.cat-audio { color: #1d8a8a; }      /* 青：语音 */
+.pt-cat-icon.cat-video { color: #c8372f; }      /* 红：视频，与 --pt-danger-text 同值 */
+.pt-cat-icon.cat-retrieval { color: #157f3c; }  /* 绿：检索，与 --pt-ok-text 同值 */
+.pt-cat-icon.cat-other { color: var(--pt-text-muted); }
 .pt-mdl-list {
   display: flex;
   flex-direction: column;
@@ -780,6 +793,11 @@
   color: var(--pt-text-primary);
   min-width: 0;
 }
+/* 支持的那几项给图标上正向色。只染图标不染文字：文字染色会削弱可读性，
+   而且一行里多个强调等于没有强调。 */
+.pt-cap.on svg { color: #157f3c; }
+/* 调用失败是「你发过去会报错」，比「模型没这能力」更该跳出来 */
+.pt-cap.err svg { color: var(--pt-danger-text); }
 .pt-cap svg { flex: none; }
 /* 能力名不换行：它后面可能跟一个状态标，标一长就会把名字挤成两行 */
 .pt-cap > span:not(.pt-cap-tag) { white-space: nowrap; }
