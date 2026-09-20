@@ -94,7 +94,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '按请求特征自动选择后端模型，调用方只写这一个 ID。',
     detail:
-      '按请求特征在后端模型之间自动分发，调用方只写这一个 ID，后端变更时无需改动代码。代价是单次请求落在哪个模型上不可知——需要确定性时请直接指定具体模型 ID。',
+      '实际在 GLM-5.3 与 Qwen3.6-35B-A3B 之间分发。按请求特征自动选择，调用方只写这一个 ID，后端变更时无需改动代码。代价是单次请求落在哪个模型上不可知——需要确定性时请直接指定具体模型 ID。',
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
     params: '随后端而定（GLM 743B MoE / Qwen 35B MoE）',
@@ -111,12 +111,12 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '通用对话模型，当前指向 GLM-5.3。'
+    summary: '实际指向 GLM-5.3 的通用对话模型。'
     ,
     // 版本会随上游升级，所以标题不写版本号，只在这里说当前指向谁。
     highlight: '接口指向的模型版本会随上游持续更新，模型 ID 保持不变。',
     detail:
-      '通用对话模型，当前指向 GLM-5.3。适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，为平台上最大，近 30 天平台上绝大部分对话请求由它承接。',
+      '实际指向 GLM-5.3。通用对话模型，适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，为平台上最大，近 30 天平台上绝大部分对话请求由它承接。',
     // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '官方 FP8 权重约 756 GB',
@@ -136,11 +136,11 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
-    summary: '与 glm 同一模型，使用 Anthropic Messages 协议，当前指向 GLM-5.3。'
+    summary: '实际指向 GLM-5.3，与 glm 同一模型，使用 Anthropic Messages 协议。'
     ,
     highlight: '当前指向 GLM-5.3，后续会持续更新，模型 ID 保持不变。',
     detail:
-      '与 glm 同一模型，当前指向 GLM-5.3，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '实际指向 GLM-5.3，与 glm 同一模型，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '同 glm',
     context: '1,000,000 tokens（同 glm）',
@@ -213,7 +213,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '语音转文字，适用于会议录音与访谈整理。',
     detail:
-      '将音频转为文本，支持中文及中英混合口语。常见用途包括会议录音转写、访谈整理与视频字幕。接口兼容 OpenAI 的 audio/transcriptions。',
+      '实际指向 Qwen3-ASR-1.7B。将音频转为文本，支持中文及中英混合口语。常见用途包括会议录音转写、访谈整理与视频字幕。接口兼容 OpenAI 的 audio/transcriptions。',
     params: '未公布',
     context: null,
     io: '音频 → 文本',
@@ -228,7 +228,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '文字转语音，支持音色复刻。',
     detail:
-      '将文本合成为自然语音，可依据一小段参考音频复刻音色。适用于播报、有声材料与数字人配音。接口兼容 OpenAI 的 audio/speech。',
+      '实际指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）。将文本合成为自然语音，可依据一小段参考音频复刻音色。适用于播报、有声材料与数字人配音。接口兼容 OpenAI 的 audio/speech。',
     params: '未公布',
     context: null,
     io: '文本 → 音频',
