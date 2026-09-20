@@ -38,9 +38,10 @@ For commercial licensing, please contact support@quantumnous.com
  *      让服务端在推理前报出真实上限，不产生计费。
  *      实测记录：
  *        2026-09-19  smart-router / qwen / minimax 上游自报 262144。
- *        2026-09-20  glm 收下 278059 token 的 prompt 仍返回 200，故下限
- *                    至少 272K，比其余模型的 262144 还大；上游从不报出
- *                    确切上下文，所以写「≥」而不是猜一个整数。
+ *        2026-09-20  glm 按部署方说明跑在官方 1M 档。实测与之一致且无冲突：
+ *                    max_tokens 硬上限 131072 与官方完全相同，278,059 token
+ *                    的 prompt 照收不误。该上游超限不拒绝而是照单全收，
+ *                    所以只能从下面逼近、拿不到它自己报出的确切上限。
  *        2026-09-20  本地集群（Ollama + 自写转发层）读 usage.prompt_tokens：
  *                    gemma4 / bge-m3 卡在 2048，qwen3-embedding 卡在 4096，
  *                    bge-reranker 到 8192。前三个远低于模型本身的能力，
@@ -86,11 +87,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '平台调用量最大的通用对话模型，私有化部署。',
     detail:
-      '日常问答、改写、总结、代码辅助都能用。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
+      '日常问答、改写、总结、代码辅助都能用。100 万 token 的上下文是平台上最大的，整个代码仓库或几百页文档可以一次塞进去。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
     params: '未公布',
     deployment: 'FP8 量化，私有化部署',
-    context: '≥ 278,059 tokens（实测未触顶）',
-    official: '1,000,000 tokens',
+    context: '1,000,000 tokens',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: 'glm-5.2-fp8-private（私有化推理接入点）',
@@ -106,8 +106,7 @@ export const MODELS = [
       '后端与 glm 是同一个部署，区别只在请求格式。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '未公布',
     deployment: '与 glm 同一部署',
-    context: '≥ 278,059 tokens（同 glm）',
-    official: '1,000,000 tokens',
+    context: '1,000,000 tokens（同 glm）',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: '同 glm（同一推理接入点）',
