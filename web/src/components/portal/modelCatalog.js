@@ -27,8 +27,8 @@ For commercial licensing, please contact support@quantumnous.com
  * 维护约定
  *   1. 平台上下模型时，同步改这个文件；漏改的后果是「网关有、页面没有」，
  *      页面对 /api/pricing 里存在但这里缺失的模型会兜底显示，不会整条消失。
- *   2. upstream 字段抄渠道配置里的 model_mapping，不要凭模型别名猜。
- *      别名和上游经常对不上（见下面 minimax 的 note）。
+ *   2. 页面不写部署形态，也不写实际上游：模型全部是私有化部署，
+ *      在每个模型上重复说一遍是噪音；上游是运维细节，调用方用不上。
  *   3. size 是权重体积。Ollama 拉的几个用官方库的下载体积；托管的按参数量×精度
  *      估算（FP8 每参数 1 字节）。本地集群那层把 Ollama 原生 /api/tags 挡掉了，
  *      拿不到真实落盘体积，所以估算的必须在文案里说明是估的。
@@ -90,40 +90,41 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '不确定用哪个模型时的默认入口，网关替你选后端。',
+    summary: '按请求特征自动选择后端模型，调用方只写这一个 ID。',
     detail:
-      '按请求特征在后端模型之间自动分发，调用方只写这一个 ID，后端换了也不必改代码。代价是你不知道某一次请求实际落在哪个模型上——要确定性就直接写具体模型 ID。',
-    params: '随后端而定（glm 744B MoE / qwen 35B MoE）',
+      '按请求特征在后端模型之间自动分发，调用方只写这一个 ID，后端变更时无需改动代码。代价是单次请求落在哪个模型上不可知——需要确定性时请直接指定具体模型 ID。',
+    // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
+    // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
+    params: '随后端而定（GLM 744B MoE / Qwen 35B MoE）',
     size: '随后端而定',
-    deployment: '随实际路由到的模型而定',
     context: '200,000 tokens（建议单次请求不超过）',
     io: '文本 → 文本',
-    upstream: '由路由服务在 glm 与 qwen 之间动态选择',
   },
   {
     id: 'glm',
-    name: 'GLM-5.2',
+    name: 'GLM 模型接口',
     icon: 'Zhipu',
     inputs: ['文本'],
     outputs: ['文本'],
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '平台调用量最大的通用对话模型，私有化部署。',
+    summary: '通用对话模型，当前指向 GLM-5.3。'
+    ,
+    // 版本会随上游升级，所以标题不写版本号，只在这里说当前指向谁。
+    highlight: '接口指向的模型版本会随上游持续更新，模型 ID 保持不变。',
     detail:
-      '日常问答、改写、总结、代码辅助都能用。上下文 100 万 token，是平台上最大的；实测塞进 21.9 万 token 的材料后，问最末尾的内容仍能准确答出。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
+      '通用对话模型，当前指向 GLM-5.3。适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，为平台上最大，近 30 天平台上绝大部分对话请求由它承接。',
+    // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
-    size: '理论估算约 744 GB（744B × FP8 每参数 1 字节）',
-    deployment: 'FP8 量化，私有化部署',
+    size: '理论估算约 744 GB',
     context: '1,000,000 tokens（平台配置值）',
-    verified: '实测：塞入 219,563 token 后，问最末尾的内容仍能准确答出',
     maxOutput: '131,072 tokens（单次最多输出）',
     io: '文本 → 文本',
-    upstream: 'glm-5.2-fp8-private（私有化推理接入点）',
   },
   {
     id: 'glm-anthropic',
-    name: 'GLM-5.2（Anthropic 协议）',
+    name: 'GLM 模型接口（Anthropic 协议）',
     icon: 'Zhipu',
     inputs: ['文本'],
     outputs: ['文本'],
@@ -133,17 +134,16 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
-    summary: '和 glm 同一个模型，换成 Anthropic Messages 协议。',
+    summary: '与 glm 同一模型，使用 Anthropic Messages 协议，当前指向 GLM-5.3。'
+    ,
+    highlight: '当前指向 GLM-5.3，后续会持续更新，模型 ID 保持不变。',
     detail:
-      '后端与 glm 是同一个部署，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '与 glm 同一模型，当前指向 GLM-5.3，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
     size: '同 glm',
-    deployment: '与 glm 同一部署',
     context: '1,000,000 tokens（同 glm）',
-    verified: '能力已在 /v1/messages 上单独实测；上下文同 glm',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
-    upstream: '同 glm（同一推理接入点）',
   },
   {
     id: 'qwen',
@@ -156,15 +156,14 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '混合专家架构，激活参数小、吞吐高的对话模型。',
+    summary: '混合专家架构的对话模型，激活参数少、吞吐高。',
     detail:
-      '350 亿总参数的混合专家模型，每次推理只激活约 30 亿参数。上下文 262,144 token，是平台上仅次于 glm 的长文选择。会输出思考过程（在 reasoning 字段里，注意不是 glm 用的 reasoning_content）。',
+      '350 亿总参数的混合专家模型，单次推理约激活 30 亿参数。上下文 262,144 token，长文场景下仅次于 glm。会输出思考过程，字段名为 reasoning——注意不是 glm 使用的 reasoning_content。',
     params: '35B 总参数 / 3B 激活（MoE）',
     size: '官方 FP8 仓库 37.5 GB',
     context: '262,144 tokens',
     official: '262,144 原生，可扩至约 1M',
     io: '文本 → 文本',
-    upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
   },
   {
     // 待复查（2026-09-20）：图像输入报 500 是转发层的问题，运维正在修。
@@ -178,15 +177,14 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: 'error', reasoning: false, cache: false },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '开放权重模型，跑在本地集群上。上下文只有 2K，超出的部分会被静默丢弃。',
+    summary: '开放权重模型。上下文 2K，超出部分会被静默丢弃。',
     detail:
-      '260 亿参数的开放权重模型，部署在本地推理集群。模型本身带视觉投影层，但当前部署发图片请求会直接报 500，实际用不了。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意当前部署的上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
+      '260 亿参数的开放权重模型。模型本身带视觉投影层，但当前发图片请求会直接报 500，实际用不了。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
     params: '26B 参数',
     size: '19 GB（Q4_K_M，含 1.2 GB 视觉投影层）',
     context: '2,048 tokens（实测：超出部分被丢弃）',
     official: '256K tokens',
     io: '文本 → 文本',
-    upstream: 'gemma4:26b（本地集群部署）',
   },
   {
     id: 'qwen-image',
@@ -196,13 +194,12 @@ export const MODELS = [
     outputs: ['图像'],
     category: 'image',
     endpoints: ['openai'],
-    summary: '文生图，中文提示词和画面内文字渲染都能处理。',
+    summary: '文生图，支持中文提示词与画面内文字渲染。',
     detail:
-      '按文字描述生成图片。相比多数开源出图模型，它对中文提示词的理解和在画面里写中文字的能力明显更好，做海报、配图、示意图时不必先把提示词翻成英文。',
+      '按文字描述生成图片。相比多数开源出图模型，对中文提示词的理解与画面内中文渲染明显更好，制作海报、配图、示意图时无需先将提示词译为英文。',
     params: '未公布',
     context: null,
     io: '文本 → 图像',
-    upstream: 'zgcai-qwen-image（经 model-bridge）',
   },
   {
     id: 'qwen-asr',
@@ -212,13 +209,12 @@ export const MODELS = [
     outputs: ['文本'],
     category: 'audio',
     endpoints: ['openai'],
-    summary: '语音转文字，会议录音、访谈整理都能用。',
+    summary: '语音转文字，适用于会议录音与访谈整理。',
     detail:
-      '把音频转成文本，支持中文和中英夹杂的口语。典型用法是会议录音转写、访谈整理、给视频配字幕。接口兼容 OpenAI 的 audio/transcriptions。',
+      '将音频转为文本，支持中文及中英混合口语。常见用途包括会议录音转写、访谈整理与视频字幕。接口兼容 OpenAI 的 audio/transcriptions。',
     params: '未公布',
     context: null,
     io: '音频 → 文本',
-    upstream: 'zgcai-qwen3-asr（经 model-bridge）',
   },
   {
     id: 'cosy-voice',
@@ -230,11 +226,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '文字转语音，支持音色复刻。',
     detail:
-      '把文本合成为自然语音，可以用一小段参考音频复刻音色。适合做播报、有声材料、数字人配音。接口兼容 OpenAI 的 audio/speech。',
+      '将文本合成为自然语音，可依据一小段参考音频复刻音色。适用于播报、有声材料与数字人配音。接口兼容 OpenAI 的 audio/speech。',
     params: '未公布',
     context: null,
     io: '文本 → 音频',
-    upstream: 'zgcai-cosyvoice（经 model-bridge）',
   },
   {
     id: 'minimax-h3',
@@ -244,13 +239,12 @@ export const MODELS = [
     outputs: ['视频'],
     category: 'video',
     endpoints: ['openai-video'],
-    summary: '文生视频 / 图生视频，异步出片。',
+    summary: '文生视频 / 图生视频，异步返回结果。',
     detail:
-      '按文字描述生成一段视频，也可以给一张图让它动起来。生成耗时以分钟计，走的是异步任务接口：提交后拿任务 ID，再轮询结果，不要按同步请求写超时。进度可以在「使用记录 → 任务」里看。',
+      '按文字描述生成视频，也支持由单张图片生成。生成耗时以分钟计，使用异步任务接口：提交后取回任务 ID，再轮询结果，不要按同步请求设置超时。进度可在「使用记录 → 任务」查看。',
     params: '未公布',
     context: null,
     io: '文本 / 图像 → 视频',
-    upstream: 'zgcai-minimax-h3（经 model-bridge）',
   },
   {
     id: 'bge-m3',
@@ -260,15 +254,14 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '多语言向量模型，做检索和知识库的第一步。超长文本会被静默截断。',
+    summary: '多语言向量模型，用于检索与知识库。超长文本会被静默截断。',
     detail:
-      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。当前部署只给到 2048 token（中文约 3,400 字，随内容浮动），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
+      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。只给到 2048 token（中文约 3,400 字，随内容浮动），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
     params: '约 568M 参数',
     size: '1.2 GB',
     context: '2,048 tokens（实测：超出部分被丢弃）',
     official: '8,192 tokens',
     io: '文本 → 1024 维向量',
-    upstream: 'bge-m3（本地集群部署）',
   },
   {
     id: 'qwen3-embedding:4b',
@@ -278,15 +271,14 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '更大的向量模型，能吃下 BGE-M3 两倍长的文本。',
+    summary: '向量模型，可处理 BGE-M3 两倍长度的文本。',
     detail:
-      '同样是把文本转向量。当前部署给到 4096 token（中文约 8,000 字），是 BGE-M3 的两倍，同样的文档少切几刀，但超出部分一样被静默丢弃。参数量更大，因此更慢、更占显存。',
+      '同样用于将文本转为向量。可用 4096 token（中文约 8,000 字），为 BGE-M3 的两倍，同一份文档需要切分的次数更少，但超出部分同样被静默丢弃。参数量更大，因此更慢、更占显存。',
     params: '4B 参数',
     size: '2.5 GB',
     context: '4,096 tokens（实测：超出部分被丢弃）',
     official: '32K tokens',
     io: '文本 → 向量',
-    upstream: 'qwen3-embedding:4b（本地集群部署）',
   },
   {
     id: 'bge-reranker-v2-m3',
@@ -296,14 +288,13 @@ export const MODELS = [
     outputs: ['分数'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '重排模型，给向量召回的结果做第二轮精排。',
+    summary: '重排模型，对向量召回结果做二次精排。',
     detail:
-      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。窗口由每个「问题＋文档」对各自占用，不是所有候选文档合起来共享一份。',
+      '接在向量检索之后使用：先由 BGE-M3 粗召回数十条，再逐条与问题比对并重新打分，将最相关的排到前面。它不产出向量，只输出相关性分数，单独使用没有意义。窗口由每个「问题＋文档」对各自占用，并非所有候选文档共享一份。',
     params: '约 568M 参数',
     size: '约 1.2 GB',
     context: '实测在 12,000～14,000 字之间被截断',
     io: '（问题、文档）→ 相关性分数',
-    upstream: 'bge-reranker-v2-m3（本地集群部署）',
   },
 ];
 
@@ -350,7 +341,6 @@ export function describe(id) {
       params: null,
       context: null,
       io: null,
-      upstream: null,
       // 目录没跟上时排到最后，不要插在维护过的模型中间
       order: 9999,
       unlisted: true,

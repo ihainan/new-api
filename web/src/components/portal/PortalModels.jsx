@@ -86,8 +86,8 @@ function CategoryIcon({ category }) {
   return (
     <svg
       className={`pt-cat-icon cat-${category}`}
-      width='16'
-      height='16'
+      width='18'
+      height='18'
       viewBox='0 0 24 24'
       fill='none'
       stroke='currentColor'
@@ -167,9 +167,14 @@ function CapGrid({ caps }) {
                 : null;
         return (
           <span key={key} className={`pt-cap ${state}`}>
+            {/* 状态符号。光靠颜色深浅和删除线，支持和不支持隔一米就分不出来了；
+                ✓ / ✕ 是不依赖颜色也能读的那一层。 */}
+            <b className='pt-cap-mark' aria-hidden='true'>
+              {state === 'on' ? '✓' : state === 'unknown' || state === 'na' ? '–' : '✕'}
+            </b>
             <svg
-              width='15'
-              height='15'
+              width='16'
+              height='16'
               viewBox='0 0 24 24'
               fill='none'
               stroke='currentColor'
@@ -203,19 +208,50 @@ function CapGrid({ caps }) {
 const METRIC_ICONS = {
   context: <><path d='M4 7h16' /><path d='M4 12h10' /><path d='M4 17h16' /></>,
   output: <><path d='M14 5l7 7-7 7' /><path d='M21 12H8' /><path d='M3 4v16' /></>,
-  io: <><path d='M3 8h13l-3-3' /><path d='M21 16H8l3 3' /></>,
+  in: <><path d='M3 12h13' /><path d='M12 7l5 5-5 5' /><path d='M21 4v16' /></>,
+  out: <><path d='M8 12h13' /><path d='M17 7l5 5-5 5' /><path d='M3 4v16' /></>,
   protocol: <><rect x='3' y='4' width='18' height='16' rx='2' /><path d='M8 10l-2 2 2 2' /><path d='M16 10l2 2-2 2' /></>,
 };
 
-function Metric({ icon, label, value, col }) {
+/*
+ * 大数字缩写：1,000,000 → 1M、262,144 → 256K。
+ * 一行五个指标，写全了光数字就占掉一半宽度，而挑模型时要的是量级不是精确值。
+ * 完整数字放进 title，鼠标停一下就能看到——省地方不等于把信息藏掉。
+ *
+ * 优先按 1024 的倍数缩（模型上下文基本都是 2 的幂，262,144 写成 256K 才是
+ * 大家认的写法），不是整倍数再退回十进制。
+ */
+function abbrNumber(n) {
+  if (!Number.isFinite(n) || n < 1000) return null;
+  for (const [unit, base] of [['M', 1048576], ['K', 1024]]) {
+    if (n % base === 0) return n / base + unit;
+  }
+  for (const [unit, base] of [['M', 1000000], ['K', 1000]]) {
+    if (n % base === 0) return n / base + unit;
+  }
+  return null;
+}
+
+// 值里第一个带千分位的数字换成缩写，其余原样留着（单位、括号里的限定语）
+function abbrValue(text) {
+  if (typeof text !== 'string') return { text, full: null };
+  const m = /(\d[\d,]*)/.exec(text);
+  if (!m) return { text, full: null };
+  const short = abbrNumber(Number(m[1].replace(/,/g, '')));
+  if (!short) return { text, full: null };
+  return { text: text.replace(m[1], short), full: text };
+}
+
+function Metric({ icon, label, value, col, abbr }) {
   if (!value) return null;
+  const shown = abbr ? abbrValue(value) : { text: value, full: null };
   // 列位写死：某个模型缺某项指标时（比如路由没有「单次输出」），
   // 后面的不能顶上来，否则纵向就对不齐了，指标条也就白做了。
   return (
     <div className='pt-metric' style={{ gridColumn: col }}>
       <svg
-        width='14'
-        height='14'
+        width='16'
+        height='16'
         viewBox='0 0 24 24'
         fill='none'
         stroke='currentColor'
@@ -227,22 +263,22 @@ function Metric({ icon, label, value, col }) {
         {METRIC_ICONS[icon]}
       </svg>
       <span className='pt-metric-label'>{label}</span>
-      <span className='pt-metric-value'>{value}</span>
+      <span
+        className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
+        title={shown.full || undefined}
+      >
+        {shown.text}
+      </span>
     </div>
   );
 }
 
 function SpecItem({ label, value, wide }) {
   if (!value) return null;
-  const m = /^(.*?)（(.+)）$/.exec(value);
-  const [main, note] = m ? [m[1].trim(), m[2]] : [value, null];
   return (
     <div className={`pt-spec${wide ? ' wide' : ''}`}>
       <dt>{label}</dt>
-      <dd>
-        {main}
-        {note ? <span className='pt-spec-note'>{note}</span> : null}
-      </dd>
+      <dd>{value}</dd>
     </div>
   );
 }
@@ -252,14 +288,10 @@ function ModelRow({ m, open, onToggle }) {
   const endpoints = m.endpoints || [];
   const protocols = endpoints.map((e) => t(ENDPOINT_LABELS[e] || e)).join(' / ');
   // 元信息挤在一行，用间隔点分开；空值直接不进数组，避免出现「· ·」。
-  // 输入输出一律从 inputs/outputs 推，不用目录里那个写死的 io 字段——
-  // 两处并存时会不一致（smart-router 的 io 写「文本 → 文本」，
-  // 但它的 inputs 是文本和图像）。
-  const io = (m.inputs || []).length
-    ? (m.inputs || []).map(t).join(t('、')) +
-      ' → ' +
-      (m.outputs || []).map(t).join(t('、'))
-    : null;
+  // 输入和输出各占一格。写成「文本 → 文本」是把两件事塞进一格，
+  // 纵向也对不齐——箭头左右的内容长度不一样，列就错位了。
+  const inputs = (m.inputs || []).map(t).join(t('、')) || null;
+  const outputs = (m.outputs || []).map(t).join(t('、')) || null;
   // 折叠行里上下文只留数字，括号里的限定语放到展开后的规格里说，
   // 否则一行挤三样东西，最该看的数字反而不显眼。
   const contextBrief = m.context ? t(m.context).replace(/（.+）$/, '') : null;
@@ -280,15 +312,25 @@ function ModelRow({ m, open, onToggle }) {
           aria-controls={panelId}
           onClick={onToggle}
         >
-          <ModelIcon icon={m.icon} />
+          <ModelIcon icon={m.icon} size={28} />
           <span className='pt-mdl-body'>
             <span className='pt-mdl-title'>
               <span className='pt-mdl-name'>{t(m.name)}</span>
               <code className='pt-mdl-id'>{m.id}</code>
             </span>
-            {m.summary ? <span className='pt-mdl-sum'>{t(m.summary)}</span> : null}
+            {/*
+              * 折叠时直接给详述的前两行，不再另外摆一句摘要——
+              * 两者开头说的是同一件事，并排放着就是同一句话写两遍。
+              * summary 字段保留，搜索还在用它。
+              */}
+            {open ? null : m.detail ? (
+              <span className='pt-mdl-brief'>{t(m.detail)}</span>
+            ) : m.summary ? (
+              <span className='pt-mdl-sum'>{t(m.summary)}</span>
+            ) : null}
             <span className='pt-metrics'>
               <Metric
+                abbr
                 col={1}
                 icon='context'
                 label={t('上下文')}
@@ -299,13 +341,15 @@ function ModelRow({ m, open, onToggle }) {
                 }
               />
               <Metric
+                abbr
                 col={2}
                 icon='output'
                 label={t('单次输出')}
                 value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
               />
-              <Metric col={3} icon='io' label={t('输入 / 输出')} value={io} />
-              <Metric col={4} icon='protocol' label={t('协议')} value={protocols} />
+              <Metric col={3} icon='in' label={t('输入')} value={inputs} />
+              <Metric col={4} icon='out' label={t('输出')} value={outputs} />
+              <Metric col={5} icon='protocol' label={t('协议')} value={protocols} />
             </span>
           </span>
         </button>
@@ -331,6 +375,11 @@ function ModelRow({ m, open, onToggle }) {
       {open ? (
         <div className='pt-mdl-detail' id={panelId}>
           {m.detail ? <p className='pt-mdl-text'>{t(m.detail)}</p> : null}
+          {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
+              加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
+          {m.highlight ? (
+            <p className='pt-mdl-highlight'>{t(m.highlight)}</p>
+          ) : null}
           {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
           {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
           {m.category === 'chat' ? (
@@ -345,14 +394,11 @@ function ModelRow({ m, open, onToggle }) {
           <dl className='pt-specs pt-specs-more'>
             <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
             <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
-            <SpecItem label={t('部署方式')} value={m.deployment && t(m.deployment)} />
-            <SpecItem label={t('实际上游')} value={m.upstream && t(m.upstream)} />
             <SpecItem
               label={t('模型官方规格')}
               value={m.official && m.official !== m.context ? t(m.official) : null}
             />
             {/* 实测到什么程度，单独占一整行：它是一句话，塞进窄格里会断得很碎 */}
-            <SpecItem wide label={t('实测验证')} value={m.verified && t(m.verified)} />
           </dl>
         </div>
       ) : null}

@@ -633,6 +633,18 @@
   border-radius: var(--pt-radius-sm);
   word-break: break-all;
 }
+/* 折叠时的详细描述：截两行，展开后是完整的同一段 */
+.pt-mdl-brief {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pt-text-meta);
+}
+
 .pt-mdl-sum {
   display: block;
   margin: 5px 0 0;
@@ -649,26 +661,41 @@
   /* 固定列宽的网格：每一行的列位都一样，同一个指标才能纵向对齐。
      flex 做不到跨行对齐——上一行少一项，下面全跟着挪。 */
   display: grid;
-  grid-template-columns: 215px 205px 235px minmax(0, 1fr);
+  /* 上下文和单次输出缩写之后短了不少，列宽跟着收 */
+  grid-template-columns: 150px 155px 150px 120px minmax(0, 1fr);
   gap: 6px 16px;
   margin-top: 8px;
 }
+/* 图标和文字要居中对齐。用 baseline 的话 svg 的底边会去对文字基线，
+   图标整体偏下，和右边的数字差半个字高。 */
 .pt-metric {
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  font-size: 12.5px;
+}
+/* 标签和值差一档字号、两档字重。之前都是 12.5px 只差颜色，
+   看起来像一串并列的词，读不出「这个是名字、那个是数」。 */
+.pt-metric-label {
+  font-size: 11.5px;
+  font-weight: 400;
   color: var(--pt-text-meta);
 }
 /* 标签和数值都不许断行：「单次输」/「出」这种断法比省地方的损失大得多 */
 .pt-metric-label { white-space: nowrap; }
-.pt-metric svg { flex: none; color: var(--pt-text-muted); }
+.pt-metric svg { flex: none; color: var(--pt-text-muted); align-self: center; }
+.pt-metric { line-height: 1.5; }
 .pt-metric-label::after { content: ''; }
 /* 值比标签重：标签每行都一样，值才是这一行要看的 */
+/* 缩写过的值带虚下划线，提示「停一下能看到完整数字」 */
+.pt-metric-value.has-full {
+  border-bottom: 1px dotted var(--pt-border-strong);
+  cursor: help;
+}
 .pt-metric-value {
+  font-size: 13.5px;
   color: var(--pt-text-primary);
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -689,6 +716,15 @@
   border-top: 1px solid var(--pt-border);
   padding: 14px 16px 16px;
 }
+/* 当前指向哪个版本——这一条里最容易过期、也最该被看到的信息 */
+.pt-mdl-highlight {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: var(--pt-text-primary);
+}
+
 .pt-mdl-text {
   margin: 0;
   font-size: 13.5px;
@@ -742,17 +778,36 @@
   color: var(--pt-text-meta);
 }
 
-/* 次要信息整体弱化，不跟关键规格抢注意力。
-   列比上面窄：这些值短，用关键规格那个宽度会剩下一个孤零零的单元格。 */
+/* 次要信息：一行一项，标签在左、值在右。
+   之前是「标签在上、值在下」再排成多列，短短两个字段也占掉三行高度，
+   看起来散。现在和上面的指标条用同一套读法。 */
 .pt-specs-more {
-  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--pt-border);
-  gap: 14px 24px;
 }
-.pt-specs-more > .pt-spec { flex: 1 1 160px; max-width: 250px; }
-.pt-specs-more > .pt-spec.wide { flex-basis: 100%; max-width: none; }
-.pt-specs-more dd { font-size: 13px; color: var(--pt-text-secondary); }
+.pt-specs-more > .pt-spec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+.pt-specs-more > .pt-spec.wide { flex-basis: 100%; }
+.pt-specs-more dt {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--pt-text-meta);
+  white-space: nowrap;
+}
+.pt-specs-more dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pt-text-secondary);
+}
 .pt-specs-more .pt-spec-note { font-size: 11.5px; }
 
 @media (max-width: 640px) {
@@ -824,11 +879,28 @@
   color: var(--pt-text-primary);
   min-width: 0;
 }
-/* 支持的那几项给图标上正向色。只染图标不染文字：文字染色会削弱可读性，
-   而且一行里多个强调等于没有强调。 */
+/* 状态符号：✓ 支持、✕ 不支持、– 未验证或不适用。
+   不依赖颜色也能读出来——色弱、截图转灰、隔一米看屏幕，都还在。 */
+.pt-cap-mark {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pt-cap.on .pt-cap-mark { color: #157f3c; }
+.pt-cap.off .pt-cap-mark { color: var(--pt-text-muted); }
+.pt-cap.err .pt-cap-mark { color: var(--pt-danger-text); }
+.pt-cap.na .pt-cap-mark,
+.pt-cap.unknown .pt-cap-mark { color: var(--pt-text-muted); }
+
 .pt-cap.on svg { color: #157f3c; }
 /* 调用失败是「你发过去会报错」，比「模型没这能力」更该跳出来 */
 .pt-cap.err svg { color: var(--pt-danger-text); }
+/* 不支持的整项压到更淡，和支持的拉开距离 */
+.pt-cap.off { opacity: 0.55; }
+.pt-cap.off svg { color: var(--pt-text-muted); }
 .pt-cap svg { flex: none; }
 /* 能力名不换行：它后面可能跟一个状态标，标一长就会把名字挤成两行 */
 .pt-cap > span:not(.pt-cap-tag) { white-space: nowrap; }
