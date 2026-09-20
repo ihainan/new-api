@@ -92,9 +92,9 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '按请求内容在 Qwen3.6-35B-A3B 与 GLM 之间分发，调用方只写这一个 ID。',
+    summary: '统一入口，按请求内容自动选择 Qwen3.6-35B-A3B 或 GLM-5.2。',
     detail:
-      '实际在 Qwen3.6-35B-A3B 与 GLM-5.2 之间分发，规则是固定的：日常问答、简单任务、带图片的请求走 Qwen3.6-35B-A3B；代码、金融行情分析、需要多步推理的问题走 GLM-5.2。调用方只写这一个 ID，后端调整时不用改代码。想固定用某一个模型，直接写它的 ID。',
+      '一个统一入口，背后接 Qwen3.6-35B-A3B 和 GLM-5.2，分发规则是固定的：日常问答、简单任务以及带图片的请求由 Qwen3.6-35B-A3B 处理，代码、金融与行情分析、需要多步推理的问题交给 GLM-5.2。使用时只填写这一个模型 ID，后端调整不影响已有代码。如果某类任务必须固定在某个模型上，请直接填写该模型的 ID。',
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
     params: 'GLM 约 743B / 39B 激活；Qwen 35B / 3B 激活',
@@ -111,12 +111,12 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '实际指向 GLM-5.2 的通用对话模型。'
+    summary: '平台的通用对话模型，当前指向 GLM-5.2。'
     ,
     // 版本会随上游升级，所以标题不写版本号，只在这里说当前指向谁。
     highlight: '当前指向 GLM-5.2，后续会升级到 GLM-5.3，模型 ID 保持不变。',
     detail:
-      '实际指向 GLM-5.2。通用对话模型，适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，是平台上最大的。',
+      '当前指向 GLM-5.2，适用于日常问答、文本改写、内容总结和代码辅助。上下文 100 万 token，为平台之最，需要一次性读入长文档或整个代码库时优先选它。',
     // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '官方 FP8 权重约 756 GB',
@@ -136,11 +136,11 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
-    summary: '实际指向 GLM-5.2，与 glm 同一模型，使用 Anthropic Messages 协议。'
+    summary: '与 glm 是同一个模型，改用 Anthropic Messages 协议，当前指向 GLM-5.2。'
     ,
     highlight: '当前指向 GLM-5.2，后续会升级到 GLM-5.3，模型 ID 保持不变。',
     detail:
-      '实际指向 GLM-5.2，与 glm 同一模型，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '模型与 glm 完全相同（当前为 GLM-5.2），区别只在请求格式。需要注意两者支持的参数并不一致：Anthropic 协议没有 response_format，需要结构化输出时要改用工具调用。这个 ID 是为只支持 Anthropic 接口的客户端准备的，例如 Claude Code、Anthropic 官方 SDK，以及其他只发送 /v1/messages 的工具；使用 OpenAI SDK 时请直接选择 glm。',
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '同 glm',
     context: '1,000,000 tokens（同 glm）',
@@ -158,9 +158,9 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '混合专家架构的对话模型，激活参数少、吞吐高。',
+    summary: '混合专家架构的对话模型，激活参数少，响应快。',
     detail:
-      '350 亿总参数的混合专家模型，单次推理约激活 30 亿参数。上下文 262,144 token，长文场景下仅次于 glm。会输出思考过程，字段名为 reasoning——注意不是 glm 使用的 reasoning_content。',
+      '总参数 350 亿，单次推理约激活 30 亿，在质量和速度之间取得平衡。上下文 262,144 token，长文场景下仅次于 glm。该模型会输出思考过程，字段名为 reasoning，与 glm 使用的 reasoning_content 不同，解析时需要区分。',
     params: '35B 总参数 / 3B 激活（MoE）',
     size: '官方 FP8 权重约 37.5 GB',
     context: '262,144 tokens',
@@ -176,9 +176,9 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: false },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '开放权重模型，能看图。上下文 4K，超出部分会被静默丢弃。',
+    summary: '开放权重模型，支持图片输入。上下文 4K，超出部分会被静默丢弃。',
     detail:
-      '260 亿总参数的开放权重模型，单次推理约激活 40 亿参数，可以看图。会先输出思考过程（字段名 reasoning_content）再给正文，所以 max_tokens 要给足——给小了正文会是空的，思考过程把额度用光了。权重公开，可以本地微调和再分发，但要随附 Gemma 使用条款并受其使用政策约束，不是随便用的 MIT/Apache。上下文 4096 token（按中文折算约 6,800 字），超出后只保留约 2048 token 且不报错，长文任务请改用 glm 或 qwen。',
+      '总参数 260 亿，单次推理约激活 40 亿，支持图片输入。它会先输出思考过程（字段名 reasoning_content）再给出正文，因此 max_tokens 需要留足余量，否则思考过程会占满额度，正文返回为空。权重公开，允许本地微调与再分发，但须随附 Gemma 使用条款并遵守其使用政策，不同于 MIT、Apache 这类宽松许可。上下文 4096 token（中文约 6,800 字），超出后仅保留约 2048 token 且不会报错，长文本任务请改用 glm 或 qwen。',
     params: '约 26B 总参数 / 约 4B 激活（MoE）',
     size: '官方 BF16 权重约 52 GB',
     context: '4,096 tokens（实测：超出后只保留约 2,048，不报错）',
@@ -193,11 +193,13 @@ export const MODELS = [
     outputs: ['图像'],
     category: 'image',
     endpoints: ['openai'],
-    summary: '文生图，支持中文提示词与画面内文字渲染。',
+    summary: '文生图模型，当前指向 Qwen-Image-2.0，中文提示词与画面内文字均可处理。',
     detail:
-      '按文字描述生成图片。中文提示词可以直接写，画面内的中文字也能渲染，做海报、配图、示意图不必先把提示词译成英文。',
-    params: '未公布',
-    context: null,
+      '当前指向 Qwen-Image-2.0，根据文字描述生成图片。未指定尺寸时输出 1024×1024，采样 30 步。中文提示词可以直接使用，画面内的中文也能正确渲染，制作海报、配图和示意图无需先译成英文。提示词最长 1,000 token，足够写清楚细节。',
+    // 2.0 的权重官方没有公开发布（Hugging Face 上 Qwen 官方最新的公开权重
+    // 仍是 20B 的 Qwen-Image-2512），所以参数量写「未公开」是事实而非偷懒。
+    params: '官方未公开',
+    context: '提示词最长 1,000 tokens',
     io: '文本 → 图像',
   },
   {
@@ -210,7 +212,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '语音转文字，适用于会议录音与访谈整理。',
     detail:
-      '实际指向 Qwen3-ASR-1.7B。将音频转为文本，支持中文及中英混合口语。常见用途包括会议录音转写、访谈整理与视频字幕。单次请求的音频上限约 157 秒，更长的音频会在静音处切段后分别转写再拼接。接口兼容 OpenAI 的 audio/transcriptions。',
+      '当前指向 Qwen3-ASR-1.7B，将音频转写为文本，支持中文以及中英混合口语，常用于会议录音、访谈整理和视频字幕。单次请求最多处理约 157 秒音频，更长的文件会在静音处自动切段，分别转写后拼接返回。接口与 OpenAI 的 audio/transcriptions 兼容。',
     params: '17 亿参数',
     context: null,
     io: '音频 → 文本',
@@ -225,7 +227,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '文字转语音，支持音色复刻。',
     detail:
-      '实际指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512），支持 9 种语言。将文本合成为自然语音，可依据一小段参考音频复刻音色。适用于播报、有声材料与数字人配音。接口兼容 OpenAI 的 audio/speech。',
+      '当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512），支持 9 种语言，可将文本合成为自然语音，也能依据一小段参考音频复刻音色，适用于播报、有声材料和数字人配音。接口与 OpenAI 的 audio/speech 兼容。',
     params: '5 亿参数',
     context: null,
     io: '文本 → 音频',
@@ -240,7 +242,7 @@ export const MODELS = [
     endpoints: ['openai-video'],
     summary: '文生视频 / 图生视频，异步返回结果。',
     detail:
-      '按文字描述生成视频，也支持由单张图片生成。不指定参数时按 4 秒、9:16、短边 768 生成。生成耗时以分钟计，使用异步任务接口：提交后取回任务 ID，再轮询结果，不要按同步请求设置超时。进度可在「使用记录 → 任务」查看。',
+      '根据文字描述生成视频，也支持由单张图片生成。未指定参数时输出 4 秒、9:16、短边 768 的视频。生成耗时通常在几分钟，接口为异步任务形式：提交后先取回任务 ID，再轮询结果，不要按同步请求设置超时。任务进度可在「使用记录 → 任务」中查看。',
     params: '未公布',
     context: null,
     io: '文本 / 图像 → 视频',
@@ -255,7 +257,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '多语言向量模型，用于检索与知识库。超长文本会被静默截断。',
     detail:
-      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。只给到 2048 token（按中文折算约 3,400 字），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
+      '将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。一百多种语言共享同一向量空间，中文查询可以直接召回英文文档，输出 1024 维。单次最多处理 2048 token（中文约 3,400 字），超出部分会被直接丢弃且不会报错，返回的向量只代表截断后的内容，长文档需要自行切分。',
     params: '约 568M 参数',
     size: '官方权重约 2.3 GB',
     context: '2,048 tokens（实测：超出部分被丢弃）',
@@ -270,9 +272,9 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '向量模型，可处理 BGE-M3 两倍长度的文本。',
+    summary: '向量模型，单次可处理的文本长度是 BGE-M3 的两倍。',
     detail:
-      '同样用于将文本转为向量。可用 4096 token（按中文折算约 6,800 字），是 BGE-M3 的两倍，同一份文档需要切分的次数更少，但超出部分同样被静默丢弃。参数量是 BGE-M3 的七倍，显存占用也更高。',
+      '同样用于将文本转换为向量。单次可处理 4096 token（中文约 6,800 字），是 BGE-M3 的两倍，同一份文档需要切分的次数更少；超出部分同样会被静默丢弃。参数量是 BGE-M3 的七倍，显存占用也更高。',
     params: '4B 参数',
     size: '官方 BF16 权重约 8 GB',
     context: '4,096 tokens（实测：超出部分被丢弃）',
@@ -287,9 +289,9 @@ export const MODELS = [
     outputs: ['分数'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '重排模型，对向量召回结果做二次精排。',
+    summary: '重排模型，对向量检索召回的结果做二次精排。',
     detail:
-      '接在向量检索之后使用：先由 BGE-M3 粗召回数十条，再逐条与问题比对并重新打分，将最相关的排到前面。它不产出向量，只输出相关性分数，单独使用没有意义。窗口由每个「问题＋文档」对各自占用，并非所有候选文档共享一份；单对超过 8192 token 会直接返回错误，而不是像向量模型那样悄悄截断。',
+      '用在向量检索之后：先由 BGE-M3 粗召回数十条候选，再由它逐条与问题比对并重新打分，把最相关的排到前面。它不输出向量，只给出相关性分数，单独使用没有意义。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8192 token 会直接返回错误，而不像向量模型那样静默截断。',
     params: '约 568M 参数',
     size: '官方权重约 2.3 GB',
     context: '8,192 tokens（实测：超出直接报错，不静默截断）',
