@@ -4427,6 +4427,17 @@
     "第 {{page}} / {{max}} 页 · 共 {{total}} 条": "Trang {{page}}/{{max}} · tổng {{total}} mục",
     "复制模型 ID {{id}}": "Sao chép ID mô hình {{id}}",
     "Anthropic 兼容": "Tương thích Anthropic",
-    "Anthropic / OpenAI 兼容": "Tương thích Anthropic / OpenAI"
+    "Anthropic / OpenAI 兼容": "Tương thích Anthropic / OpenAI",
+    "17 亿参数": "1,7 tỷ tham số",
+    "5 亿参数": "0,5 tỷ tham số",
+    "262,144 tokens（模型可扩展到更长，本平台未开启）": "262.144 token (mô hình có thể mở rộng hơn; không bật ở đây)",
+    "实际指向 GLM-5.3。通用对话模型，适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，是平台上最大的。": "Hiện trỏ tới GLM-5.3. Mô hình đối thoại đa dụng cho hỏi đáp hằng ngày, viết lại, tóm tắt và hỗ trợ lập trình. Ngữ cảnh 1 triệu token, lớn nhất trên nền tảng.",
+    "260 亿总参数的开放权重模型，单次推理约激活 40 亿参数。模型本身带视觉投影层，但当前发图片请求会直接报 500，实际用不了。权重公开，可以本地微调和再分发，但要随附 Gemma 使用条款并受其使用政策约束，不是随便用的 MIT/Apache。注意上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。": "Mô hình trọng số mở với 26 tỷ tham số, mỗi token kích hoạt khoảng 4 tỷ. Mô hình có lớp chiếu thị giác, nhưng hiện gửi ảnh sẽ báo lỗi 500 nên không dùng được. Trọng số công khai, có thể tinh chỉnh và phân phối lại, nhưng phải kèm theo Điều khoản sử dụng Gemma và tuân thủ chính sách sử dụng — đây không phải MIT hay Apache. Lưu ý ngữ cảnh chỉ 2.048 token (khoảng 3.400 chữ Hán), phần vượt bị bỏ đi âm thầm; văn bản dài hãy dùng glm hoặc qwen.",
+    "实际指向 Qwen3-ASR-1.7B。将音频转为文本，支持中文及中英混合口语。常见用途包括会议录音转写、访谈整理与视频字幕。单次请求的音频上限约 157 秒，更长的音频会在静音处切段后分别转写再拼接。接口兼容 OpenAI 的 audio/transcriptions。": "Hiện là Qwen3-ASR-1.7B. Chuyển âm thanh thành văn bản, hỗ trợ tiếng Trung và lời nói pha trộn Trung–Anh. Thường dùng cho ghi âm cuộc họp, gỡ băng phỏng vấn và phụ đề video. Mỗi yêu cầu nhận khoảng 157 giây âm thanh; file dài hơn sẽ được cắt tại chỗ im lặng, nhận dạng riêng rồi ghép lại. Tương thích audio/transcriptions của OpenAI.",
+    "实际指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512），支持 9 种语言。将文本合成为自然语音，可依据一小段参考音频复刻音色。适用于播报、有声材料与数字人配音。接口兼容 OpenAI 的 audio/speech。": "Hiện là CosyVoice3 (Fun-CosyVoice3-0.5B-2512), hỗ trợ 9 ngôn ngữ. Tổng hợp văn bản thành giọng nói tự nhiên và có thể sao chép giọng từ một đoạn mẫu ngắn. Phù hợp cho thông báo, tài liệu âm thanh và lồng tiếng người ảo. Tương thích audio/speech của OpenAI.",
+    "按文字描述生成图片。中文提示词可以直接写，画面内的中文字也能渲染，做海报、配图、示意图不必先把提示词译成英文。": "Sinh ảnh từ mô tả văn bản. Prompt tiếng Trung dùng trực tiếp được và chữ Trung trong ảnh vẫn hiển thị, nên làm poster, hình minh họa hay sơ đồ không cần dịch trước.",
+    "按文字描述生成视频，也支持由单张图片生成。不指定参数时按 4 秒、9:16、短边 768 生成。生成耗时以分钟计，使用异步任务接口：提交后取回任务 ID，再轮询结果，不要按同步请求设置超时。进度可在「使用记录 → 任务」查看。": "Sinh video từ mô tả văn bản, hoặc từ một ảnh. Không truyền tham số thì mặc định 4 giây, tỉ lệ 9:16, cạnh ngắn 768. Quá trình mất vài phút và chạy dạng tác vụ bất đồng bộ: gửi yêu cầu, giữ task id rồi hỏi kết quả — đừng đặt timeout đồng bộ. Tiến độ xem ở Nhật ký → Tác vụ.",
+    "把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。只给到 2048 token（按中文折算约 3,400 字），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。": "Chuyển văn bản thành vector cho tìm kiếm ngữ nghĩa, so khớp tương đồng và RAG. Hơn một trăm ngôn ngữ dùng chung một không gian vector, nên truy vấn tiếng Trung có thể tìm ra tài liệu tiếng Anh. Đầu ra 1024 chiều. Chỉ nhận 2.048 token (khoảng 3.400 chữ Hán); phần vượt bị bỏ mà không báo lỗi, vector trả về chỉ mô tả phần còn lại — tài liệu dài phải tự chia nhỏ.",
+    "同样用于将文本转为向量。可用 4096 token（按中文折算约 6,800 字），是 BGE-M3 的两倍，同一份文档需要切分的次数更少，但超出部分同样被静默丢弃。参数量是 BGE-M3 的七倍，显存占用也更高。": "Cũng dùng để chuyển văn bản thành vector. Nhận 4.096 token (khoảng 6.800 chữ Hán), gấp đôi BGE-M3 nên ít phải chia nhỏ tài liệu hơn, nhưng phần vượt vẫn bị bỏ âm thầm. Số tham số gấp bảy lần BGE-M3 và tốn bộ nhớ hơn."
   }
 }
