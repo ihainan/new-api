@@ -38,6 +38,9 @@ import {
 
 const ICONS = { Zhipu, Qwen, Minimax, Gemma, BAAI, Alibaba };
 
+// 只有这两类是按 token 吃上下文的
+const TEXT_CATEGORIES = new Set(['chat', 'retrieval']);
+
 function ModelIcon({ name, size = 26 }) {
   // 平台自己的服务（智能路由）用产品标记，不去外部图标库里凑一个。
   if (name === 'brand') {
@@ -153,9 +156,17 @@ function ModelRow({ m, open, onToggle }) {
           {m.note ? <p className='pt-mdl-note'>{m.note}</p> : null}
           <dl className='pt-specs'>
             <SpecItem label='参数规模' value={m.params} />
-            {/* 自部署模型的上下文由上游启动参数决定，网关这边看不到真值，
-                所以不填数字而是说明它取决于哪里——比编一个数字诚实。 */}
-            <SpecItem label='上下文长度' value={m.context || '以上游部署为准'} />
+            {/* 上下文只对吃文本的模型有意义；出图、语音、视频那几个没有这个概念，
+                给它们填「以上游部署为准」只是一行看不懂的噪音。
+                文本模型里没测出来的才回退到那句话——比编一个数字诚实。 */}
+            <SpecItem
+              label='上下文长度'
+              value={
+                TEXT_CATEGORIES.has(m.category)
+                  ? m.context || '以上游部署为准'
+                  : m.context
+              }
+            />
             {/* 上游只对 max_tokens 设了硬上限时单独列出来：它决定一次能吐多少，
                 和上下文不是一回事，混在一起看会写出超限的调用。 */}
             {/* 部署给到的和模型本身的规格不是一回事。一致就不必多说一遍，
