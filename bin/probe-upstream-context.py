@@ -5,10 +5,13 @@
 直连还能绕开中转层自身的问题，拿到的错误也是上游的原话。
 
 探法：prompt 只有两个字，但 max_tokens 给一个任何部署都满足不了的数。
-OpenAI 兼容的推理服务会在进入推理之前拒绝，并在错误里报出真实上限：
+部分 OpenAI 兼容服务会在进入推理之前拒绝，并在错误里报出真实上限：
   "This model's maximum context length is 262144 tokens. However, you
    requested 100000002 tokens (2 in the messages, 100000000 in the completion)."
-所以这些请求不产生 token 计费，也不占 GPU。
+
+**不要假设这类请求一定免费。** 只有「被拒绝」的那一次才没有计费；实测 glm 的
+上游对超大 prompt 是照单全收并正常计费的（278,059 token 的请求返回 200）。
+客户端超时也不代表服务端已经取消任务。跑这个脚本前先想清楚愿意付多少。
 
 渠道地址和密钥从本地开发库读，密钥不会出现在输出里。
 """

@@ -744,8 +744,11 @@
   color: var(--pt-text-muted);
 }
 .pt-cap.off > span { text-decoration: line-through; }
-/* 没测过：不划掉，但明确标出来，不许冒充「不支持」 */
+/* 没验证过：不划掉，但明确标出来，不许冒充「不支持」 */
 .pt-cap.unknown { color: var(--pt-text-meta); }
+/* 试过但调用直接失败：使用者确实用不了，但原因在部署不在模型 */
+.pt-cap.err { color: var(--pt-text-meta); }
+.pt-cap.err > span:not(.pt-cap-tag) { text-decoration: line-through; }
 .pt-cap-tag {
   font-style: normal;
   font-size: 11px;

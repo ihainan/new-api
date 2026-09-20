@@ -22,7 +22,7 @@ import { Alibaba, BAAI, Gemma, Minimax, Qwen, Zhipu } from '@lobehub/icons';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import BrandMark from './BrandMark';
 import { Card, Empty, PageHead, Skeleton } from './shared';
-import { CATEGORIES, ENDPOINT_LABELS, describe } from './modelCatalog';
+import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
 
 /*
  * 模型页。回答的是「我能调什么、该挑哪个」，不是价目表——倍率和计费是管理视角。
@@ -87,13 +87,19 @@ function Chevron({ open }) {
 }
 
 /*
- * 能力矩阵。三态：支持、实测不支持、没测过。把没测过的画成不支持，
- * 和编一个规格是同一类谎话，所以第三态必须存在且看得出来。
+ * 能力矩阵。四态，缺一不可：
+ *   true    实测通过
+ *   false   实测不支持
+ *   'error' 试了，但调用直接失败（比如上游 500）——从使用者角度是用不了，
+ *           但原因在部署不在模型，和「模型没这个能力」是两回事
+ *   缺失     没验证过
+ * 把没验证过的画成不支持，和编一个规格是同一类谎话。
+ * 措辞用「未验证」不用「未测」：后者容易被读成「测了没测出来」。
  */
 const CAPS = [
   ['stream', '流式输出', <path d='M4 7h16M4 12h11M4 17h7' />],
   ['tools', '函数调用', <><path d='M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h2' /><path d='M16 4h2a2 2 0 012 2v12a2 2 0 01-2 2h-2' /></>],
-  ['json', '结构化输出', <><path d='M9 4H7a2 2 0 00-2 2v4l-2 2 2 2v4a2 2 0 002 2h2' /><path d='M15 4h2a2 2 0 012 2v4l2 2-2 2v4a2 2 0 01-2 2h-2' /></>],
+  ['json', 'JSON 模式', <><path d='M9 4H7a2 2 0 00-2 2v4l-2 2 2 2v4a2 2 0 002 2h2' /><path d='M15 4h2a2 2 0 012 2v4l2 2-2 2v4a2 2 0 01-2 2h-2' /></>],
   ['vision', '图像输入', <><rect x='3' y='5' width='18' height='14' rx='2' /><circle cx='8.5' cy='10' r='1.5' /><path d='M21 16l-5-5-6 6' /></>],
   ['reasoning', '深度思考', <><path d='M9 18h6' /><path d='M10 21h4' /><path d='M12 3a6 6 0 00-3.5 10.9V16h7v-2.1A6 6 0 0012 3z' /></>],
   ['cache', '提示缓存', <><path d='M20 11a8 8 0 10-2.3 5.7' /><path d='M20 5v6h-6' /></>],
@@ -104,7 +110,10 @@ function CapGrid({ caps }) {
     <div className='pt-caps'>
       {CAPS.map(([key, label, path]) => {
         const v = caps ? caps[key] : undefined;
-        const state = v === true ? 'on' : v === false ? 'off' : 'unknown';
+        const state =
+          v === true ? 'on' : v === 'error' ? 'err' : v === false ? 'off' : 'unknown';
+        const tag =
+          state === 'unknown' ? '未验证' : state === 'err' ? '调用失败' : null;
         return (
           <span key={key} className={`pt-cap ${state}`}>
             <svg
@@ -121,7 +130,7 @@ function CapGrid({ caps }) {
               {path}
             </svg>
             <span>{label}</span>
-            {state === 'unknown' ? <em className='pt-cap-tag'>未测</em> : null}
+            {tag ? <em className='pt-cap-tag'>{tag}</em> : null}
           </span>
         );
       })}
@@ -227,6 +236,9 @@ function ModelRow({ m, open, onToggle }) {
             />
             {/* 部署给到的和模型本身的规格不是一回事。一致就不必多说一遍，
                 不一致才是使用者要知道的——他会以为自己有官方那么大的窗口。 */}
+            {/* 实测验证过什么，单独一栏。运维口径的数字和我亲手验到的长度
+                不是一回事，混在一格里会让人以为整条都验过。 */}
+            <SpecItem label='实测验证' value={m.verified} />
             <SpecItem
               label='模型官方规格'
               value={m.official && m.official !== m.context ? m.official : null}
@@ -265,6 +277,8 @@ function normalize(raw) {
     if (!p || typeof p !== 'object') continue;
     const id = typeof p.model_name === 'string' ? p.model_name.trim() : '';
     if (!id || seen.has(id)) continue;
+    // 待下线的模型不往页面上放，哪怕网关还开着
+    if (HIDDEN.has(id)) continue;
     seen.add(id);
     const d = describe(id);
     const eps = Array.isArray(p.supported_endpoint_types)

@@ -46,14 +46,23 @@ For commercial licensing, please contact support@quantumnous.com
  *      让服务端在推理前报出真实上限，不产生计费。
  *      实测记录：
  *        2026-09-19  smart-router / qwen / minimax 上游自报 262144。
+ *        2026-09-20  大海捞针：在 97,611 token 的输入里把口令埋在 10%/50%/90%
+ *                    三个深度，glm 全部答对；219,563 token、90% 深度也答对。
+ *                    这证明的是「这段长度的内容确实被用上了」，比「请求被接受」
+ *                    强得多——本平台存在静默截断，单看接受与否什么也证明不了。
  *        2026-09-20  glm 按部署方说明跑在官方 1M 档。实测与之一致且无冲突：
  *                    max_tokens 硬上限 131072 与官方完全相同，278,059 token
  *                    的 prompt 照收不误。该上游超限不拒绝而是照单全收，
  *                    所以只能从下面逼近、拿不到它自己报出的确切上限。
  *        2026-09-20  本地集群（Ollama + 自写转发层）读 usage.prompt_tokens：
- *                    gemma4 / bge-m3 卡在 2048，qwen3-embedding 卡在 4096，
- *                    bge-reranker 到 8192。前三个远低于模型本身的能力，
- *                    且超出不报错、静默截断——页面必须写明。
+ *                    gemma4 / bge-m3 报到 2048 封顶，qwen3-embedding 报到 4096。
+ *                    bge-reranker **不是**这么测的——它的 usage 是空的，用的是
+ *                    「把关键词放文档末尾、看相关度何时塌到基线」，得到的是
+ *                    12000~14000 字之间的一个区间，不是精确的 token 数。
+ *                    两种证据强度不同，别混着记。
+ *                    另：prompt_tokens 停在某个数，只证明「上报值封顶」，
+ *                    转发层封顶、编码器截断、分块统计都可能造成同样现象，
+ *                    所以页面写「实测上报值封顶」而不是「上下文上限」。
  *
  * 数据来源：channels 表的 model_mapping + abilities 表（2026-09-19 核对）。
  */
@@ -78,7 +87,6 @@ export const MODELS = [
     icon: 'brand',
     inputs: ['文本', '图像'],
     outputs: ['文本'],
-    maxOutput: '与上下文共用 262,144',
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
@@ -88,7 +96,7 @@ export const MODELS = [
     params: '随后端而定（glm 744B MoE / qwen 35B MoE）',
     size: '随后端而定',
     deployment: '随实际路由到的模型而定',
-    context: '200K tokens',
+    context: '200,000 tokens（建议请求预算）',
     io: '文本 → 文本',
     upstream: '由路由服务在 glm 与 qwen 之间动态选择',
   },
@@ -103,12 +111,13 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '平台调用量最大的通用对话模型，私有化部署。',
     detail:
-      '日常问答、改写、总结、代码辅助都能用。100 万 token 的上下文是平台上最大的，整个代码仓库或几百页文档可以一次塞进去。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
+      '日常问答、改写、总结、代码辅助都能用。上下文 100 万 token 是平台上最大的（运维口径）；实测把 21.9 万 token 的材料丢进去，问最末尾埋的一句话仍能准确答出。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天平台上绝大部分对话请求打的是它。',
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
-    size: 'FP8 权重约 744 GB',
+    size: '理论估算约 744 GB（744B × FP8 每参数 1 字节）',
     deployment: 'FP8 量化，私有化部署',
-    context: '1,000,000 tokens',
-    maxOutput: '131,072 tokens',
+    context: '1,000,000 tokens（运维口径）',
+    verified: '大海捞针实测：219,563 token 输入、90% 深度仍可准确召回',
+    maxOutput: '131,072 tokens（实测参数上限）',
     io: '文本 → 文本',
     upstream: 'glm-5.2-fp8-private（私有化推理接入点）',
   },
@@ -127,7 +136,8 @@ export const MODELS = [
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
     size: '同 glm',
     deployment: '与 glm 同一部署',
-    context: '1,000,000 tokens（同 glm）',
+    context: '1,000,000 tokens（同 glm，运维口径）',
+    verified: '同 glm（实测走的是 OpenAI 接口，Anthropic 入口未单独验证）',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: '同 glm（同一推理接入点）',
@@ -139,39 +149,18 @@ export const MODELS = [
     inputs: ['文本', '图像'],
     outputs: ['文本'],
     maxOutput: '与上下文共用 262,144',
-    caps: { stream: true, tools: true, json: true, vision: true, reasoning: false, cache: true },
+    caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
     summary: '混合专家架构，激活参数小、吞吐高的对话模型。',
     detail:
-      '350 亿总参数的混合专家模型，每次推理只激活约 30 亿参数。上下文 262,144 token，是平台上仅次于 glm 的长文选择。',
+      '350 亿总参数的混合专家模型，每次推理只激活约 30 亿参数。上下文 262,144 token，是平台上仅次于 glm 的长文选择。会输出思考过程（在 reasoning 字段里，注意不是 glm 用的 reasoning_content）。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    size: 'FP8 权重约 37.5 GB',
+    size: '官方 FP8 仓库 37.5 GB',
     context: '262,144 tokens',
     official: '262,144 原生，可扩至约 1M',
     io: '文本 → 文本',
     upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
-  },
-  {
-    id: 'minimax',
-    name: 'minimax',
-    icon: 'Qwen',
-    inputs: ['文本', '图像'],
-    outputs: ['文本'],
-    maxOutput: '与上下文共用 262,144',
-    caps: { stream: true, tools: true, json: true, vision: true, reasoning: false, cache: true },
-    category: 'chat',
-    endpoints: ['openai'],
-    summary: '当前由 Qwen3.6-35B-A3B 承接，与名字不一致。',
-    detail:
-      '这个别名的名字和它实际调到的模型对不上：网关当前把它映射到了 Qwen3.6-35B-A3B，效果等同于 qwen。新接入请直接写 qwen，这个 ID 只为兼容已经写死它的旧代码而保留。',
-    params: '35B 总参数 / 3B 激活（MoE）',
-    size: 'FP8 权重约 37.5 GB',
-    context: '262,144 tokens',
-    official: '262,144 原生，可扩至约 1M',
-    io: '文本 → 文本',
-    upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
-    note: '别名与实际模型不一致，新代码请用 qwen。',
   },
   {
     // 待复查（2026-09-20）：图像输入报 500 是转发层的问题，运维正在修。
@@ -182,7 +171,7 @@ export const MODELS = [
     icon: 'Gemma',
     inputs: ['文本'],
     outputs: ['文本'],
-    caps: { stream: true, tools: true, json: true, vision: false, reasoning: false, cache: false },
+    caps: { stream: true, tools: true, json: true, vision: 'error', reasoning: false, cache: false },
     category: 'chat',
     endpoints: ['openai'],
     summary: '开放权重模型，跑在本地集群上。上下文只有 2K，注意截断。',
@@ -190,7 +179,7 @@ export const MODELS = [
       '260 亿参数的开放权重模型，部署在本地推理集群。模型本身带视觉投影层，但当前部署发图片请求会直接报 500，实际用不了。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意当前部署的上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
     params: '26B 参数',
     size: '19 GB（Q4_K_M，含 1.2 GB 视觉投影层）',
-    context: '2,048 tokens（部署上限，中文约 3,400 字）',
+    context: '2,048 tokens（实测上报值封顶）',
     official: '256K tokens',
     io: '文本 → 文本',
     upstream: 'gemma4:26b（本地集群部署）',
@@ -272,7 +261,7 @@ export const MODELS = [
       '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。当前部署只给到 2048 token（中文约 3,400 字，随内容浮动），超出的部分会被直接丢掉且不报错——拿到的向量只代表截断后的那一段，长文档必须自己先切段。',
     params: '约 568M 参数',
     size: '1.2 GB',
-    context: '2,048 tokens（部署上限，中文约 3,400 字）',
+    context: '2,048 tokens（实测上报值封顶）',
     official: '8,192 tokens',
     io: '文本 → 1024 维向量',
     upstream: 'bge-m3（本地集群部署）',
@@ -290,7 +279,7 @@ export const MODELS = [
       '同样是把文本转向量。当前部署给到 4096 token（中文约 8,000 字），是 BGE-M3 的两倍，同样的文档少切几刀，但超出部分一样被静默丢弃。参数量更大，因此更慢、更占显存。',
     params: '4B 参数',
     size: '2.5 GB',
-    context: '4,096 tokens（部署上限，中文约 8,000 字）',
+    context: '4,096 tokens（实测上报值封顶）',
     official: '32K tokens',
     io: '文本 → 向量',
     upstream: 'qwen3-embedding:4b（本地集群部署）',
@@ -305,10 +294,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '重排模型，给向量召回的结果做第二轮精排。',
     detail:
-      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。8,192 token 是问题加文档的总预算，不是每篇文档各自的额度。',
+      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。窗口由每个「问题＋文档」对各自占用，不是所有候选文档合起来共享一份。',
     params: '约 568M 参数',
     size: '约 1.2 GB',
-    context: '8,192 tokens',
+    context: '约 12,000~14,000 字之间截断（实测区间）',
     io: '（问题, 文档）→ 相关性分数',
     upstream: 'bge-reranker-v2-m3（本地集群部署）',
   },
@@ -329,6 +318,16 @@ export const ENDPOINT_LABELS = {
   embeddings: '向量接口',
   'openai-video': '异步视频任务',
 };
+
+/*
+ * 待下线、不在页面上露面的模型。
+ * 只从目录里删掉不够：那样它会掉进「其他」分类，变成一行光秃秃的 ID，
+ * 反而更像「有这么个能用的模型」，更容易被新代码抄走。
+ */
+export const HIDDEN = new Set([
+  // 这个别名实际打到 Qwen3.6-35B-A3B，与名字不符，运维计划删除
+  'minimax',
+]);
 
 const BY_ID = new Map(MODELS.map((m, i) => [m.id, { ...m, order: i }]));
 

@@ -7,7 +7,9 @@
 #   "This model's maximum context length is 262144 tokens. However, you
 #    requested 100000002 tokens (2 in the messages, 100000000 in the
 #    completion)."
-# 所以这些请求既不产生 token 计费，也不占用 GPU。
+# 注意：只有真的「被拒绝」才不计费。有的上游对超限请求是照单全收并计费的，
+# 也有的静默截断后正常返回 200——**「没报错」不等于「没超限」**，那种情况下
+# 这个脚本什么也证明不了，要改用别的办法（见 bin/probe-upstream-context.py）。
 #
 # 用法：
 #   ./bin/probe-context-window.sh sk-你的网关key [网关地址]
