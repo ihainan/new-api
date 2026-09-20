@@ -1027,3 +1027,53 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* 分布 + 趋势并排。两块内容互相对照着看才有意义，堆成上下要来回滚。
+   1000px 以下列宽不够画图，落回上下排列。 */
+.pt-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 16px;
+  margin-top: 26px;
+}
+.pt-two-col > .pt-section {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* 卡片撑满列高，两边底边齐平 */
+.pt-two-col .pt-card { flex: 1; }
+@media (max-width: 1000px) {
+  .pt-two-col { grid-template-columns: 1fr; }
+}
+
+/* 模型分布：环图在上、明细在下。左右并排时列宽不够——
+   环图、图例、四列表格挤在 460px 里，Token 那列会被截掉。 */
+.pt-dist-chart {
+  height: 190px;
+  padding: 10px 10px 0;
+}
+.pt-dist .pt-table th,
+.pt-dist .pt-table td { padding: 7px 12px; }
+.pt-dist-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+/* 色点替代独立图例：和环图扇区一一对应 */
+.pt-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* 趋势图填满卡片：和左边的分布卡等高之后，写死 260px 会在下面留一块空白 */
+.pt-trend-chart {
+  flex: 1;
+  min-height: 260px;
+  padding: 12px;
+}
+.pt-two-col .pt-card { display: flex; flex-direction: column; }

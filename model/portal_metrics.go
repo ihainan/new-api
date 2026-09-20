@@ -1,10 +1,11 @@
 package model
 
 import (
-	"encoding/json"
 	"math"
 	"sort"
 	"time"
+
+	"github.com/QuantumNous/new-api/common"
 )
 
 /*
@@ -31,11 +32,25 @@ type PortalMetrics struct {
 	PromptTokens     int64 `json:"prompt_tokens"`
 	CompletionTokens int64 `json:"completion_tokens"`
 
+	CachedTokens int64 `json:"cached_tokens"`
+
 	// 质量指标。指针为 nil 表示该区间内没有足够样本。
 	AvgUseTimeSec *float64 `json:"avg_use_time_sec"`
 	AvgFirstToken *float64 `json:"avg_first_token_ms"`
 	CacheRatioPct *float64 `json:"cache_ratio_pct"`
 	FailRatioPct  *float64 `json:"fail_ratio_pct"`
+
+	/*
+	 * P95。平均值会把长尾藏起来：10 次里 9 次 2 秒、1 次 40 秒，
+	 * 平均 5.8 秒看着还行，但用户记住的是那 1 次。
+	 * 样本太少时分位数没有意义，所以 nil 表示「不够算」而不是 0。
+	 */
+	P95UseTimeSec *float64 `json:"p95_use_time_sec"`
+	P95FirstToken *float64 `json:"p95_first_token_ms"`
+
+	// 历史累计，不随选定区间变化。回答「我到底一共用了多少」。
+	LifetimeRequests int64 `json:"lifetime_requests"`
+	LifetimeTokens   int64 `json:"lifetime_tokens"`
 
 	Failed     int64 `json:"failed"`
 	FailDenom  int64 `json:"fail_denom"`
@@ -54,6 +69,12 @@ type PortalPoint struct {
 	Ts       int64 `json:"ts"`
 	Requests int64 `json:"requests"`
 	Tokens   int64 `json:"tokens"`
+
+	// 分开给，前端才画得出三条线。合成一个 Tokens 的话，
+	// 「命中缓存省下来的」和「真正跑了算力的」就混在一起了。
+	PromptTokens     int64 `json:"prompt_tokens"`
+	CompletionTokens int64 `json:"completion_tokens"`
+	CachedTokens     int64 `json:"cached_tokens"`
 }
 
 type PortalModelStat struct {
@@ -107,6 +128,10 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 	var useTimeSum float64
 	var frtSum float64
 	var cacheTokens, promptTokens int64
+	// 分位数要留全部样本再排序。三种数据库没有通用的 percentile 写法
+	// （见文件头的跨库约束），所以在 Go 里算。
+	useTimes := make([]float64, 0, len(rows))
+	frts := make([]float64, 0, len(rows))
 
 	for _, r := range rows {
 		if r.Type == LogTypeError {
@@ -125,6 +150,7 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 
 		if r.UseTime > 0 {
 			useTimeSum += float64(r.UseTime)
+			useTimes = append(useTimes, float64(r.UseTime))
 			m.UseTimeN++
 		}
 
@@ -136,6 +162,8 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 		}
 		p.Requests++
 		p.Tokens += tok
+		p.PromptTokens += int64(r.PromptTokens)
+		p.CompletionTokens += int64(r.CompletionTokens)
 
 		name := r.ModelName
 		if name == "" {
@@ -155,17 +183,19 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 			continue
 		}
 		var other map[string]any
-		if json.Unmarshal([]byte(r.Other), &other) != nil {
+		if common.UnmarshalJsonStr(r.Other, &other) != nil {
 			continue
 		}
 		if v, ok := other["cache_tokens"].(float64); ok {
 			cacheTokens += int64(v)
+			p.CachedTokens += int64(v)
 		}
 		// 非流式请求的 frt 是 -1000 哨兵值。必须同时看 is_stream 和正负，
 		// 只过滤其中一个会算出负的平均首字延迟。
 		if r.IsStream {
 			if v, ok := other["frt"].(float64); ok && v > 0 {
 				frtSum += v
+				frts = append(frts, v)
 				m.StreamN++
 			}
 		}
@@ -176,6 +206,8 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 		}
 	}
 
+	m.CachedTokens = cacheTokens
+
 	if m.UseTimeN > 0 {
 		v := round2(useTimeSum / float64(m.UseTimeN))
 		m.AvgUseTimeSec = &v
@@ -183,6 +215,14 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 	if m.StreamN > 0 {
 		v := math.Round(frtSum / float64(m.StreamN))
 		m.AvgFirstToken = &v
+	}
+	if p := percentile(useTimes, 0.95); p != nil {
+		v := round2(*p)
+		m.P95UseTimeSec = &v
+	}
+	if p := percentile(frts, 0.95); p != nil {
+		v := math.Round(*p)
+		m.P95FirstToken = &v
 	}
 	if promptTokens > 0 {
 		v := round2(float64(cacheTokens) / float64(promptTokens) * 100)
@@ -212,9 +252,58 @@ func GetPortalMetrics(userId int, start, end, bucket int64, errorLogEnabled bool
 	}
 	sort.Slice(m.Models, func(i, j int) bool { return m.Models[i].Requests > m.Models[j].Requests })
 
+	fillLifetime(m, userId)
+
 	return m, nil
 }
 
 func round2(f float64) float64 {
 	return math.Round(f*100) / 100
+}
+
+/*
+ * 分位数。样本少于 20 个就返回 nil——10 个样本算「95 分位」，
+ * 拿到的其实就是最大值，把它写成 P95 是在给一个假的可信度。
+ * 宁可显示「样本不足」，也不给一个看起来很精确的噪声。
+ */
+const minPercentileSamples = 20
+
+func percentile(xs []float64, q float64) *float64 {
+	if len(xs) < minPercentileSamples {
+		return nil
+	}
+	s := make([]float64, len(xs))
+	copy(s, xs)
+	sort.Float64s(s)
+	// 最近邻取法：索引落在 [0, len-1] 内，不做插值。
+	i := int(math.Ceil(q*float64(len(s)))) - 1
+	if i < 0 {
+		i = 0
+	}
+	if i >= len(s) {
+		i = len(s) - 1
+	}
+	return &s[i]
+}
+
+/*
+ * 历史累计。和区间统计分开查：区间查询已经把明细行都拉回来了，
+ * 再拉一次全量不现实——这里只让数据库做聚合，不返回行。
+ * 失败不算致命：拿不到就留零值，前端显示「—」，不该因此让整页报错。
+ */
+func fillLifetime(m *PortalMetrics, userId int) {
+	var row struct {
+		Requests   int64
+		Prompt     int64
+		Completion int64
+	}
+	err := LOG_DB.Model(&Log{}).
+		Select("count(*) as requests, coalesce(sum(prompt_tokens),0) as prompt, coalesce(sum(completion_tokens),0) as completion").
+		Where("user_id = ? AND type = ?", userId, LogTypeConsume).
+		Scan(&row).Error
+	if err != nil {
+		return
+	}
+	m.LifetimeRequests = row.Requests
+	m.LifetimeTokens = row.Prompt + row.Completion
 }
