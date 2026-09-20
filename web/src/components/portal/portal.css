@@ -995,3 +995,35 @@
 /* 模态一项一行。用分隔符连起来的话，中英文该用什么符号是两套规则，
    不如各占一行——也更好扫。 */
 .pt-modality { display: block; }
+
+/* 小节标题带右侧操作（比如趋势图的口径切换） */
+.pt-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.pt-section-head .pt-section-title { margin: 0; }
+
+/* 刷新失败时的说明条。不做成红色报错：数据还在、还能看，只是没更新。 */
+.pt-stale {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--pt-warn-text);
+  background: var(--pt-warn-bg);
+  border-radius: var(--pt-radius-md);
+  padding: 8px 12px;
+}
+.pt-linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-left: 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--pt-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}

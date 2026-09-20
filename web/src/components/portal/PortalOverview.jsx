@@ -18,9 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { VChart } from '@visactor/react-vchart';
 import { API, showError } from '../../helpers';
+import { ChatCards, ChatTable } from './ChatLog';
 import { Card, Empty, PageHead, Skeleton, Stat, fmtCompact, fmtInt } from './shared';
 
 /*
@@ -51,12 +53,36 @@ function rangeBounds(v) {
 }
 
 // 图表配色沿用门户的单色基调，不引入花哨的多彩色板。
-const LINE_COLORS = ['#14181f'];
-const PIE_COLORS = ['#14181f', '#3d4551', '#626b78', '#8a909b', '#b3b8c0', '#d6d9de'];
+/*
+ * 分布图必须用可区分的颜色：这里颜色不是装饰，它就是编码本身——
+ * 负责把扇区和右边的图例对应起来。之前压成六级灰阶，相邻两块几乎分不开，
+ * 等于把图例这个功能弄没了。色值和模型页的分类图标同源，整站一套。
+ */
+const PIE_COLORS = ['#2563d4', '#157f3c', '#8a5cd6', '#c9a227', '#1d8a8a', '#c8372f'];
+// 折线按指标换色：请求数用墨色，Token 用强调蓝，切换时一眼能看出换了口径
+const LINE_COLOR = { requests: '#14181f', tokens: '#2563d4' };
+
+const TREND_METRICS = [
+  { key: 'requests', label: '请求数' },
+  { key: 'tokens', label: 'Token' },
+];
 
 export default function PortalOverview() {
   const { t } = useTranslation();
   const [range, setRange] = useState('24h');
+  // 趋势图看哪个口径。后端每个时间点本来就同时返回请求数和 Token，
+  // 之前只画了请求数——不是数据没有，是前端没用。
+  const [trend, setTrend] = useState('requests');
+  // 最近几次调用直接放在概览上：出了问题的人第一反应是看「我刚才那次怎么了」，
+  // 不该逼他先跳到使用记录页再翻。
+  const [recent, setRecent] = useState([]);
+  const [openErr, setOpenErr] = useState(null);
+  /*
+   * 刷新失败时保留上一次的数据，只在顶上挂一条说明。
+   * 把整页清空换成一个错误提示，等于把用户已经看到的信息也拿走了——
+   * 而那些数据并没有失效，只是没能更新。
+   */
+  const [staleAt, setStaleAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
@@ -69,19 +95,40 @@ export default function PortalOverview() {
       );
       if (!res.data?.success) {
         showError(res.data?.message || t('加载失败'));
-        setData(null);
+        // 不清空：旧数据没失效，只是没更新。清掉等于把用户已经看到的也拿走。
+        setStaleAt(Date.now());
         return;
       }
       setData(res.data.data);
+      setStaleAt(null);
     } catch (e) {
       showError(t('加载失败'));
-      setData(null);
+      setStaleAt(Date.now());
     } finally {
       setLoading(false);
     }
-  }, [range]);
+  }, [range, t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // 最近调用和上面的统计各取各的：这一份不跟着时间范围变，
+  // 永远是「最新几条」，出问题时要看的就是刚才那几次。
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await API.get('/api/log/self?p=1&page_size=5');
+        if (!alive) return;
+        const d = res.data?.data;
+        setRecent(Array.isArray(d?.items) ? d.items : []);
+      } catch (e) {
+        // 概览的主体是上面的统计，这一块拿不到就不显示，不打断整页
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const lineSpec = useMemo(() => {
     const pts = (data?.series || []).map((p) => ({
@@ -91,11 +138,11 @@ export default function PortalOverview() {
         month: '2-digit', day: '2-digit',
         ...(range === '30d' ? {} : { hour: '2-digit', minute: '2-digit' }),
       }),
-      v: p.requests,
+      v: trend === 'tokens' ? p.tokens : p.requests,
     }));
     return {
       type: 'line', data: [{ id: 'd', values: pts }],
-      xField: 't', yField: 'v', color: LINE_COLORS,
+      xField: 't', yField: 'v', color: [LINE_COLOR[trend]],
       point: { visible: false },
       line: { style: { lineWidth: 2 } },
       axes: [
@@ -105,10 +152,14 @@ export default function PortalOverview() {
           grid: { style: { stroke: '#eef0f2' } }, domainLine: { visible: false },
           tick: { visible: false } },
       ],
-      tooltip: { mark: { title: { value: '请求数' } } },
+      tooltip: {
+        mark: {
+          title: { value: t(trend === 'tokens' ? 'Token' : '请求数') },
+        },
+      },
       padding: { top: 8, right: 8, bottom: 4, left: 4 },
     };
-  }, [data, range]);
+  }, [data, range, trend, t]);
 
   const pieSpec = useMemo(() => {
     const top = (data?.models || []).slice(0, 6);
@@ -142,6 +193,15 @@ export default function PortalOverview() {
   return (
     <div>
       <PageHead title={t('概览')} sub={t('你自己的调用情况')} />
+
+      {staleAt ? (
+        <p className='pt-stale'>
+          {t('刷新失败，下面是上一次成功取到的数据。')}
+          <button type='button' className='pt-linkbtn' onClick={load}>
+            {t('重试')}
+          </button>
+        </p>
+      ) : null}
 
       <div className='pt-filters'>
         {RANGES.map((r) => (
@@ -180,8 +240,24 @@ export default function PortalOverview() {
       </div>
 
       <div className='pt-section'>
-        <h2 className='pt-section-title'>{t('调用趋势')}</h2>
-        <p className='pt-section-sub'>{t('按请求数')}</p>
+        <div className='pt-section-head'>
+          <h2 className='pt-section-title'>{t('调用趋势')}</h2>
+          {/* 请求数和 Token 是两个口径：请求多不等于烧得多，
+              一次长上下文调用抵得上几十次短问答。两个都得能看。 */}
+          <div className='pt-chips'>
+            {TREND_METRICS.map((x) => (
+              <button
+                key={x.key}
+                type='button'
+                className={`pt-chip${trend === x.key ? ' on' : ''}`}
+                aria-pressed={trend === x.key}
+                onClick={() => setTrend(x.key)}
+              >
+                {t(x.label)}
+              </button>
+            ))}
+          </div>
+        </div>
         <Card>
           {(d.series || []).some((p) => p.requests > 0) ? (
             <div style={{ height: 260, padding: 12 }}>
@@ -227,6 +303,29 @@ export default function PortalOverview() {
           )}
         </Card>
       </div>
+
+      {recent.length ? (
+        <div className='pt-section'>
+          <div className='pt-section-head'>
+            <h2 className='pt-section-title'>{t('最近调用')}</h2>
+            <Link className='pt-linkbtn' to='/console/log'>
+              {t('查看全部')}
+            </Link>
+          </div>
+          <Card>
+            <div className='pt-wide-only'>
+              <ChatTable
+                rows={recent}
+                openId={openErr}
+                onToggleErr={(id) => setOpenErr(openErr === id ? null : id)}
+              />
+            </div>
+            <div className='pt-narrow-only'>
+              <ChatCards rows={recent} />
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }
