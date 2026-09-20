@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
@@ -49,6 +50,7 @@ const RANGES = [
 ];
 
 export default function PortalRecords() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('chat');
   const [page, setPage] = useState(1);
   const [onlyFailed, setOnlyFailed] = useState(false);
@@ -103,7 +105,7 @@ export default function PortalRecords() {
       }
       const res = await API.get(`${endpoint}?${q.join('&')}`);
       if (!res.data?.success) {
-        showError(res.data?.message || '加载失败');
+        showError(res.data?.message || t('加载失败'));
         setRows([]); setTotal(0);
         return;
       }
@@ -112,7 +114,7 @@ export default function PortalRecords() {
       setRows(items);
       setTotal(Number(d?.total ?? items.length));
     } catch (e) {
-      showError('加载失败');
+      showError(t('加载失败'));
       setRows([]); setTotal(0);
     } finally {
       setLoading(false);
@@ -126,13 +128,13 @@ export default function PortalRecords() {
 
   return (
     <div className='pt-page-wide'>
-      <PageHead title='使用记录' sub='你的每一次调用' />
+      <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
       <Tabs items={TABS} value={tab} onChange={setTab} />
 
       {tab === 'chat' && (
         <div className='pt-filters'>
-          <div className='pt-chips' role='group' aria-label='时间范围'>
+          <div className='pt-chips' role='group' aria-label={t('时间范围')}>
             {RANGES.map((r) => (
               <button
                 key={r.key}
@@ -141,17 +143,17 @@ export default function PortalRecords() {
                 aria-pressed={range === r.key}
                 onClick={() => setRange(r.key)}
               >
-                {r.label}
+                {t(r.label)}
               </button>
             ))}
           </div>
           <select
             className='pt-select'
-            aria-label='按模型筛选'
+            aria-label={t('按模型筛选')}
             value={model}
             onChange={(e) => setModel(e.target.value)}
           >
-            <option value=''>全部模型</option>
+            <option value=''>{t('全部模型')}</option>
             {models.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}
@@ -162,7 +164,7 @@ export default function PortalRecords() {
               checked={onlyFailed}
               onChange={(e) => setOnlyFailed(e.target.checked)}
             />
-            只看失败
+            {t('只看失败')}
           </label>
         </div>
       )}
@@ -206,7 +208,7 @@ export default function PortalRecords() {
               <table className='pt-table'>
                 <thead>
                   <tr>
-                    <th>提交时间</th><th>类型</th><th>状态</th><th>进度</th><th>结果</th>
+                    <th>{t('提交时间')}</th><th>{t('类型')}</th><th>{t('状态')}</th><th>{t('进度')}</th><th>{t('结果')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -222,7 +224,7 @@ export default function PortalRecords() {
                       <td>{r.progress || '—'}</td>
                       <td>
                         {r.image_url
-                          ? <a className='pt-btn sm' href={r.image_url} target='_blank' rel='noreferrer'>查看</a>
+                          ? <a className='pt-btn sm' href={r.image_url} target='_blank' rel='noreferrer'>{t('查看')}</a>
                           : <span style={{ color: 'var(--pt-text-muted)' }}>—</span>}
                       </td>
                     </tr>
@@ -235,7 +237,7 @@ export default function PortalRecords() {
               <table className='pt-table'>
                 <thead>
                   <tr>
-                    <th>提交时间</th><th>平台</th><th>动作</th><th>状态</th><th>完成时间</th><th>结果</th>
+                    <th>{t('提交时间')}</th><th>{t('平台')}</th><th>{t('动作')}</th><th>{t('状态')}</th><th>{t('完成时间')}</th><th>{t('结果')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,10 +268,10 @@ export default function PortalRecords() {
         {!loading && rows.length > 0 && (
           <div className='pt-pager'>
             <button type='button' className='pt-btn sm' disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</button>
+              onClick={() => setPage((p) => Math.max(1, p - 1))}>{t('上一页')}</button>
             <span>第 {page} / {maxPage} 页 · 共 {fmtInt(total)} 条</span>
             <button type='button' className='pt-btn sm' disabled={page >= maxPage}
-              onClick={() => setPage((p) => p + 1)}>下一页</button>
+              onClick={() => setPage((p) => p + 1)}>{t('下一页')}</button>
           </div>
         )}
       </Card>

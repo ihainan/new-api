@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime } from './shared';
@@ -43,6 +44,8 @@ function parseOther(row) {
   return o && typeof o === 'object' ? o : {};
 }
 
+// 返回的是中文原文，同时也是 i18n 的 key——这是个普通函数，不能用 hook，
+// 由调用它的组件去 t() 包。
 export function chatOutcome(row) {
   if (row.type === 5) return { cls: 'bad', text: '失败' };
   const end = parseOther(row).stream_status?.end_reason;
@@ -82,18 +85,19 @@ function Cells({ r }) {
 }
 
 export function ChatTable({ rows, openId, onToggleErr }) {
+  const { t } = useTranslation();
   return (
     <table className='pt-table pt-log-table'>
       <thead>
         <tr>
-          <th>模型</th>
-          <th>端点</th>
+          <th>{t('模型')}</th>
+          <th>{t('端点')}</th>
           <th>IP</th>
-          <th>类型</th>
+          <th>{t('类型')}</th>
           <th className='pt-num'>Token</th>
-          <th>延迟</th>
-          <th>结果</th>
-          <th>时间</th>
+          <th>{t('延迟')}</th>
+          <th>{t('结果')}</th>
+          <th>{t('时间')}</th>
         </tr>
       </thead>
       <tbody>
@@ -128,7 +132,7 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                   {r.ip || '—'}
                 </td>
                 <td>
-                  <span className='pt-tag plain'>{r.is_stream ? '流式' : '非流式'}</span>
+                  <span className='pt-tag plain'>{t(r.is_stream ? '流式' : '非流式')}</span>
                 </td>
                 <td className='pt-num'>
                   <div className='pt-stack'>
@@ -162,11 +166,11 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                       aria-expanded={openId === r.id}
                       onClick={() => onToggleErr(r.id)}
                     >
-                      {out.text}
+                      {t(out.text)}
                       <span aria-hidden='true'>{openId === r.id ? ' ▴' : ' ▾'}</span>
                     </button>
                   ) : (
-                    <span className={`pt-tag ${out.cls}`}>{out.text}</span>
+                    <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
                   )}
                 </td>
                 <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
@@ -193,6 +197,7 @@ export function ChatTable({ rows, openId, onToggleErr }) {
  * 但信息一条都不能少——不是把列删掉，是换个排法。
  */
 export function ChatCards({ rows }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(null);
   return (
     <div className='pt-rec-cards'>
@@ -203,7 +208,7 @@ export function ChatCards({ rows }) {
           <article key={r.id} className='pt-rec-card'>
             <div className='pt-rec-top'>
               <span className='pt-sub'>{fmtLogTime(r.created_at)}</span>
-              <span className={`pt-tag ${out.cls}`}>{out.text}</span>
+              <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
             </div>
             <div className='pt-cell-row' style={{ marginTop: 6 }}>
               <ModelIcon model={r.model_name} size={16} />
@@ -219,19 +224,19 @@ export function ChatCards({ rows }) {
                 aria-expanded={open === r.id}
                 onClick={() => setOpen(open === r.id ? null : r.id)}
               >
-                {open === r.id ? '收起错误详情' : '查看错误详情'}
+                {t(open === r.id ? '收起错误详情' : '查看错误详情')}
               </button>
             ) : null}
             {open === r.id && failed ? (
               <div className='pt-err-box'>{r.content}</div>
             ) : null}
             <dl className='pt-rec-grid'>
-              <div><dt>输入</dt><dd>{fmtInt(r.prompt_tokens)}</dd></div>
-              <div><dt>输出</dt><dd>{fmtInt(r.completion_tokens)}</dd></div>
-              <div><dt>缓存</dt><dd>{fmtInt(cache)}</dd></div>
-              <div><dt>首字</dt><dd>{ms(frt)}</dd></div>
-              <div><dt>总耗时</dt><dd>{r.use_time ? r.use_time + 's' : '—'}</dd></div>
-              <div><dt>类型</dt><dd>{r.is_stream ? '流式' : '非流式'}</dd></div>
+              <div><dt>{t('输入')}</dt><dd>{fmtInt(r.prompt_tokens)}</dd></div>
+              <div><dt>{t('输出')}</dt><dd>{fmtInt(r.completion_tokens)}</dd></div>
+              <div><dt>{t('缓存')}</dt><dd>{fmtInt(cache)}</dd></div>
+              <div><dt>{t('首字')}</dt><dd>{ms(frt)}</dd></div>
+              <div><dt>{t('总耗时')}</dt><dd>{r.use_time ? r.use_time + 's' : '—'}</dd></div>
+              <div><dt>{t('类型')}</dt><dd>{t(r.is_stream ? '流式' : '非流式')}</dd></div>
             </dl>
             <div className='pt-rec-foot pt-sub pt-mono'>
               {(o.request_path || '').replace(/^\//, '') || '—'}

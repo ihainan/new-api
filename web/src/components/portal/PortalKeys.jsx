@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, copy, getServerAddress, showError, showSuccess } from '../../helpers';
 import { Card, CodeBlock, Empty, PageHead, Skeleton, Tabs } from './shared';
@@ -41,6 +42,7 @@ const PROTOCOLS = [
 ];
 
 export default function PortalKeys() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
   const [plain, setPlain] = useState('');
@@ -53,7 +55,7 @@ export default function PortalKeys() {
     try {
       const res = await API.get('/api/token/?p=0&size=100');
       if (!res.data?.success) {
-        showError(res.data?.message || '获取密钥失败');
+        showError(res.data?.message || t('获取密钥失败'));
         return;
       }
       const items = res.data.data?.items || [];
@@ -62,7 +64,7 @@ export default function PortalKeys() {
       setToken((usable.length ? usable : items)
         .sort((a, b) => (b.created_time || 0) - (a.created_time || 0))[0] || null);
     } catch (e) {
-      showError('获取密钥失败');
+      showError(t('获取密钥失败'));
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,7 @@ export default function PortalKeys() {
     try {
       // 复制不显示明文——这两件事是分开的。
       const v = plain || (await fetchPlain());
-      (await copy(v)) ? showSuccess('已复制') : showError('复制失败');
+      (await copy(v)) ? showSuccess(t('已复制')) : showError(t('复制失败'));
     } catch (e) { showError(e.message); }
     finally { setBusy(false); }
   };
@@ -129,14 +131,14 @@ print(msg.content[0].text)`,
     ],
   };
 
-  if (loading) return <div><PageHead title='API 密钥' /><Skeleton rows={3} /></div>;
+  if (loading) return <div><PageHead title={t('API 密钥')} /><Skeleton rows={3} /></div>;
 
   if (!token) {
     return (
       <div>
-        <PageHead title='API 密钥' />
+        <PageHead title={t('API 密钥')} />
         <Card>
-          <Empty text='还没有密钥。密钥会在账号开通时自动发放，如果这里一直是空的，说明发放环节出了问题，请告知管理员。' />
+          <Empty text={t('还没有密钥。密钥会在账号开通时自动发放，如果这里一直是空的，说明发放环节出了问题，请告知管理员。')} />
         </Card>
       </div>
     );
@@ -144,7 +146,7 @@ print(msg.content[0].text)`,
 
   return (
     <div>
-      <PageHead title='API 密钥' sub='用它调用下面的接口，不需要额外申请' />
+      <PageHead title={t('API 密钥')} sub={t('用它调用下面的接口，不需要额外申请')} />
 
       <Card className='pad'>
         <div>
@@ -155,10 +157,10 @@ print(msg.content[0].text)`,
             <code className='pt-keyval'>{plain || MASK}</code>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type='button' className='pt-btn' onClick={toggle} disabled={busy}>
-                {plain ? '隐藏' : '显示'}
+                {t(plain ? '隐藏' : '显示')}
               </button>
               <button type='button' className='pt-btn primary' onClick={copyKey} disabled={busy}>
-                复制
+                {t('复制')}
               </button>
             </div>
           </div>
@@ -166,9 +168,9 @@ print(msg.content[0].text)`,
       </Card>
 
       <div className='pt-section'>
-        <h2 className='pt-section-title'>怎么调用</h2>
+        <h2 className='pt-section-title'>{t('怎么调用')}</h2>
         <p className='pt-section-sub'>
-          选一种协议，复制走即可。示例里的 YOUR_API_KEY 在你点「显示」后会替换成真实密钥。
+          {t('选一种协议，复制走即可。示例里的 YOUR_API_KEY 在你点「显示」后会替换成真实密钥。')}
         </p>
         <Tabs items={PROTOCOLS} value={proto} onChange={setProto} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

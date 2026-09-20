@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { copy, showError, showSuccess } from '../../helpers';
 
 /*
@@ -67,6 +68,7 @@ export function Skeleton({ rows = 4 }) {
 }
 
 export function CodeBlock({ code }) {
+  const { t } = useTranslation();
   return (
     <div className='pt-code-wrap' style={{ position: 'relative' }}>
       <pre className='pt-code'>
@@ -77,10 +79,10 @@ export function CodeBlock({ code }) {
           type='button'
           className='pt-btn sm'
           onClick={async () => {
-            (await copy(code)) ? showSuccess('已复制') : showError('复制失败');
+            (await copy(code)) ? showSuccess(t('已复制')) : showError(t('复制失败'));
           }}
         >
-          复制
+          {t('复制')}
         </button>
       </div>
     </div>
@@ -88,6 +90,7 @@ export function CodeBlock({ code }) {
 }
 
 export function Tabs({ items, value, onChange }) {
+  const { t } = useTranslation();
   return (
     <div className='pt-tabs' role='tablist'>
       {items.map((it) => (
@@ -99,25 +102,36 @@ export function Tabs({ items, value, onChange }) {
           className={`pt-tab${value === it.key ? ' active' : ''}`}
           onClick={() => onChange(it.key)}
         >
-          {it.label}
+          {t(it.label)}
         </button>
       ))}
     </div>
   );
 }
 
+/*
+ * 数字格式跟随界面语言，不写死 zh-CN：切到英文界面时「1.2 亿」是看不懂的，
+ * Intl 会按语言给出 1.2 亿 / 120M。语言从 i18n 当前值取，不是浏览器设置——
+ * 用户在界面上切了语言，数字得跟着走。
+ */
+function lang() {
+  return (typeof window !== 'undefined' && window.__i18n?.language) || 'zh-CN';
+}
+
 // 大数字压缩成人能读的形式。Token 动辄上亿，原样铺出来没人看得懂。
 export function fmtCompact(n) {
   const v = Number(n || 0);
   if (!Number.isFinite(v)) return '—';
-  if (Math.abs(v) >= 1e8) return (v / 1e8).toFixed(2) + ' 亿';
-  if (Math.abs(v) >= 1e4) return (v / 1e4).toFixed(1) + ' 万';
-  return v.toLocaleString('zh-CN');
+  if (Math.abs(v) < 1e4) return v.toLocaleString(lang());
+  return new Intl.NumberFormat(lang(), {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(v);
 }
 
 export function fmtInt(n) {
   const v = Number(n || 0);
-  return Number.isFinite(v) ? v.toLocaleString('zh-CN') : '—';
+  return Number.isFinite(v) ? v.toLocaleString(lang()) : '—';
 }
 
 // 日志表里一屏几十行，年份对每一行都一样，纯属占地方。
@@ -136,5 +150,5 @@ export function fmtTime(sec) {
   const d = new Date(Number(sec) * 1000);
   return Number.isNaN(d.getTime())
     ? '—'
-    : d.toLocaleString('zh-CN', { hour12: false });
+    : d.toLocaleString(lang(), { hour12: false });
 }

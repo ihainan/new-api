@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
+import { useTranslation } from 'react-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
@@ -30,6 +31,9 @@ import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
  * （手写，模型变更时同步更新）。两边分开的原因：网关没有存模型介绍的地方，
  * 但「哪些模型现在能用」又必须是实时的，写死会让停用的模型继续挂在页面上。
  */
+
+// 只有这两类是按 token 吃上下文的
+const TEXT_CATEGORIES = new Set(['chat', 'retrieval']);
 
 function Chevron({ open }) {
   return (
@@ -72,6 +76,7 @@ const CAPS = [
 ];
 
 function CapGrid({ caps }) {
+  const { t } = useTranslation();
   return (
     <div className='pt-caps'>
       {CAPS.map(([key, label, path]) => {
@@ -109,7 +114,7 @@ function CapGrid({ caps }) {
             >
               {path}
             </svg>
-            <span>{label}</span>
+            <span>{t(label)}</span>
             {tag ? <em className='pt-cap-tag'>{tag}</em> : null}
           </span>
         );
@@ -139,13 +144,14 @@ function SpecItem({ label, value }) {
 }
 
 function ModelRow({ m, open, onToggle }) {
+  const { t } = useTranslation();
   const endpoints = m.endpoints || [];
-  const protocols = endpoints.map((e) => ENDPOINT_LABELS[e] || e).join(' / ');
+  const protocols = endpoints.map((e) => t(ENDPOINT_LABELS[e] || e)).join(' / ');
   // 元信息挤在一行，用间隔点分开；空值直接不进数组，避免出现「· ·」。
   const meta = [
-    m.params && !/未公布|而定/.test(m.params) ? m.params : null,
-    m.context,
-    m.io,
+    m.params && !/未公布|而定/.test(m.params) ? t(m.params) : null,
+    m.context ? t(m.context) : null,
+    m.io ? t(m.io) : null,
     protocols,
   ].filter(Boolean);
   const panelId = `mdl-${m.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
@@ -171,7 +177,7 @@ function ModelRow({ m, open, onToggle }) {
               <span className='pt-mdl-name'>{m.name}</span>
               <code className='pt-mdl-id'>{m.id}</code>
             </span>
-            {m.summary ? <span className='pt-mdl-sum'>{m.summary}</span> : null}
+            {m.summary ? <span className='pt-mdl-sum'>{t(m.summary)}</span> : null}
             {meta.length ? (
               <span className='pt-mdl-meta'>{meta.join(' · ')}</span>
             ) : null}
@@ -185,11 +191,11 @@ function ModelRow({ m, open, onToggle }) {
             aria-label={`复制模型 ID ${m.id}`}
             onClick={async () => {
               (await copy(m.id))
-                ? showSuccess('已复制 ' + m.id)
-                : showError('复制失败');
+                ? showSuccess(t('已复制 {{id}}', { id: m.id }))
+                : showError(t('复制失败'));
             }}
           >
-            复制 ID
+            {t('复制 ID')}
           </button>
           {/* 纯指示器，展开由整行的主按钮负责，不做成第二个可聚焦控件 */}
           <Chevron open={open} />
@@ -198,44 +204,44 @@ function ModelRow({ m, open, onToggle }) {
 
       {open ? (
         <div className='pt-mdl-detail' id={panelId}>
-          {m.detail ? <p className='pt-mdl-text'>{m.detail}</p> : null}
-          {m.note ? <p className='pt-mdl-note'>{m.note}</p> : null}
+          {m.detail ? <p className='pt-mdl-text'>{t(m.detail)}</p> : null}
+          {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
           <dl className='pt-specs'>
-            <ModalityItem label='输入模态' items={m.inputs} />
-            <ModalityItem label='输出模态' items={m.outputs} />
+            <ModalityItem label={t('输入模态')} items={(m.inputs || []).map(t)} />
+            <ModalityItem label={t('输出模态')} items={(m.outputs || []).map(t)} />
             {/* 上下文只对吃文本的模型有意义；出图、语音、视频那几个没有这个概念，
                 给它们填「以上游部署为准」只是一行看不懂的噪音。
                 文本模型里没测出来的才回退到那句话——比编一个数字诚实。 */}
             <SpecItem
-              label='上下文长度'
+              label={t('上下文长度')}
               value={
                 TEXT_CATEGORIES.has(m.category)
-                  ? m.context || '以上游部署为准'
-                  : m.context
+                  ? (m.context && t(m.context)) || t('以上游部署为准')
+                  : m.context && t(m.context)
               }
             />
             {/* 部署给到的和模型本身的规格不是一回事。一致就不必多说一遍，
                 不一致才是使用者要知道的——他会以为自己有官方那么大的窗口。 */}
             {/* 实测验证过什么，单独一栏。运维口径的数字和我亲手验到的长度
                 不是一回事，混在一格里会让人以为整条都验过。 */}
-            <SpecItem label='实测验证' value={m.verified} />
+            <SpecItem label={t('实测验证')} value={m.verified && t(m.verified)} />
             <SpecItem
-              label='模型官方规格'
-              value={m.official && m.official !== m.context ? m.official : null}
+              label={t('模型官方规格')}
+              value={m.official && m.official !== m.context ? t(m.official) : null}
             />
-            <SpecItem label='单次输出上限' value={m.maxOutput} />
-            <SpecItem label='参数规模' value={m.params} />
-            <SpecItem label='权重大小' value={m.size} />
-            <SpecItem label='部署方式' value={m.deployment} />
-            <SpecItem label='调用协议' value={protocols} />
-            <SpecItem label='实际上游' value={m.upstream} />
-            <SpecItem label='可用分组' value={(m.groups || []).join(' / ')} />
+            <SpecItem label={t('单次输出上限')} value={m.maxOutput && t(m.maxOutput)} />
+            <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
+            <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
+            <SpecItem label={t('部署方式')} value={m.deployment && t(m.deployment)} />
+            <SpecItem label={t('调用协议')} value={protocols} />
+            <SpecItem label={t('实际上游')} value={m.upstream && t(m.upstream)} />
+            <SpecItem label={t('可用分组')} value={(m.groups || []).join(' / ')} />
           </dl>
 
           {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
           {m.category === 'chat' ? (
             <div className='pt-caps-wrap'>
-              <div className='pt-caps-label'>能力</div>
+              <div className='pt-caps-label'>{t('能力')}</div>
               <CapGrid caps={m.caps} />
             </div>
           ) : null}
@@ -277,6 +283,7 @@ function normalize(raw) {
 }
 
 export default function PortalModels() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [available, setAvailable] = useState([]);
@@ -297,12 +304,12 @@ export default function PortalModels() {
           setFailed(false);
         } else {
           setFailed(true);
-          showError(res.data?.message || '获取模型列表失败');
+          showError(res.data?.message || t('获取模型列表失败'));
         }
       } catch (e) {
         if (!alive) return;
         setFailed(true);
-        showError('获取模型列表失败');
+        showError(t('获取模型列表失败'));
       } finally {
         if (alive) setLoading(false);
       }
@@ -346,7 +353,7 @@ export default function PortalModels() {
   if (loading) {
     return (
       <div>
-        <PageHead title='模型' />
+        <PageHead title={t('模型')} />
         <Skeleton rows={4} />
       </div>
     );
@@ -356,16 +363,16 @@ export default function PortalModels() {
   if (failed) {
     return (
       <div>
-        <PageHead title='模型' />
+        <PageHead title={t('模型')} />
         <Card>
           <div className='pt-empty'>
-            <p style={{ margin: '0 0 12px' }}>没能取到模型列表。</p>
+            <p style={{ margin: '0 0 12px' }}>{t('没能取到模型列表。')}</p>
             <button
               type='button'
               className='pt-btn sm'
               onClick={() => setReloadKey((k) => k + 1)}
             >
-              重新加载
+              {t('重新加载')}
             </button>
           </div>
         </Card>
@@ -376,13 +383,13 @@ export default function PortalModels() {
   return (
     <div>
       <PageHead
-        title='模型'
-        sub='平台当前开放的模型。复制模型 ID 填进代码即可调用，无需单独申请。'
+        title={t('模型')}
+        sub={t('平台当前开放的模型。复制模型 ID 填进代码即可调用，无需单独申请。')}
       />
 
       {available.length === 0 ? (
         <Card>
-          <Empty text='暂无可用模型，请联系管理员' />
+          <Empty text={t('暂无可用模型，请联系管理员')} />
         </Card>
       ) : (
         <>
@@ -391,8 +398,8 @@ export default function PortalModels() {
               className='pt-input'
               style={{ minWidth: 220 }}
               type='search'
-              placeholder='搜索模型名称或 ID'
-              aria-label='搜索模型'
+              placeholder={t('搜索模型名称或 ID')}
+              aria-label={t('搜索模型')}
               value={kw}
               onChange={(e) => setKw(e.target.value)}
             />
@@ -403,7 +410,7 @@ export default function PortalModels() {
                 aria-pressed={cat === 'all'}
                 onClick={() => setCat('all')}
               >
-                全部 <span className='pt-chip-n'>{matched.length}</span>
+                {t('全部')} <span className='pt-chip-n'>{matched.length}</span>
               </button>
               {CATEGORIES.filter((c) => counts[c.key]).map((c) => (
                 <button
@@ -413,7 +420,7 @@ export default function PortalModels() {
                   aria-pressed={cat === c.key}
                   onClick={() => setCat(c.key)}
                 >
-                  {c.label} <span className='pt-chip-n'>{counts[c.key]}</span>
+                  {t(c.label)} <span className='pt-chip-n'>{counts[c.key]}</span>
                 </button>
               ))}
             </div>
@@ -421,7 +428,7 @@ export default function PortalModels() {
 
           {groups.length === 0 ? (
             <Card>
-              <Empty text='没有匹配的模型' />
+              <Empty text={t('没有匹配的模型')} />
             </Card>
           ) : (
             groups.map((g) => (

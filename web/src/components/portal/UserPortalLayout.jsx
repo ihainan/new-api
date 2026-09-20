@@ -82,6 +82,8 @@ const ICONS = {
 };
 
 // 路由沿用现有的，不新增不改名：旧书签、文档链接、管理员跳转都不会断。
+// label 是中文原文，同时也是 i18n 的 key——这套方案缺翻译时回退成中文，
+// 不会变成空白或 key 名。
 const NAV = [
   { key: 'overview', to: '/console/dashboard', label: '概览', icon: 'overview' },
   { key: 'keys', to: '/console/token', label: 'API 密钥', icon: 'keys' },
@@ -138,7 +140,7 @@ export default function UserPortalLayout({ children }) {
       await API.get('/api/user/logout');
     } catch (e) {
       // 服务端没确认也要清掉本地会话，但不假装一切正常。
-      showError(t('退出时服务端未确认，请重新登录确认状态'));
+      showError(t('已退出本地登录，但服务端没有确认。请重新登录一次，确保状态正确。'));
     }
     userDispatch({ type: 'logout' });
     localStorage.removeItem('user');
@@ -162,7 +164,7 @@ export default function UserPortalLayout({ children }) {
               aria-current={isActive(item) ? 'page' : undefined}
             >
               <Icon path={ICONS[item.icon]} />
-              <span className='pt-lbl'>{item.label}</span>
+              <span className='pt-lbl'>{t(item.label)}</span>
             </Link>
           ))}
         </nav>
