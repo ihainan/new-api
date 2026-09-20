@@ -403,21 +403,34 @@ function SpecItem({ label, value, wide }) {
 }
 
 /*
- * 描述里的模型 ID 和字段名用反引号标出来，渲染成行内代码——
- * 「`response_format`」这种东西混在正文里，不换个字体根本认不出是要照抄的字符串。
+ * 描述里的两种标记：
+ *   `xxx`   -> 行内代码。「`response_format`」混在正文里不换字体根本认不出
+ *              那是要照抄的字符串。
+ *   **xxx** -> 加粗。只留给「不看就会踩」的那一句：静默截断、看不到图片、
+ *              额度不够正文会空——加粗是给信息用的，不是拿来点缀的。
  */
-function withCode(text) {
+function withMarks(text) {
   return String(text)
-    .split(/`([^`]+)`/)
-    .map((part, i) =>
-      i % 2 ? (
-        <code key={i} className='pt-inline-code'>
-          {part}
-        </code>
-      ) : (
-        part
-      ),
-    );
+    .split(/(`[^`]+`|\*\*[^*]+\*\*)/)
+    .filter(Boolean)
+    .map((part, i) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code key={i} className='pt-inline-code'>
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      if (part.startsWith('**') && part.endsWith('**')) {
+        // 加粗里面还会有行内代码，要再解析一层，否则反引号会原样露出来
+        return (
+          <strong key={i} className='pt-em'>
+            {withMarks(part.slice(2, -2))}
+          </strong>
+        );
+      }
+      return part;
+    });
 }
 
 function ModelRow({ m, open, onToggle }) {
@@ -497,10 +510,10 @@ function ModelRow({ m, open, onToggle }) {
        */}
       {m.detail ? (
         <p className={`pt-mdl-desc ${open ? 'pt-mdl-full' : 'pt-mdl-brief'}`}>
-          {withCode(t(m.detail))}
+          {withMarks(t(m.detail))}
         </p>
       ) : m.summary ? (
-        <p className='pt-mdl-desc pt-mdl-sum'>{withCode(t(m.summary))}</p>
+        <p className='pt-mdl-desc pt-mdl-sum'>{withMarks(t(m.summary))}</p>
       ) : null}
 
       {/* 指标条放在卡片层级，不在那个可点击的主按钮里面：
@@ -543,7 +556,7 @@ function ModelRow({ m, open, onToggle }) {
             {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
               加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
             {m.highlight ? (
-              <p className='pt-mdl-highlight'>{withCode(t(m.highlight))}</p>
+              <p className='pt-mdl-highlight'>{withMarks(t(m.highlight))}</p>
             ) : null}
             {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
             {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}

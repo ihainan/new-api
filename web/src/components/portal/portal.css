@@ -704,6 +704,11 @@
   overflow: hidden;
 }
 
+/* 正文里的强调：只用字重，不换颜色——颜色在这套页面里另有含义 */
+.pt-em {
+  font-weight: 600;
+  color: var(--pt-text-primary);
+}
 /* 正文里的行内代码：模型 ID、字段名这类要原样照抄的字符串 */
 .pt-inline-code {
   font-family: var(--pt-mono);
