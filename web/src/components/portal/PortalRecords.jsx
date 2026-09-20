@@ -19,7 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, showError } from '../../helpers';
-import { Card, Empty, PageHead, Skeleton, Tabs, fmtCompact, fmtInt, fmtTime } from './shared';
+import { ChatCards, ChatTable } from './ChatLog';
+import { HIDDEN } from './modelCatalog';
+import { Card, Empty, PageHead, Tabs, fmtInt, fmtTime } from './shared';
 
 /*
  * 使用记录。三类记录（对话 / 绘图 / 任务）各有各的字段，硬塞进一张统一的稀疏表
@@ -35,20 +37,25 @@ const TABS = [
   { key: 'task', label: '任务' },
 ];
 
-// 对话日志里，失败是单独的一种 type，成功记录里还可能藏着客户端主动断开。
-function chatOutcome(row) {
-  if (row.type === 5) return { cls: 'bad', text: '失败' };
-  let other = row.other;
-  if (typeof other === 'string') { try { other = JSON.parse(other); } catch { other = null; } }
-  const end = other?.stream_status?.end_reason;
-  if (end === 'client_gone') return { cls: 'warn', text: '客户端断开' };
-  return { cls: 'ok', text: '成功' };
-}
+/*
+ * 筛选全部走服务端。只筛当前这一页是骗人的——翻到第二页筛选条件就失效了，
+ * 而且计数对不上。接口支持 type / start_timestamp / end_timestamp / model_name。
+ */
+const RANGES = [
+  { key: '24h', label: '近 24 小时', hours: 24 },
+  { key: '7d', label: '近 7 天', hours: 24 * 7 },
+  { key: '30d', label: '近 30 天', hours: 24 * 30 },
+  { key: 'all', label: '全部', hours: 0 },
+];
 
 export default function PortalRecords() {
   const [tab, setTab] = useState('chat');
   const [page, setPage] = useState(1);
   const [onlyFailed, setOnlyFailed] = useState(false);
+  const [range, setRange] = useState('7d');
+  const [model, setModel] = useState('');
+  const [models, setModels] = useState([]);
+  const [openErr, setOpenErr] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -59,13 +66,42 @@ export default function PortalRecords() {
     task: '/api/task/self',
   }[tab]), [tab]);
 
+  // 模型下拉的选项取自「当前可调用的模型」，不是从日志里现扒——
+  // 日志里只有用过的，没用过的就筛不到，那个下拉会越用越短。
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await API.get('/api/pricing');
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setModels(
+            res.data.data
+              .map((m) => m.model_name)
+              .filter((n) => typeof n === 'string' && n && !HIDDEN.has(n))
+              .sort(),
+          );
+        }
+      } catch (e) {
+        // 拿不到就只是少一个筛选项，不值得打断整页
+      }
+    })();
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       // 「只看失败」在对话日志里靠 type=5 表达；绘图与任务各有自己的状态字段，
       // 接口不支持这个筛选，所以只在对话标签下提供。
-      const typeParam = tab === 'chat' && onlyFailed ? '&type=5' : '';
-      const res = await API.get(`${endpoint}?p=${page}&page_size=${PAGE_SIZE}${typeParam}`);
+      const q = [`p=${page}`, `page_size=${PAGE_SIZE}`];
+      if (tab === 'chat') {
+        if (onlyFailed) q.push('type=5');
+        if (model) q.push('model_name=' + encodeURIComponent(model));
+        const hours = RANGES.find((r) => r.key === range)?.hours || 0;
+        if (hours) {
+          q.push('start_timestamp=' + (Math.floor(Date.now() / 1000) - hours * 3600));
+          q.push('end_timestamp=' + Math.floor(Date.now() / 1000));
+        }
+      }
+      const res = await API.get(`${endpoint}?${q.join('&')}`);
       if (!res.data?.success) {
         showError(res.data?.message || '加载失败');
         setRows([]); setTotal(0);
@@ -81,10 +117,10 @@ export default function PortalRecords() {
     } finally {
       setLoading(false);
     }
-  }, [endpoint, page, onlyFailed, tab]);
+  }, [endpoint, page, onlyFailed, tab, range, model]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [tab, onlyFailed]);
+  useEffect(() => { setPage(1); setOpenErr(null); }, [tab, onlyFailed, range, model]);
 
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -96,7 +132,31 @@ export default function PortalRecords() {
 
       {tab === 'chat' && (
         <div className='pt-filters'>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5 }}>
+          <div className='pt-chips' role='group' aria-label='时间范围'>
+            {RANGES.map((r) => (
+              <button
+                key={r.key}
+                type='button'
+                className={`pt-chip${range === r.key ? ' on' : ''}`}
+                aria-pressed={range === r.key}
+                onClick={() => setRange(r.key)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <select
+            className='pt-select'
+            aria-label='按模型筛选'
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+          >
+            <option value=''>全部模型</option>
+            {models.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <label className='pt-check'>
             <input
               type='checkbox'
               checked={onlyFailed}
@@ -109,40 +169,37 @@ export default function PortalRecords() {
 
       <Card>
         {loading ? (
-          <div style={{ padding: 16 }}>
+          <div className='pt-skel-card'>
             {[0, 1, 2, 3, 4].map((i) => (
               <div key={i} className='pt-skel' style={{ marginTop: i ? 12 : 0 }} />
             ))}
           </div>
         ) : rows.length === 0 ? (
-          <Empty text={onlyFailed ? '这段时间没有失败记录' : '还没有记录'} />
+          <Empty
+            text={
+              onlyFailed
+                ? '这段时间没有失败记录'
+                : model
+                  ? `这段时间没有 ${model} 的调用记录`
+                  : '这段时间还没有调用记录'
+            }
+          />
         ) : (
           <div className='pt-table-wrap'>
             {tab === 'chat' && (
-              <table className='pt-table'>
-                <thead>
-                  <tr>
-                    <th>时间</th><th>模型</th><th>结果</th>
-                    <th className='pt-num'>输入</th><th className='pt-num'>输出</th>
-                    <th className='pt-num'>耗时</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const o = chatOutcome(r);
-                    return (
-                      <tr key={r.id}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{fmtTime(r.created_at)}</td>
-                        <td style={{ fontFamily: 'var(--pt-mono)' }}>{r.model_name || '—'}</td>
-                        <td><span className={`pt-tag ${o.cls}`}>{o.text}</span></td>
-                        <td className='pt-num'>{fmtCompact(r.prompt_tokens)}</td>
-                        <td className='pt-num'>{fmtCompact(r.completion_tokens)}</td>
-                        <td className='pt-num'>{r.use_time ? `${r.use_time}s` : '—'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <>
+                <div className='pt-wide-only'>
+                  <ChatTable
+                    rows={rows}
+                    openId={openErr}
+                    onToggleErr={(id) => setOpenErr(openErr === id ? null : id)}
+                  />
+                </div>
+                {/* 八列的表在手机上只能横向拖，改成一条一张卡，信息不删 */}
+                <div className='pt-narrow-only'>
+                  <ChatCards rows={rows} />
+                </div>
+              </>
             )}
 
             {tab === 'draw' && (

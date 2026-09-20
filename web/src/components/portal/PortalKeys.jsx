@@ -146,8 +146,8 @@ print(msg.content[0].text)`,
     <div>
       <PageHead title='API 密钥' sub='用它调用下面的接口，不需要额外申请' />
 
-      <Card style={{ padding: 18 }}>
-        <div style={{ padding: 18 }}>
+      <Card className='pad'>
+        <div>
           <div style={{ fontSize: 12, color: 'var(--pt-text-muted)', marginBottom: 8 }}>
             {token.name}
           </div>

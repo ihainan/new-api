@@ -18,9 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alibaba, BAAI, Gemma, Minimax, Qwen, Zhipu } from '@lobehub/icons';
 import { API, copy, showError, showSuccess } from '../../helpers';
-import BrandMark from './BrandMark';
+import ModelIcon from './ModelIcon';
 import { Card, Empty, PageHead, Skeleton } from './shared';
 import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
 
@@ -31,41 +30,6 @@ import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
  * （手写，模型变更时同步更新）。两边分开的原因：网关没有存模型介绍的地方，
  * 但「哪些模型现在能用」又必须是实时的，写死会让停用的模型继续挂在页面上。
  */
-
-const ICONS = { Zhipu, Qwen, Minimax, Gemma, BAAI, Alibaba };
-
-// 只有这两类是按 token 吃上下文的
-const TEXT_CATEGORIES = new Set(['chat', 'retrieval']);
-
-function ModelIcon({ name, size = 26 }) {
-  // 平台自己的服务（智能路由）用产品标记，不去外部图标库里凑一个。
-  const Comp = name === 'brand' ? null : name ? ICONS[name] : null;
-  // Color 变体更好认；BAAI 这类只有单色版的退回基础组件。
-  const Rendered = Comp ? Comp.Color || Comp : null;
-  if (name !== 'brand' && !Rendered) {
-    return (
-      <span
-        className='pt-mdl-icon pt-mdl-icon-none'
-        style={{ width: size, height: size }}
-        aria-hidden='true'
-      />
-    );
-  }
-  /*
-   * 图标库的 SVG 自带 <title>（Zhipu、Alibaba、BAAI…），鼠标悬停会弹出厂商名，
-   * 而这个页面按要求不写厂商。aria-hidden 挡读屏，portal.css 里再把 title 关掉，
-   * 两处都要管——删掉 vendor 字段挡不住图标自己带的标题。
-   */
-  return (
-    <span
-      className='pt-mdl-icon'
-      style={{ width: size, height: size }}
-      aria-hidden='true'
-    >
-      {name === 'brand' ? <BrandMark size={size} /> : <Rendered size={size} />}
-    </span>
-  );
-}
 
 function Chevron({ open }) {
   return (
@@ -201,7 +165,7 @@ function ModelRow({ m, open, onToggle }) {
           aria-controls={panelId}
           onClick={onToggle}
         >
-          <ModelIcon name={m.icon} />
+          <ModelIcon icon={m.icon} />
           <span className='pt-mdl-body'>
             <span className='pt-mdl-title'>
               <span className='pt-mdl-name'>{m.name}</span>

@@ -54,7 +54,7 @@ export function Empty({ text }) {
 
 export function Skeleton({ rows = 4 }) {
   return (
-    <div className='pt-card' style={{ padding: 16 }}>
+    <div className='pt-card pt-skel-card'>
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
@@ -118,6 +118,17 @@ export function fmtCompact(n) {
 export function fmtInt(n) {
   const v = Number(n || 0);
   return Number.isFinite(v) ? v.toLocaleString('zh-CN') : '—';
+}
+
+// 日志表里一屏几十行，年份对每一行都一样，纯属占地方。
+// 跨年时用得上，所以只在不是今年时才补上年份。
+export function fmtLogTime(sec) {
+  if (!sec) return '—';
+  const d = new Date(Number(sec) * 1000);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = (n) => String(n).padStart(2, '0');
+  const md = `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()} ${md}`;
 }
 
 export function fmtTime(sec) {

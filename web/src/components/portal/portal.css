@@ -192,12 +192,19 @@
   margin: 0 0 20px;
 }
 
+/*
+ * 卡片本身不带内边距——里面常常是要贴边铺满的表格或图表。
+ * 代价是：**任何非表格的直接子元素都必须自带内边距**，否则会贴着边框。
+ * 分页条就这么贴过一次。别再用内联 style 现场补，补到类上。
+ */
 .pt-card {
   background: var(--pt-bg-card);
   border: 1px solid var(--pt-border);
   border-radius: var(--pt-radius-lg);
   box-shadow: var(--pt-shadow-sm);
 }
+/* 内容是成段文字/表单而不是表格时用它，省得每处自己写 padding */
+.pt-card.pad { padding: 16px; }
 
 /* ---------------- 窄屏 ---------------- */
 
@@ -692,11 +699,14 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 14px 0 0;
+  /* 左右必须有内边距：卡片自己不带，按钮会顶到边框上 */
+  padding: 14px 16px 16px;
+  flex-wrap: wrap;
   font-size: 13px;
   color: var(--pt-text-secondary);
 }
 
+.pt-skel-card { padding: 16px; }
 .pt-skel {
   height: 12px;
   border-radius: 4px;
@@ -764,4 +774,140 @@
 }
 @media (max-width: 640px) {
   .pt-caps { grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+}
+
+/* ---------------- 使用记录 ---------------- */
+
+/* 宽屏表 / 窄屏卡片二选一。日志有八列，手机上横向拖着读没法用，
+   但列不能删——删掉的正是排查问题时要看的那几个。 */
+.pt-wide-only { display: block; }
+.pt-narrow-only { display: none; }
+@media (max-width: 900px) {
+  .pt-wide-only { display: none; }
+  .pt-narrow-only { display: block; }
+}
+
+.pt-log-table td { vertical-align: top; }
+.pt-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.pt-cell-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+.pt-mono {
+  font-family: var(--pt-mono);
+  font-size: 12.5px;
+  word-break: break-all;
+}
+.pt-sub {
+  font-size: 11.5px;
+  color: var(--pt-text-meta);
+}
+
+/* Token：进出各一个箭头，比两列数字省地方，也更容易一眼看出方向 */
+.pt-tok {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pt-arrow {
+  font-style: normal;
+  margin-right: 1px;
+  margin-left: 6px;
+}
+.pt-arrow:first-child { margin-left: 0; }
+.pt-arrow.in { color: var(--pt-ok-text); }
+.pt-arrow.out { color: var(--pt-accent); }
+
+/* 耗时色条。这不是卡片左侧那种装饰性竖条——它就在「延迟」这一格里，
+   高度随档位变化，承载的是这一行的耗时快慢。 */
+.pt-lat-bar {
+  flex: none;
+  width: 3px;
+  border-radius: 2px;
+  align-self: stretch;
+  min-height: 26px;
+  background: var(--pt-border-strong);
+}
+.pt-lat-bar.fast { background: #4a9a63; }
+.pt-lat-bar.mid { background: #c9a227; }
+.pt-lat-bar.slow { background: #c8372f; }
+.pt-lat-bar.na { background: var(--pt-border); }
+
+/* 失败结果做成可展开按钮：「失败」两个字没法告诉人该改什么 */
+.pt-tag-btn {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+.pt-err-row td { padding: 0 12px 12px; border-bottom: 1px solid var(--pt-border); }
+.pt-err-box {
+  background: var(--pt-danger-bg);
+  color: var(--pt-danger-text);
+  border-radius: var(--pt-radius-md);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 8px;
+}
+.pt-err-toggle {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--pt-danger-text);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pt-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--pt-text-secondary);
+}
+
+/* 窄屏：一条记录一张卡 */
+.pt-rec-cards { padding: 4px; }
+.pt-rec-card {
+  padding: 12px 12px 14px;
+  border-bottom: 1px solid var(--pt-border);
+}
+.pt-rec-card:last-child { border-bottom: none; }
+.pt-rec-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pt-rec-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 10px;
+  margin: 10px 0 0;
+}
+.pt-rec-grid dt {
+  font-size: 11.5px;
+  color: var(--pt-text-meta);
+}
+.pt-rec-grid dd {
+  margin: 1px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pt-rec-foot {
+  margin-top: 10px;
+  word-break: break-all;
 }
