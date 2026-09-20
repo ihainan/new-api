@@ -640,13 +640,44 @@
   line-height: 1.5;
   color: var(--pt-text-secondary);
 }
-.pt-mdl-meta {
-  display: block;
-  margin: 5px 0 0;
+/*
+ * 指标条。每项定宽，让不同模型的同一个指标在纵向对齐——
+ * 「哪个模型上下文最大」靠扫一列就能看出来，这是流水句做不到的。
+ * 定的是 flex-basis 不是固定宽度：窄屏下还能换行。
+ */
+.pt-metrics {
+  /* 固定列宽的网格：每一行的列位都一样，同一个指标才能纵向对齐。
+     flex 做不到跨行对齐——上一行少一项，下面全跟着挪。 */
+  display: grid;
+  grid-template-columns: 215px 205px 235px minmax(0, 1fr);
+  gap: 6px 16px;
+  margin-top: 8px;
+}
+.pt-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
   font-size: 12.5px;
-  /* 这一行现在带着上下文长度，是挑模型的关键信息，不能用 --pt-text-muted
-     那个 3.2:1 的灰——12.5px 正文要 4.5:1。 */
   color: var(--pt-text-meta);
+}
+/* 标签和数值都不许断行：「单次输」/「出」这种断法比省地方的损失大得多 */
+.pt-metric-label { white-space: nowrap; }
+.pt-metric svg { flex: none; color: var(--pt-text-muted); }
+.pt-metric-label::after { content: ''; }
+/* 值比标签重：标签每行都一样，值才是这一行要看的 */
+.pt-metric-value {
+  color: var(--pt-text-primary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 窄屏放弃跨行对齐——列宽不够，挤在一起反而读不出来，改成一行一项 */
+@media (max-width: 900px) {
+  .pt-metrics { grid-template-columns: 1fr; gap: 3px; }
+  .pt-metric { grid-column: auto !important; }
 }
 .pt-chev { transition: transform 0.15s; }
 .pt-chev.open { transform: rotate(180deg); }

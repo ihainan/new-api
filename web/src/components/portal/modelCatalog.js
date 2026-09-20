@@ -151,7 +151,8 @@ export const MODELS = [
     icon: 'Qwen',
     inputs: ['文本', '图像'],
     outputs: ['文本'],
-    maxOutput: '与上下文共用 262,144 tokens',
+    // 数字不必重复：指标条里紧挨着的「上下文」就是那个值
+    maxOutput: '与上下文共用',
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],

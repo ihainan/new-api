@@ -194,6 +194,44 @@ function CapGrid({ caps }) {
  * 丢弃」），拆到第二行用弱化字号显示：挤在一起会从括号中间断行，数字反而看不清。
  * 限定语本身不能删——它区分的是「实测值」「平台配置值」和「建议值」。
  */
+/*
+ * 折叠行里的指标条。取代原来那句用间隔点连起来的灰色流水句：
+ * 位置固定、带标签、带图标，才能一列一列横向比较——
+ * 「哪个模型上下文最大」本来就是扫列表时最先想知道的事。
+ * 关键指标放在这里之后，展开区不再重复，只讲能力和部署细节。
+ */
+const METRIC_ICONS = {
+  context: <><path d='M4 7h16' /><path d='M4 12h10' /><path d='M4 17h16' /></>,
+  output: <><path d='M14 5l7 7-7 7' /><path d='M21 12H8' /><path d='M3 4v16' /></>,
+  io: <><path d='M3 8h13l-3-3' /><path d='M21 16H8l3 3' /></>,
+  protocol: <><rect x='3' y='4' width='18' height='16' rx='2' /><path d='M8 10l-2 2 2 2' /><path d='M16 10l2 2-2 2' /></>,
+};
+
+function Metric({ icon, label, value, col }) {
+  if (!value) return null;
+  // 列位写死：某个模型缺某项指标时（比如路由没有「单次输出」），
+  // 后面的不能顶上来，否则纵向就对不齐了，指标条也就白做了。
+  return (
+    <div className='pt-metric' style={{ gridColumn: col }}>
+      <svg
+        width='14'
+        height='14'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='1.7'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        aria-hidden='true'
+      >
+        {METRIC_ICONS[icon]}
+      </svg>
+      <span className='pt-metric-label'>{label}</span>
+      <span className='pt-metric-value'>{value}</span>
+    </div>
+  );
+}
+
 function SpecItem({ label, value, wide }) {
   if (!value) return null;
   const m = /^(.*?)（(.+)）$/.exec(value);
@@ -225,12 +263,6 @@ function ModelRow({ m, open, onToggle }) {
   // 折叠行里上下文只留数字，括号里的限定语放到展开后的规格里说，
   // 否则一行挤三样东西，最该看的数字反而不显眼。
   const contextBrief = m.context ? t(m.context).replace(/（.+）$/, '') : null;
-  const meta = [
-    m.params && !/未公布|而定/.test(m.params) ? t(m.params) : null,
-    contextBrief,
-    io,
-    protocols,
-  ].filter(Boolean);
   const panelId = `mdl-${m.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
   return (
@@ -255,9 +287,26 @@ function ModelRow({ m, open, onToggle }) {
               <code className='pt-mdl-id'>{m.id}</code>
             </span>
             {m.summary ? <span className='pt-mdl-sum'>{t(m.summary)}</span> : null}
-            {meta.length ? (
-              <span className='pt-mdl-meta'>{meta.join(' · ')}</span>
-            ) : null}
+            <span className='pt-metrics'>
+              <Metric
+                col={1}
+                icon='context'
+                label={t('上下文')}
+                value={
+                  TEXT_CATEGORIES.has(m.category)
+                    ? contextBrief || t('以上游部署为准')
+                    : contextBrief
+                }
+              />
+              <Metric
+                col={2}
+                icon='output'
+                label={t('单次输出')}
+                value={m.maxOutput && t(m.maxOutput).replace(/（.+）$/, '')}
+              />
+              <Metric col={3} icon='io' label={t('输入 / 输出')} value={io} />
+              <Metric col={4} icon='protocol' label={t('协议')} value={protocols} />
+            </span>
           </span>
         </button>
         <div className='pt-mdl-act'>
@@ -283,26 +332,6 @@ function ModelRow({ m, open, onToggle }) {
         <div className='pt-mdl-detail' id={panelId}>
           {m.detail ? <p className='pt-mdl-text'>{t(m.detail)}</p> : null}
           {m.note ? <p className='pt-mdl-note'>{t(m.note)}</p> : null}
-          {/*
-            * 分三层，不再九个字段平铺：
-            * 关键规格（挑模型时真正要看的）→ 能力 → 次要信息。
-            * 之前一律平铺成五列，「上下文长度」和「部署方式」一样重，
-            * 而列宽又不够，「200,000 tokens（建议单次请求不」会从括号中间断行。
-            */}
-          <dl className='pt-specs'>
-            <SpecItem
-              label={t('上下文长度')}
-              value={
-                TEXT_CATEGORIES.has(m.category)
-                  ? (m.context && t(m.context)) || t('以上游部署为准')
-                  : m.context && t(m.context)
-              }
-            />
-            <SpecItem label={t('单次输出上限')} value={m.maxOutput && t(m.maxOutput)} />
-            <SpecItem label={t('输入 / 输出')} value={io} />
-            <SpecItem label={t('调用协议')} value={protocols} />
-          </dl>
-
           {/* 只有对话模型才谈这些能力；出图、语音、向量模型套不上这套维度 */}
           {m.category === 'chat' ? (
             <div className='pt-caps-wrap'>
