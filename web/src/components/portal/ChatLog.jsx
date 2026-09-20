@@ -17,10 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import ModelIcon from './ModelIcon';
-import { fmtInt, fmtLogTime } from './shared';
+import { fmtInt, fmtLogTime, usePortalT } from './shared';
 
 /*
  * 对话日志的表格与窄屏卡片。
@@ -85,7 +84,7 @@ function Cells({ r }) {
 }
 
 export function ChatTable({ rows, openId, onToggleErr }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   return (
     <table className='pt-table pt-log-table'>
       <thead>
@@ -211,7 +210,7 @@ export function ChatTable({ rows, openId, onToggleErr }) {
  * 但信息一条都不能少——不是把列删掉，是换个排法。
  */
 export function ChatCards({ rows }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const [open, setOpen] = useState(null);
   return (
     <div className='pt-rec-cards'>

@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { VChart } from '@visactor/react-vchart';
@@ -30,8 +29,7 @@ import {
   Skeleton,
   Stat,
   fmtCompact,
-  fmtInt,
-} from './shared';
+  fmtInt, usePortalT } from './shared';
 
 /*
  * 概览。只回答「我自己用了多少、体验如何」，不放公告、服务可用性、用户排行
@@ -92,7 +90,7 @@ const TREND_METRICS = [
 ];
 
 export default function PortalOverview() {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const [range, setRange] = useState('24h');
   // 趋势图看哪个口径。后端每个时间点本来就同时返回请求数和 Token，
   // 之前只画了请求数——不是数据没有，是前端没用。

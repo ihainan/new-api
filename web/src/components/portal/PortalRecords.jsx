@@ -17,12 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
 import { HIDDEN } from './modelCatalog';
-import { Card, Empty, PageHead, Tabs, fmtInt, fmtTime } from './shared';
+import { Card, Empty, PageHead, Tabs, fmtInt, fmtTime, usePortalT } from './shared';
 
 /*
  * 使用记录。三类记录（对话 / 绘图 / 任务）各有各的字段，硬塞进一张统一的稀疏表
@@ -50,7 +49,7 @@ const RANGES = [
 ];
 
 export default function PortalRecords() {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const [tab, setTab] = useState('chat');
   const [page, setPage] = useState(1);
   const [onlyFailed, setOnlyFailed] = useState(false);

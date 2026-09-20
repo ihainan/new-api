@@ -20,7 +20,7 @@ import React, { useContext, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
-import { normalizeLanguage } from '../../i18n/language';
+import { usePortalT } from './shared';
 import { UserContext } from '../../context/User';
 import { API, getSystemName, showError } from '../../helpers';
 import BrandMark from './BrandMark';
@@ -135,14 +135,16 @@ function Avatar({ name }) {
 }
 
 export default function UserPortalLayout({ children }) {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
+  const t = usePortalT();
   const location = useLocation();
   const navigate = useNavigate();
   const [userState, userDispatch] = useContext(UserContext);
 
   const user = userState?.user;
   const systemName = getSystemName();
-  const lang = normalizeLanguage(i18n.language);
+  // 面板只有中英两种：其他语种的浏览器按英文显示，菜单里也就高亮 English
+  const lang = String(i18n.language || '').toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 
   /*
    * 切语言：先立刻换界面，再把偏好存回账号——存不上也不影响这次切换，

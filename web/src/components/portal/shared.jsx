@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copy, showError, showSuccess } from '../../helpers';
 
@@ -25,6 +25,20 @@ import { copy, showError, showSuccess } from '../../helpers';
  * 门户页面共用的小元件。刻意不使用 Semi Design 组件：那套视觉是给管理端用的，
  * 员工门户要和 ZGCAI-Coding-Plan 的 portal 看起来是同一个产品。
  */
+
+/*
+ * 面板只维护中英两套文案。浏览器是日语/法语时 i18next 会挑那边的旧译文，
+ * 而新文案不再同步过去，界面就会变成中外混排——所以这里把语言收敛成两种：
+ * 中文（含繁体）用中文，其余一律英文。管理端不受影响，它仍是全局那个 t。
+ */
+export function usePortalT() {
+  const { t, i18n } = useTranslation();
+  const zh = String(i18n.language || '').toLowerCase().startsWith('zh');
+  return useMemo(
+    () => (zh ? i18n.getFixedT('zh-CN') : i18n.getFixedT('en')),
+    [zh, i18n, t],
+  );
+}
 
 export function PageHead({ title, sub }) {
   return (
@@ -73,7 +87,7 @@ export function Skeleton({ rows = 4 }) {
 }
 
 export function CodeBlock({ code }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   return (
     <div className='pt-code-wrap' style={{ position: 'relative' }}>
       <pre className='pt-code'>
@@ -97,7 +111,7 @@ export function CodeBlock({ code }) {
 }
 
 export function Tabs({ items, value, onChange }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   return (
     <div className='pt-tabs' role='tablist'>
       {items.map((it) => (
@@ -117,12 +131,13 @@ export function Tabs({ items, value, onChange }) {
 }
 
 /*
- * 数字格式跟随界面语言，不写死 zh-CN：切到英文界面时「1.2 亿」是看不懂的，
- * Intl 会按语言给出 1.2 亿 / 120M。语言从 i18n 当前值取，不是浏览器设置——
- * 用户在界面上切了语言，数字得跟着走。
+ * 数字格式跟着「面板显示的语言」走：中文界面给「1.2 亿」，英文界面给 120M。
+ * 取的是面板收敛后的语言而不是浏览器语言——日语浏览器看到的是英文界面，
+ * 再按 ja 格式化就会冒出「3.3万」，和周围的英文对不上。
  */
 function lang() {
-  return (typeof window !== 'undefined' && window.__i18n?.language) || 'zh-CN';
+  const cur = (typeof window !== 'undefined' && window.__i18n?.language) || 'zh-CN';
+  return String(cur).toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
 
 // 大数字压缩成人能读的形式。Token 动辄上亿，原样铺出来没人看得懂。

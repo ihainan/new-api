@@ -17,11 +17,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useTranslation } from 'react-i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
-import { Card, Empty, PageHead, Skeleton } from './shared';
+import { Card, Empty, PageHead, Skeleton, usePortalT } from './shared';
 import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
 
 /*
@@ -191,7 +190,7 @@ const CAP_HELP = {
 };
 
 function Cap({ cap, state, tag }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const { open, setOpen, ref } = useTip();
   const [key, label, path] = cap;
   return (
@@ -434,7 +433,7 @@ function withMarks(text) {
 }
 
 function ModelRow({ m, open, onToggle }) {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const endpoints = m.endpoints || [];
   const protocols = endpoints
     .map((e) => t(ENDPOINT_LABELS[e] || e))
@@ -616,7 +615,7 @@ function normalize(raw) {
 }
 
 export default function PortalModels() {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [available, setAvailable] = useState([]);

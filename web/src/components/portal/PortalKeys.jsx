@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   API,
@@ -26,7 +25,7 @@ import {
   showError,
   showSuccess,
 } from '../../helpers';
-import { Card, CodeBlock, Empty, PageHead, Skeleton, Tabs } from './shared';
+import { Card, CodeBlock, Empty, PageHead, Skeleton, Tabs, usePortalT } from './shared';
 
 /*
  * API 密钥页。原来这里写的是「暂无 Key，请联系管理员分配 API Key」——
@@ -48,7 +47,7 @@ const PROTOCOLS = [
 ];
 
 export default function PortalKeys() {
-  const { t } = useTranslation();
+  const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
   const [plain, setPlain] = useState('');
