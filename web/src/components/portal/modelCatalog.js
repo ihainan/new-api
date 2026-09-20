@@ -88,18 +88,18 @@ export const MODELS = [
     inputs: ['文本', '图像'],
     outputs: ['文本'],
     // 取决于落到哪个后端，本来就没有一个固定值
-    maxOutput: '随后端而定',
+    maxOutput: '131,072 tokens（落到 GLM 时；Qwen 与上下文共用）',
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '按请求特征自动选择后端模型，调用方只写这一个 ID。',
+    summary: '按请求内容在 Qwen3.6-35B-A3B 与 GLM 之间分发，调用方只写这一个 ID。',
     detail:
-      '实际在 GLM-5.3 与 Qwen3.6-35B-A3B 之间分发。按请求特征自动选择，调用方只写这一个 ID，后端变更时无需改动代码。代价是单次请求落在哪个模型上不可知——需要确定性时请直接指定具体模型 ID。',
+      '实际在 Qwen3.6-35B-A3B 与 GLM-5.2 之间分发，规则是固定的：日常问答、简单任务、带图片的请求走 Qwen3.6-35B-A3B；代码、金融行情分析、需要多步推理的问题走 GLM-5.2。调用方只写这一个 ID，后端调整时不用改代码。想固定用某一个模型，直接写它的 ID。',
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
-    params: '随后端而定（GLM 743B MoE / Qwen 35B MoE）',
-    size: '随后端而定',
-    context: '200,000 tokens（建议单次请求不超过）',
+    params: 'GLM 约 743B / 39B 激活；Qwen 35B / 3B 激活',
+    size: 'GLM 约 756 GB；Qwen 约 37.5 GB',
+    context: '262,144 tokens（落到 Qwen 时；落到 GLM 时是 1,000,000）',
     io: '文本 → 文本',
   },
   {
@@ -111,12 +111,12 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '实际指向 GLM-5.3 的通用对话模型。'
+    summary: '实际指向 GLM-5.2 的通用对话模型。'
     ,
     // 版本会随上游升级，所以标题不写版本号，只在这里说当前指向谁。
-    highlight: '接口指向的模型版本会随上游持续更新，模型 ID 保持不变。',
+    highlight: '当前指向 GLM-5.2，后续会升级到 GLM-5.3，模型 ID 保持不变。',
     detail:
-      '实际指向 GLM-5.3。通用对话模型，适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，是平台上最大的。',
+      '实际指向 GLM-5.2。通用对话模型，适用于日常问答、改写、总结与代码辅助。上下文 100 万 token，是平台上最大的。',
     // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '官方 FP8 权重约 756 GB',
@@ -136,11 +136,11 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
-    summary: '实际指向 GLM-5.3，与 glm 同一模型，使用 Anthropic Messages 协议。'
+    summary: '实际指向 GLM-5.2，与 glm 同一模型，使用 Anthropic Messages 协议。'
     ,
-    highlight: '当前指向 GLM-5.3，后续会持续更新，模型 ID 保持不变。',
+    highlight: '当前指向 GLM-5.2，后续会升级到 GLM-5.3，模型 ID 保持不变。',
     detail:
-      '实际指向 GLM-5.3，与 glm 同一模型，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '实际指向 GLM-5.2，与 glm 同一模型，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给只认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '约 743B 总参数 / 约 39B 激活（MoE）',
     size: '同 glm',
     context: '1,000,000 tokens（同 glm）',
@@ -168,23 +168,20 @@ export const MODELS = [
     io: '文本 → 文本',
   },
   {
-    // 待复查（2026-09-20）：图像输入报 500 是转发层的问题，运维正在修。
-    // 修好之后重跑 bin/probe-capabilities.py，把 vision 翻成 true，
-    // 并删掉 detail 里那句「发图片请求会直接报 500」。
     id: 'gemma4:26b',
     name: 'Gemma 4 26B',
     icon: 'Gemma',
-    inputs: ['文本'],
+    inputs: ['文本', '图像'],
     outputs: ['文本'],
-    caps: { stream: true, tools: true, json: true, vision: 'error', reasoning: false, cache: false },
+    caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: false },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '开放权重模型。上下文 2K，超出部分会被静默丢弃。',
+    summary: '开放权重模型，能看图。上下文 4K，超出部分会被静默丢弃。',
     detail:
-      '260 亿总参数的开放权重模型，单次推理约激活 40 亿参数。模型本身带视觉投影层，但当前发图片请求会直接报 500，实际用不了。权重公开，可以本地微调和再分发，但要随附 Gemma 使用条款并受其使用政策约束，不是随便用的 MIT/Apache。注意上下文只有 2048 token（中文约 3,400 字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
+      '260 亿总参数的开放权重模型，单次推理约激活 40 亿参数，可以看图。会先输出思考过程（字段名 reasoning_content）再给正文，所以 max_tokens 要给足——给小了正文会是空的，思考过程把额度用光了。权重公开，可以本地微调和再分发，但要随附 Gemma 使用条款并受其使用政策约束，不是随便用的 MIT/Apache。上下文 4096 token（按中文折算约 6,800 字），超出后只保留约 2048 token 且不报错，长文任务请改用 glm 或 qwen。',
     params: '约 26B 总参数 / 约 4B 激活（MoE）',
     size: '官方 BF16 权重约 52 GB',
-    context: '2,048 tokens（实测：超出部分被丢弃）',
+    context: '4,096 tokens（实测：超出后只保留约 2,048，不报错）',
     official: '256K tokens',
     io: '文本 → 文本',
   },
@@ -292,10 +289,10 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '重排模型，对向量召回结果做二次精排。',
     detail:
-      '接在向量检索之后使用：先由 BGE-M3 粗召回数十条，再逐条与问题比对并重新打分，将最相关的排到前面。它不产出向量，只输出相关性分数，单独使用没有意义。窗口由每个「问题＋文档」对各自占用，并非所有候选文档共享一份。',
+      '接在向量检索之后使用：先由 BGE-M3 粗召回数十条，再逐条与问题比对并重新打分，将最相关的排到前面。它不产出向量，只输出相关性分数，单独使用没有意义。窗口由每个「问题＋文档」对各自占用，并非所有候选文档共享一份；单对超过 8192 token 会直接返回错误，而不是像向量模型那样悄悄截断。',
     params: '约 568M 参数',
     size: '官方权重约 2.3 GB',
-    context: '实测在 12,000～14,000 字之间被截断',
+    context: '8,192 tokens（实测：超出直接报错，不静默截断）',
     io: '（问题、文档）→ 相关性分数',
   },
 ];
