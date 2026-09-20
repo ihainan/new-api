@@ -318,7 +318,7 @@ function ModelRow({ m, open, onToggle }) {
 
   return (
     <div className={`pt-mdl${open ? ' open' : ''}`}>
-      <div className='pt-mdl-head'>
+      <div className={`pt-mdl-head${m.detail || m.summary ? ' has-desc' : ''}`}>
         {/*
          * 展开控件和复制按钮必须是同级的真 <button>。之前把复制按钮嵌在
          * role="button" 的行里，键盘 Tab 到它再按回车，keydown 冒泡到父行被
@@ -332,26 +332,9 @@ function ModelRow({ m, open, onToggle }) {
           onClick={onToggle}
         >
           <ModelIcon icon={m.icon} size={28} />
-          <span className='pt-mdl-body'>
-            <span className='pt-mdl-title'>
-              <span className='pt-mdl-name'>{t(m.name)}</span>
-              <code className='pt-mdl-id'>{m.id}</code>
-            </span>
-            {/*
-              * 折叠时直接给详述的前两行，不再另外摆一句摘要——
-              * 两者开头说的是同一件事，并排放着就是同一句话写两遍。
-              * summary 字段保留，搜索还在用它。
-              */}
-            {/* 描述始终长在这里，展开只是去掉截断。
-                之前展开时改由下面的详情区渲染，顺序就变成了
-                「标题 → 指标条 → 描述」，和折叠态反过来。 */}
-            {m.detail ? (
-              <span className={open ? 'pt-mdl-full' : 'pt-mdl-brief'}>
-                {t(m.detail)}
-              </span>
-            ) : m.summary ? (
-              <span className='pt-mdl-sum'>{t(m.summary)}</span>
-            ) : null}
+          <span className='pt-mdl-title'>
+            <span className='pt-mdl-name'>{t(m.name)}</span>
+            <code className='pt-mdl-id'>{m.id}</code>
           </span>
         </button>
         <div className='pt-mdl-act'>
@@ -372,6 +355,21 @@ function ModelRow({ m, open, onToggle }) {
           <Chevron open={open} />
         </div>
       </div>
+
+      {/*
+        * 描述必须长在按钮外面：浏览器不让人选中 <button> 里的文字，
+        * 放进去就复制不了。代价是点描述不再展开，点标题行或箭头才行。
+        *
+        * 折叠时直接给详述的前两行，不再另外摆一句摘要——两者开头说的是
+        * 同一件事，并排放着就是同一句话写两遍。summary 字段保留，搜索还在用。
+        */}
+      {m.detail ? (
+        <p className={`pt-mdl-desc ${open ? 'pt-mdl-full' : 'pt-mdl-brief'}`}>
+          {t(m.detail)}
+        </p>
+      ) : m.summary ? (
+        <p className='pt-mdl-desc pt-mdl-sum'>{t(m.summary)}</p>
+      ) : null}
 
       {/* 指标条放在卡片层级，不在那个可点击的主按钮里面：
           它是整行的数据带，不该被按钮的宽度截断（右边停在「复制 ID」之前），

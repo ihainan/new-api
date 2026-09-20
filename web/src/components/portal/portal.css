@@ -565,9 +565,18 @@
 }
 .pt-mdl-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
+  /* 描述已经挪到行外，有描述时这里不再留下边距，交给 .pt-mdl-desc */
   padding: 18px 20px 16px;
+}
+.pt-mdl-head.has-desc { padding-bottom: 4px; }
+/* 左缩进 = 图标 20px 外边距 + 28px 图标 + 12px 间隔，让描述接着名称起笔 */
+.pt-mdl-desc {
+  /* 下边距不能写成 padding：折叠时的两行截断按内边距框裁切，
+     留了下内边距就会多露出小半行 */
+  margin: 0 0 16px;
+  padding: 0 20px 0 60px;
 }
 /* 展开控件是一个真 <button>，把浏览器默认外观清掉，让它长得像一行内容。
    复制按钮是它的同级，不再嵌在里面——嵌套会吞掉键盘激活。 */
@@ -575,7 +584,7 @@
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 0;
   border: 0;
@@ -647,7 +656,6 @@
  */
 .pt-mdl-full,
 .pt-mdl-brief {
-  margin-top: 7px;
   /* 与侧边栏正文同号；行高 1.75 显得比左边大一圈，收到 1.7 */
   font-size: 13.5px;
   line-height: 1.7;
@@ -667,7 +675,6 @@
 
 .pt-mdl-sum {
   display: block;
-  margin: 5px 0 0;
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--pt-text-secondary);
@@ -892,6 +899,9 @@
     flex-wrap: wrap;
     padding: 13px 14px;
   }
+  .pt-mdl-head.has-desc { padding-bottom: 4px; }
+  /* 窄屏不缩进：60px 会把两三个字挤成一列 */
+  .pt-mdl-desc { margin-bottom: 13px; padding: 0 14px; }
   .pt-mdl-main { flex: 1 1 100%; }
   .pt-mdl-act {
     width: 100%;
