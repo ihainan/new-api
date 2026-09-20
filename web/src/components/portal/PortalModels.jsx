@@ -230,6 +230,7 @@ function abbrValue(text) {
 }
 
 function Metric({ label, value, abbr }) {
+  const [open, setOpen] = useState(false);
   if (!value) return null;
   const shown = abbr ? abbrValue(value) : { text: value, full: null };
   return (
@@ -238,12 +239,25 @@ function Metric({ label, value, abbr }) {
           不再放小图标——它挂在标签左边、突出于这一列之外，一排下来左边缘
           是锯齿状，而标签本身已经是「上下文」「输入」这些字。 */}
       <span className='pt-metric-label'>{label}</span>
-      <span
-        className={`pt-metric-value${shown.full ? ' has-full' : ''}`}
-        title={shown.full || undefined}
-      >
-        {shown.text}
-      </span>
+      {shown.full ? (
+        /*
+         * 缩写过的值做成真按钮。之前只有 cursor:help 加原生 title：
+         * 鼠标指针摆出「有东西可看」的样子，点下去却没反应；
+         * 触屏没有悬停，完整数值等于看不到；键盘也够不着。
+         * 现在悬停、聚焦、点击都能展开，触屏和键盘都走得通。
+         */
+        <button
+          type='button'
+          className={`pt-metric-value has-full${open ? ' open' : ''}`}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {shown.text}
+          <span className='pt-tip' role='tooltip'>{shown.full}</span>
+        </button>
+      ) : (
+        <span className='pt-metric-value'>{shown.text}</span>
+      )}
     </div>
   );
 }

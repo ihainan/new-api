@@ -730,10 +730,47 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* 缩写过的值带虚下划线，提示「停一下能看到完整数字」 */
+/*
+ * 缩写过的值：虚下划线提示「这里还有东西」，本体是个按钮。
+ * 悬停、键盘聚焦、点击都会展开完整数字——只靠 hover 的话，
+ * 触屏用户永远看不到，键盘用户也够不着。
+ */
 .pt-metric-value.has-full {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 0;
+  /* 只借字体族，字号与字重仍取 .pt-metric-value，否则按钮会比邻列细一档 */
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  /* 下划线只包住文字：按钮是纵向 flex 的子项，不收窄就会被拉满整列宽 */
+  align-self: flex-start;
+  /* .pt-metric-value 为省略号设了 overflow:hidden，会把气泡剪掉 */
+  overflow: visible;
   border-bottom: 1px dotted var(--pt-border-strong);
-  cursor: help;
+  cursor: pointer;
+}
+.pt-tip {
+  position: absolute;
+  left: 0;
+  /* 往下弹：往上会正好盖住自己的 label */
+  top: calc(100% + 7px);
+  z-index: 5;
+  display: none;
+  white-space: nowrap;
+  background: var(--pt-ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 9px;
+  border-radius: var(--pt-radius-sm);
+  box-shadow: 0 2px 8px rgba(20, 24, 31, 0.18);
+}
+.pt-metric-value.has-full:hover .pt-tip,
+.pt-metric-value.has-full:focus-visible .pt-tip,
+.pt-metric-value.has-full.open .pt-tip {
+  display: block;
 }
 
 /* 窄屏一条横条塞不下五项，改成两列；折行之后竖线会落在行首，去掉 */
