@@ -286,7 +286,7 @@ function ModelRow({ m, open, onToggle }) {
           {/*
             * 分三层，不再九个字段平铺：
             * 关键规格（挑模型时真正要看的）→ 能力 → 次要信息。
-            * 之前一律平铺成五列，「上下文长度」和「可用分组」一样重，
+            * 之前一律平铺成五列，「上下文长度」和「部署方式」一样重，
             * 而列宽又不够，「200,000 tokens（建议单次请求不」会从括号中间断行。
             */}
           <dl className='pt-specs'>
@@ -318,7 +318,6 @@ function ModelRow({ m, open, onToggle }) {
             <SpecItem label={t('权重大小')} value={m.size && t(m.size)} />
             <SpecItem label={t('部署方式')} value={m.deployment && t(m.deployment)} />
             <SpecItem label={t('实际上游')} value={m.upstream && t(m.upstream)} />
-            <SpecItem label={t('可用分组')} value={(m.groups || []).join(' / ')} />
             <SpecItem
               label={t('模型官方规格')}
               value={m.official && m.official !== m.context ? t(m.official) : null}
@@ -353,9 +352,6 @@ function normalize(raw) {
       : [];
     out.push({
       ...d,
-      groups: Array.isArray(p.enable_groups)
-        ? p.enable_groups.filter((g) => typeof g === 'string' && g)
-        : [],
       // 接口给的协议列表是真值，目录里那份只是没接口时的备份。
       endpoints: eps.length ? eps : d.endpoints,
     });
