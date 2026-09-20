@@ -29,13 +29,22 @@ For commercial licensing, please contact support@quantumnous.com
  *      页面对 /api/pricing 里存在但这里缺失的模型会兜底显示，不会整条消失。
  *   2. upstream 字段抄渠道配置里的 model_mapping，不要凭模型别名猜。
  *      别名和上游经常对不上（见下面 minimax 的 note）。
- *   3. context / params 只填有据可查的。自部署模型的上下文由上游启动参数决定，
+ *   3. context 是「这套部署实际给到的」，official 是「模型本身的规格」。
+ *      两者不一致时页面会并排显示——本地集群的 gemma4/bge-m3 被压到 2048，
+ *      只有模型能力的零头，用的人必须看得见。
+ *      context / params 只填有据可查的。自部署模型的上下文由上游启动参数决定，
  *      不知道就留空，页面会显示「以上游部署为准」——那是实话，编一个数字不是。
  *      实测办法见 bin/probe-upstream-context.py：直连上游，用超限的 max_tokens
  *      让服务端在推理前报出真实上限，不产生计费。
- *      2026-09-19 实测：smart-router / qwen / minimax 三个上游自报 262144。
- *      本地集群那几个（gemma4、bge-*、qwen3-embedding）测不出来——那层转发
- *      既不报错也不明确截断，超长输入照样返回 200，见交付说明。
+ *      实测记录：
+ *        2026-09-19  smart-router / qwen / minimax 上游自报 262144。
+ *        2026-09-20  glm 收下 278059 token 的 prompt 仍返回 200，故下限
+ *                    至少 272K，比其余模型的 262144 还大；上游从不报出
+ *                    确切上下文，所以写「≥」而不是猜一个整数。
+ *        2026-09-20  本地集群（Ollama + 自写转发层）读 usage.prompt_tokens：
+ *                    gemma4 / bge-m3 卡在 2048，qwen3-embedding 卡在 4096，
+ *                    bge-reranker 到 8192。前三个远低于模型本身的能力，
+ *                    且超出不报错、静默截断——页面必须写明。
  *
  * 数据来源：channels 表的 model_mapping + abilities 表（2026-09-19 核对）。
  */
@@ -76,7 +85,8 @@ export const MODELS = [
     detail:
       '日常问答、改写、总结、代码辅助的主力。FP8 量化后私有化部署在算力集群上，数据不出内网。近 30 天承接了平台绝大部分对话请求，稳定性有实际流量背书。',
     params: 'FP8 量化私有化部署',
-    context: '≥ 132K tokens（实测未触顶）',
+    context: '≥ 272K tokens（实测未触顶）',
+    official: '1,000,000 tokens',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: 'glm-5.2-fp8-private（私有化推理接入点）',
@@ -91,7 +101,8 @@ export const MODELS = [
     detail:
       '后端与 glm 是同一个部署，区别只在请求格式。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '同 glm',
-    context: '≥ 132K tokens（同 glm）',
+    context: '≥ 272K tokens（同 glm）',
+    official: '1,000,000 tokens',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: '同 glm（同一推理接入点）',
@@ -106,7 +117,8 @@ export const MODELS = [
     detail:
       '350 亿总参数的 MoE 模型，每次推理只激活约 30 亿，同样算力下比同级稠密模型快得多。适合批量处理、对延迟敏感的在线场景，以及需要跑大量请求的离线任务。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    context: '256K tokens',
+    context: '262,144 tokens',
+    official: '262,144 原生，可扩至约 1M',
     io: '文本 → 文本',
     upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
   },
@@ -120,7 +132,8 @@ export const MODELS = [
     detail:
       '这个别名的名字和它实际调到的模型对不上：网关当前把它映射到了 Qwen3.6-35B-A3B，效果等同于 qwen。新接入请直接写 qwen，这个 ID 只为兼容已经写死它的旧代码而保留。',
     params: '35B 总参数 / 3B 激活（MoE）',
-    context: '256K tokens',
+    context: '262,144 tokens',
+    official: '262,144 原生，可扩至约 1M',
     io: '文本 → 文本',
     upstream: 'Qwen3.6-35B-A3B（自建集群直连）',
     note: '别名与实际模型不一致，新代码请用 qwen。',
@@ -131,11 +144,12 @@ export const MODELS = [
     icon: 'Gemma',
     category: 'chat',
     endpoints: ['openai'],
-    summary: '开放权重模型，跑在本地集群上。',
+    summary: '开放权重模型，跑在本地集群上。上下文只有 2K，注意截断。',
     detail:
-      '260 亿参数的开放权重模型，部署在本地推理集群。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。',
+      '260 亿参数的开放权重模型，部署在本地推理集群。开源许可允许自由微调和二次分发，适合需要审计模型来源、或者想在此基础上做领域微调的项目。注意当前部署的上下文只有 2048 token（约 3000 个汉字），超出的部分会被静默丢弃，长文任务请改用 glm 或 qwen。',
     params: '26B 参数',
-    context: null,
+    context: '2,048 tokens（部署上限）',
+    official: '256K tokens',
     io: '文本 → 文本',
     upstream: 'gemma4:26b（本地集群部署）',
   },
@@ -201,11 +215,12 @@ export const MODELS = [
     icon: 'BAAI',
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '多语言向量模型，做检索和知识库的第一步。',
+    summary: '多语言向量模型，做检索和知识库的第一步。超长文本会被静默截断。',
     detail:
-      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。',
+      '把文本转成向量，用于语义检索、相似度匹配、RAG 知识库。一百多种语言共用同一个向量空间，中文查询可以直接召回英文文档。输出 1024 维。当前部署的上下文是 2048 token（约 3000 个汉字），超出的部分会被直接丢掉且不报错——长文档必须自己先切段，否则拿到的是残缺向量。',
     params: '约 568M 参数',
-    context: '8K tokens',
+    context: '2,048 tokens（部署上限）',
+    official: '8,192 tokens',
     io: '文本 → 1024 维向量',
     upstream: 'bge-m3（本地集群部署）',
   },
@@ -215,11 +230,12 @@ export const MODELS = [
     icon: 'Qwen',
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '更大的向量模型，长文档场景比 BGE-M3 更从容。',
+    summary: '更大的向量模型，能吃下 BGE-M3 两倍长的文本。',
     detail:
-      '同样是把文本转向量，参数量和上下文都比 BGE-M3 大一档，整段长文不必切碎就能编码。代价是更慢、更占显存。追求召回质量选它，追求吞吐选 BGE-M3。',
+      '同样是把文本转向量，上下文比 BGE-M3 大一倍（4096 token，约 6000 个汉字），同样的文档少切几刀，但一样会静默截断。代价是更慢、更占显存。追求召回质量选它，追求吞吐选 BGE-M3。',
     params: '4B 参数',
-    context: '32K tokens',
+    context: '4,096 tokens（部署上限）',
+    official: '32K tokens',
     io: '文本 → 向量',
     upstream: 'qwen3-embedding:4b（本地集群部署）',
   },
@@ -231,9 +247,9 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: '重排模型，给向量召回的结果做第二轮精排。',
     detail:
-      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。',
+      '接在向量检索后面用：先用 BGE-M3 粗召回几十条，再让它逐条和问题比对、重新打分，把最相关的排到前面。它不产出向量，只输出相关性分数，单独用没有意义。单篇文档可以到 8192 token，比 BGE-M3 宽裕得多。',
     params: '约 568M 参数',
-    context: '8K tokens',
+    context: '8,192 tokens',
     io: '（问题, 文档）→ 相关性分数',
     upstream: 'bge-reranker-v2-m3（本地集群部署）',
   },

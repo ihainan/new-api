@@ -109,6 +109,8 @@ function ModelRow({ m, open, onToggle }) {
   // 元信息挤在一行，用间隔点分开；空值直接不进数组，避免出现「· ·」。
   const meta = [
     m.params && !/未公布|而定/.test(m.params) ? m.params : null,
+    // 上下文是挑模型时最先要看的一条，不该藏在展开区里
+    m.context,
     m.io,
     endpoints.map((e) => ENDPOINT_LABELS[e] || e).join(' / '),
   ].filter(Boolean);
@@ -156,6 +158,12 @@ function ModelRow({ m, open, onToggle }) {
             <SpecItem label='上下文长度' value={m.context || '以上游部署为准'} />
             {/* 上游只对 max_tokens 设了硬上限时单独列出来：它决定一次能吐多少，
                 和上下文不是一回事，混在一起看会写出超限的调用。 */}
+            {/* 部署给到的和模型本身的规格不是一回事。一致就不必多说一遍，
+                不一致才是使用者要知道的——他会以为自己有官方那么大的窗口。 */}
+            <SpecItem
+              label='模型官方规格'
+              value={m.official && m.official !== m.context ? m.official : null}
+            />
             <SpecItem label='单次输出上限' value={m.maxOutput} />
             <SpecItem label='输入 / 输出' value={m.io} />
             <SpecItem
