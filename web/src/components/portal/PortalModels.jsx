@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import { useTranslation } from 'react-i18next';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
 import { Card, Empty, PageHead, Skeleton } from './shared';
@@ -231,6 +231,34 @@ function abbrValue(text) {
 
 function Metric({ label, value, abbr }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  /*
+   * 气泡只有「再点一次同一个按钮」能关，等于关不掉：鼠标移开、点别处、
+   * 按 Esc 都没反应，还能同时开好几个。这里补齐常规的关闭路径。
+   * pointerdown 而不是 click：点到别的按钮时要先收起来，别跟那次点击抢。
+   */
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => {
+      if (!ref.current?.contains(e.target)) setOpen(false);
+    };
+    const esc = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        ref.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', esc);
+    // 滚动时气泡会跟着按钮跑，但视觉上像块浮在页面上的脏东西，直接收掉
+    window.addEventListener('scroll', () => setOpen(false), { once: true, passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
   if (!value) return null;
   const shown = abbr ? abbrValue(value) : { text: value, full: null };
   return (
@@ -247,10 +275,12 @@ function Metric({ label, value, abbr }) {
          * 现在悬停、聚焦、点击都能展开，触屏和键盘都走得通。
          */
         <button
+          ref={ref}
           type='button'
           className={`pt-metric-value has-full${open ? ' open' : ''}`}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
+          onBlur={() => setOpen(false)}
         >
           {shown.text}
           <span className='pt-tip' role='tooltip'>{shown.full}</span>
