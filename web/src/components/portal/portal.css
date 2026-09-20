@@ -727,18 +727,21 @@
 }
 .pt-caps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 8px 14px;
 }
 .pt-cap {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 7px;
   font-size: 13px;
   color: var(--pt-text-primary);
   min-width: 0;
 }
 .pt-cap svg { flex: none; }
+/* 能力名不换行：它后面可能跟一个状态标，标一长就会把名字挤成两行 */
+.pt-cap > span:not(.pt-cap-tag) { white-space: nowrap; }
 /* 实测不支持：整项压暗并划掉，一眼能和支持的分开 */
 .pt-cap.off {
   color: var(--pt-text-muted);
@@ -746,6 +749,8 @@
 .pt-cap.off > span { text-decoration: line-through; }
 /* 没验证过：不划掉，但明确标出来，不许冒充「不支持」 */
 .pt-cap.unknown { color: var(--pt-text-meta); }
+/* 协议本身没有这个参数：不划掉，它不是模型的缺陷 */
+.pt-cap.na { color: var(--pt-text-meta); }
 /* 试过但调用直接失败：使用者确实用不了，但原因在部署不在模型 */
 .pt-cap.err { color: var(--pt-text-meta); }
 .pt-cap.err > span:not(.pt-cap-tag) { text-decoration: line-through; }

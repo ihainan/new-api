@@ -34,7 +34,12 @@
    同一个探测反复跑结果会变——实测 qwen 和 minimax 打的是同一个上游模型，单次探测
    却一个 ✓ 一个 ✗。所以每项失败后要重试，连续失败若干次才敢记 ✗。
 
-8. **smart-router 是路由，不是模型。** 它背后是 glm 和 qwen，两者能力不同
+8. **Anthropic 入口要单独测，不能拿 OpenAI 那轮的结果顶。** 同一个模型挂两个协议
+   入口，支持的参数并不一样：Anthropic 协议没有 response_format（JSON 模式属于
+   「协议不提供」而不是「模型不支持」），思考要显式传 thinking，缓存要在内容块上
+   打 cache_control。判据也不同——工具调用看 content 里有没有 tool_use 块。
+
+9. **smart-router 是路由，不是模型。** 它背后是 glm 和 qwen，两者能力不同
    （glm 看不见图、qwen 能看见），所以带图和不带图的请求可能落到不同后端。
    对它要分别测两轮，结论取「两轮都成立」的那部分——调用方无法指定后端，
    只有始终成立的能力才敢承诺。
@@ -57,8 +62,10 @@ URL = BASE + "/v1/chat/completions"
 BUDGET = 600  # 见上面第 2 条
 
 # minimax 待下线，不再探测（它打的就是 qwen 那个上游）
-CHAT_MODELS = ["smart-router", "glm", "glm-anthropic", "qwen", "gemma4:26b"]
-ROUTERS = {"smart-router"}  # 见第 8 条，要跑两轮
+CHAT_MODELS = ["smart-router", "glm", "qwen", "gemma4:26b"]
+# 走 Anthropic Messages 协议的，用另一套请求和判据，见第 8 条
+ANTHROPIC_MODELS = ["glm-anthropic"]
+ROUTERS = {"smart-router"}  # 见第 9 条，要跑两轮
 
 TOOLS = [{
     "type": "function",
@@ -242,6 +249,121 @@ def probe(model, multimodal=False):
     return caps
 
 
+ANTHROPIC_TOOLS = [{
+    "name": "get_weather",
+    "description": "查询某城市的天气",
+    "input_schema": {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    },
+}]
+
+
+def post_anthropic(payload, timeout=180):
+    req = urllib.request.Request(
+        BASE + "/v1/messages",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "x-api-key": KEY,
+                 "anthropic-version": "2023-06-01"},
+        method="POST",
+    )
+    try:
+        r = urllib.request.urlopen(req, timeout=timeout)
+        return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")
+    except Exception as e:
+        return 0, "%s: %s" % (type(e).__name__, e)
+
+
+def blocks(body):
+    try:
+        return json.loads(body).get("content") or []
+    except Exception:
+        return []
+
+
+def probe_anthropic(model):
+    """按 Anthropic Messages 协议探测。判据和 OpenAI 那套不通用。"""
+    caps = {}
+    base_msg = [{"role": "user", "content": "北京现在天气怎么样"}]
+
+    # 流式：Anthropic 的增量是 content_block_delta 事件
+    code, body = post_anthropic({"model": model, "max_tokens": 64, "stream": True,
+                                 "messages": [{"role": "user", "content": "数到五"}]})
+    if code != 200:
+        caps["stream"] = None
+    else:
+        caps["stream"] = body.count("content_block_delta") >= 2
+
+    # 工具调用：content 里要出现 tool_use 块；tool_choice 用 any 强制
+    def _tools():
+        code, body = post_anthropic({
+            "model": model, "max_tokens": BUDGET, "tools": ANTHROPIC_TOOLS,
+            "tool_choice": {"type": "any"}, "messages": base_msg})
+        if code != 200:
+            return None
+        return any(b.get("type") == "tool_use" for b in blocks(body))
+    caps["tools"] = attempt(_tools)
+
+    # JSON 模式：Anthropic 协议根本没有 response_format 这个参数。
+    # 这是「协议不提供」，不是「模型不支持」，所以单列一个状态。
+    caps["json"] = "na"
+
+    # 视觉：Anthropic 用 image 内容块 + base64 source
+    def _vision():
+        for img, words in [(RED, ("红", "red")), (BLUE, ("蓝", "blue"))]:
+            data = img.split(",", 1)[1]
+            code, body = post_anthropic({
+                "model": model, "max_tokens": BUDGET,
+                "messages": [{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64",
+                                                 "media_type": "image/png", "data": data}},
+                    {"type": "text", "text": "这张图是什么颜色？只回答颜色"},
+                ]}]})
+            if code != 200:
+                return None
+            txt = " ".join(b.get("text", "") for b in blocks(body)).lower()
+            if not any(w in txt for w in words):
+                return False
+        return True
+    caps["vision"] = attempt(_vision, tries=2)
+
+    # 思考：Anthropic 要显式开 thinking，响应里出现 thinking 块才算
+    def _reasoning():
+        code, body = post_anthropic({
+            "model": model, "max_tokens": 2048,
+            "thinking": {"type": "enabled", "budget_tokens": 1024},
+            "messages": [{"role": "user",
+                          "content": "一个笼子里有鸡和兔共 35 个头、94 只脚，各几只？"}]})
+        if code != 200:
+            return None
+        return any(b.get("type") in ("thinking", "redacted_thinking") for b in blocks(body))
+    caps["reasoning"] = attempt(_reasoning)
+
+    # 缓存：在长内容块上打 cache_control，连发两次，看 cache_read_input_tokens
+    prefix = "以下是一段用于缓存测试的固定前缀。" * 400
+    hit = None
+    for _ in range(2):
+        code, body = post_anthropic({
+            "model": model, "max_tokens": 16,
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": prefix,
+                 "cache_control": {"type": "ephemeral"}},
+                {"type": "text", "text": "回答：好"},
+            ]}]})
+        if code != 200:
+            hit = None
+            break
+        try:
+            hit = json.loads(body)["usage"].get("cache_read_input_tokens", 0)
+        except Exception:
+            hit = 0
+    caps["cache"] = None if hit is None else hit > 0
+    return caps
+
+
 def merge(a, b):
     """路由模型取两轮的交集：任一轮不成立就不敢承诺；任一轮没测出来就记未测。"""
     out = {}
@@ -255,7 +377,13 @@ def merge(a, b):
 
 
 def cell(v):
-    return "✓" if v is True else ("✗" if v is False else "?")
+    if v is True:
+        return "✓"
+    if v is False:
+        return "✗"
+    if v == "na":
+        return "—"   # 协议不提供这个参数，不是模型不支持
+    return "?"
 
 
 if __name__ == "__main__":
@@ -270,4 +398,7 @@ if __name__ == "__main__":
         else:
             c = probe(m)
             print("%-16s %s" % (m, "  ".join("%-6s" % cell(c[k]) for k in LABELS)))
-    print("\n✓＝实测支持   ✗＝实测不支持   ?＝没测出来（网络或上游报错，不等于不支持）")
+    for m in ANTHROPIC_MODELS:
+        c = probe_anthropic(m)
+        print("%-16s %s" % (m + "（Anthropic）", "  ".join("%-6s" % cell(c[k]) for k in LABELS)))
+    print("\n✓＝实测支持   ✗＝实测不支持   —＝该协议不提供   ?＝没测出来（不等于不支持）")

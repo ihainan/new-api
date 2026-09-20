@@ -127,17 +127,20 @@ export const MODELS = [
     icon: 'Zhipu',
     inputs: ['文本'],
     outputs: ['文本'],
-    caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
+    // 这一行是在真正的 /v1/messages 上测的，不是拿 glm 的 OpenAI 那轮顶的。
+    // json 标 'na'：Anthropic 协议没有 response_format 这个参数，
+    // 属于「协议不提供」，不是模型不支持。
+    caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
     summary: '和 glm 同一个模型，换成 Anthropic Messages 协议。',
     detail:
-      '后端与 glm 是同一个部署，区别只在请求格式。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
+      '后端与 glm 是同一个部署，区别只在请求格式——但支持的参数不完全相同：Anthropic 协议没有 response_format，要结构化输出得用工具调用。给认 Anthropic 接口的客户端用——Claude Code、Anthropic 官方 SDK、以及一切只会发 /v1/messages 的工具。用 OpenAI SDK 的话请直接用 glm，不要用这个。',
     params: '约 744B 总参数 / 约 40B 激活（MoE）',
     size: '同 glm',
     deployment: '与 glm 同一部署',
     context: '1,000,000 tokens（同 glm，运维口径）',
-    verified: '同 glm（实测走的是 OpenAI 接口，Anthropic 入口未单独验证）',
+    verified: '能力已在 /v1/messages 上单独实测；上下文同 glm',
     maxOutput: '131,072 tokens',
     io: '文本 → 文本',
     upstream: '同 glm（同一推理接入点）',

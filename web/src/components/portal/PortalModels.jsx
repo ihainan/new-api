@@ -92,6 +92,8 @@ function Chevron({ open }) {
  *   false   实测不支持
  *   'error' 试了，但调用直接失败（比如上游 500）——从使用者角度是用不了，
  *           但原因在部署不在模型，和「模型没这个能力」是两回事
+ *   'na'    该协议压根没有这个参数（如 Anthropic 没有 response_format）。
+ *           画成 ✗ 是冤枉模型：换个入口同一个模型就有
  *   缺失     没验证过
  * 把没验证过的画成不支持，和编一个规格是同一类谎话。
  * 措辞用「未验证」不用「未测」：后者容易被读成「测了没测出来」。
@@ -111,9 +113,23 @@ function CapGrid({ caps }) {
       {CAPS.map(([key, label, path]) => {
         const v = caps ? caps[key] : undefined;
         const state =
-          v === true ? 'on' : v === 'error' ? 'err' : v === false ? 'off' : 'unknown';
+          v === true
+            ? 'on'
+            : v === 'error'
+              ? 'err'
+              : v === 'na'
+                ? 'na'
+                : v === false
+                  ? 'off'
+                  : 'unknown';
         const tag =
-          state === 'unknown' ? '未验证' : state === 'err' ? '调用失败' : null;
+          state === 'unknown'
+            ? '未验证'
+            : state === 'err'
+              ? '调用失败'
+              : state === 'na'
+                ? '无此参数'
+                : null;
         return (
           <span key={key} className={`pt-cap ${state}`}>
             <svg
