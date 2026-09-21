@@ -193,7 +193,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: 'Qwen-Image-2.0，文生图模型，擅长中文提示词与画面内文字。',
     detail:
-      '`qwen-image` 当前指向 Qwen-Image-2.0：以 Qwen3-VL 作条件编码器的多模态扩散模型，中文提示词可以直接使用，画面内的中文也能生成，做海报、配图和示意图无需先译成英文；复杂文案建议人工校对，生成模型不保证逐字正确。提示词最长 1,000 token。**本平台默认**输出 1024×1024、采样 30 步，可在请求中覆盖。',
+      '`qwen-image` 当前指向 Qwen-Image-2.0：以 Qwen3-VL 作条件编码器的多模态扩散模型，中文提示词可以直接使用，画面内的中文也能生成，做海报、配图和示意图无需先译成英文；复杂文案建议人工校对，生成模型不保证逐字正确。提示词最长 1,000 token。输出默认 1024×1024，可以用 `size` 指定；采样步数由平台固定为 30，请求里改不了。',
     // 2.0 的权重官方没有公开发布（Hugging Face 上 Qwen 官方最新的公开权重
     // 仍是 20B 的 Qwen-Image-2512），所以参数量写「未公开」是事实而非偷懒。
     params: '官方未公开',
@@ -219,13 +219,14 @@ export const MODELS = [
     id: 'cosy-voice',
     name: 'CosyVoice',
     icon: 'Alibaba',
-    inputs: ['文本', '音频'],
+    // 输入只有文本：参考音频目前走网关传不到后端（见 callSpec.js 的 cosy-voice 注意事项）
+    inputs: ['文本'],
     outputs: ['音频'],
     category: 'audio',
     endpoints: ['openai'],
-    summary: 'CosyVoice3，文字转语音，支持 9 种语言与音色复刻。',
+    summary: 'CosyVoice3，文字转语音，模型支持 9 种语言。',
     detail:
-      '`cosy-voice` 当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）：把文本合成为自然语音，覆盖 9 种语言，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容；**音色复刻用的是平台扩展字段 `ref_audio` 和 `ref_text`**，标准 SDK 的参数表里没有这两项，需要自行拼装请求体。',
+      '`cosy-voice` 当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）：把文本合成为自然语音，覆盖 9 种语言，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容。**音色复刻目前走本平台网关用不了**：参考音频传不到后端，只能用默认音色或音色库里的音色。',
     params: '0.5B 参数',
     context: null,
     io: '文本 → 音频',
@@ -281,6 +282,8 @@ export const MODELS = [
   },
   {
     id: 'bge-reranker-v2-m3',
+    // 网关的 /api/pricing 按渠道类型把它报成 openai，那是错的；这里写死
+    fixedEndpoints: ['jina-rerank'],
     name: 'BGE-Reranker-v2-M3',
     icon: 'BAAI',
     inputs: ['文本'],

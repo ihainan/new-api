@@ -24,7 +24,14 @@ import python from 'highlight.js/lib/languages/python';
 import { copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
 import { describe } from './modelCatalog';
-import { KEY_ENV, callNotes, curlSnippet, pythonSnippet } from './callSpec';
+import {
+  KEY_ENV,
+  UNTESTED_PARAMS,
+  callNotes,
+  callParams,
+  curlSnippet,
+  pythonSnippet,
+} from './callSpec';
 import { usePortalT, withMarks } from './shared';
 
 /*
@@ -130,6 +137,7 @@ export default function CallDocDrawer({ modelId, onClose }) {
 
   const m = describe(modelId);
   const notes = callNotes(modelId);
+  const params = callParams(modelId);
   const code =
     tab === 'curl' ? curlSnippet(modelId, base) : pythonSnippet(modelId, base);
 
@@ -231,6 +239,47 @@ export default function CallDocDrawer({ modelId, onClose }) {
                 ))}
               </ul>
             </div>
+          ) : null}
+
+          {/*
+           * 参数表默认收起：注意事项是「不看就会踩」，放在上面常开；
+           * 参数是「要用时再查」，一张十来行的表常开会把示例代码顶出屏幕。
+           * 用原生 <details>：键盘、读屏、无 JS 都能开合，不用自己管状态。
+           * 两列不做四列——类型和是否必填跟在参数名下面，
+           * 560px 的抽屉里四列会把说明挤成一个字一行。
+           */}
+          {params.length ? (
+            <details className='pt-params'>
+              <summary>
+                <span>{t('参数')}</span>
+                <span className='pt-params-count'>{params.length}</span>
+              </summary>
+              {UNTESTED_PARAMS.has(modelId) ? (
+                <p className='pt-params-note'>
+                  {t(
+                    '视频参数没有逐个实测（提交一条要花钱），依据的是网关的转发逻辑和视频后端的接口文档。',
+                  )}
+                </p>
+              ) : null}
+              <table className='pt-ptable'>
+                <tbody>
+                  {params.map(([name, type, required, desc]) => (
+                    <tr key={name + desc}>
+                      <th scope='row'>
+                        <code>{name}</code>
+                        <span className='pt-ptype'>
+                          {type}
+                          {required ? (
+                            <span className='pt-preq'> · {t('必填')}</span>
+                          ) : null}
+                        </span>
+                      </th>
+                      <td>{withMarks(t(desc))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
           ) : null}
         </div>
       </aside>

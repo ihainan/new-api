@@ -92,7 +92,9 @@ msg = client.messages.create(
         {"role": "user", "content": "什么是向量数据库？一句话说明"},
     ],
 )
-print(msg.content[0].text)`,
+# 默认开着思考：第一个内容块是 thinking，正文在 type 为 text 的块里
+parts = [b.text for b in msg.content if b.type == "text"]
+print("".join(parts))`,
     pyHead: 'import os\n\n',
   },
 
@@ -103,7 +105,6 @@ print(msg.content[0].text)`,
       model: id,
       prompt: '雨后的校园林荫道，清晨的光',
       size: '1024x1024',
-      n: 1,
     }),
     py: (id) => `from openai import OpenAI
 
@@ -116,10 +117,11 @@ img = client.images.generate(
     model="${id}",
     prompt="雨后的校园林荫道，清晨的光",
     size="1024x1024",
-    n=1,
 )
-print(img.data[0].url)`,
-    pyHead: 'import os\n\n',
+# 返回的是 base64，不是图片链接
+png = base64.b64decode(img.data[0].b64_json)
+open("out.png", "wb").write(png)`,
+    pyHead: 'import base64, os\n\n',
   },
 
   // 异步：提交拿任务 ID，再轮询。没有同步版本，别按同步请求设超时。
@@ -241,7 +243,11 @@ print(out.text)`,
   tts: {
     method: 'POST',
     path: '/v1/audio/speech',
-    body: (id) => ({ model: id, input: '今天下午三点开会，地点在二楼会议室。' }),
+    body: (id) => ({
+      model: id,
+      input: '今天下午三点开会，地点在二楼会议室。',
+      response_format: 'wav',
+    }),
     py: (id) => `import os, requests
 
 KEY = os.environ["${KEY_ENV}"]
@@ -252,6 +258,7 @@ r = requests.post(
     json={
         "model": "${id}",
         "input": "今天下午三点开会，地点在二楼会议室。",
+        "response_format": "wav",
     },
 )
 # 返回的是 wav（24kHz 单声道）
@@ -268,25 +275,36 @@ export const CALL_SPEC = {
     shape: 'chat',
     notes: [
       '实际跑在哪个后端由路由决定，返回里的 `model` 仍是 `smart-router`；想知道当时选了谁，看「使用记录」里那一行。',
+      '思考内容可能在 `reasoning_content` 或 `reasoning` 字段里，取决于路由到了哪个后端。',
     ],
   },
   glm: {
     shape: 'chat',
-    notes: ['本部署不支持图片输入：带图片的请求不报错，但模型看不到图片。'],
+    notes: [
+      '本部署不支持图片输入：带图片的请求不报错，但模型看不到图片。',
+      '思考内容在 `reasoning_content` 字段里。',
+    ],
   },
   'glm-anthropic': {
     shape: 'anthropic',
     notes: [
       '和 `glm` 是同一个模型，只是换成 Anthropic Messages 协议；`max_tokens` 是必填项。',
       '鉴权头用 `Authorization: Bearer`，不是 Anthropic 官方的 `x-api-key`。',
+      '默认开着思考，`content` 里第一个块是 `thinking`，正文在 `type` 为 `text` 的块里；直接取 `content[0].text` 会拿到空的。',
     ],
   },
-  qwen: { shape: 'chat', notes: [] },
+  qwen: {
+    shape: 'chat',
+    notes: ['思考内容在 `reasoning` 字段里，不是常见的 `reasoning_content`。'],
+  },
   'gemma4:26b': { shape: 'chat', notes: [] },
   minimax: { shape: 'chat', notes: [] },
   'qwen-image': {
     shape: 'image',
-    notes: ['返回的是图片链接，不是 base64。'],
+    notes: [
+      '返回的是 base64（`data[0].b64_json`），不是图片链接，需要自己解码保存。',
+      '只有 `size` 能调；`seed`、`steps` 这类参数网关不转发，传了也不生效。',
+    ],
   },
   'minimax-h3': {
     shape: 'video',
@@ -297,13 +315,15 @@ export const CALL_SPEC = {
   },
   'bge-m3': {
     shape: 'embedding',
-    notes: ['本部署单次只处理前 2,048 token，超出的部分既不进模型也不报错，长文档要自己切。'],
+    notes: [
+      '本部署每条输入只处理前 2,048 token，超出的部分既不进模型也不报错，长文档要自己切。',
+    ],
   },
   'qwen3-embedding:4b': {
     shape: 'embedding',
     notes: [
       '默认 2,560 维，可以传 `dimensions` 裁剪到更小的维度。',
-      '单次上限 4,096 token，超出同样是静默截断。',
+      '每条输入上限 4,096 token，超出同样是静默截断。',
     ],
   },
   'bge-reranker-v2-m3': {
@@ -323,9 +343,11 @@ export const CALL_SPEC = {
   'cosy-voice': {
     shape: 'tts',
     notes: [
-      '不要传 `voice`：OpenAI 的 alloy、echo 这些音色在这里不存在，填了会返回 400。',
+      '不传 `voice` 就用默认音色；OpenAI 的 alloy、echo 这些音色在这里不存在，填了会返回 400。',
       '返回的是 wav（24kHz 单声道），不是 mp3。',
-      '需要克隆音色时传 `ref_audio` 和 `ref_text`。',
+      // 实测：往 ref_audio 和 prompt_audio_base64 里各塞一段乱码都返回 200，
+      // 说明两个字段都没被用上——网关只转发前者，后端只认后者。
+      '音色克隆目前走网关用不了：参考音频传不到后端，传了也会静默地用默认音色。',
     ],
   },
 };
@@ -360,6 +382,88 @@ export function pythonSnippet(id, base) {
   if (!sh) return '';
   return ((sh.pyHead || '') + sh.py(id)).split('%BASE%').join(base);
 }
+
+/*
+ * 参数表：[参数名, 类型, 是否必填, 说明]。说明里的 `x` 是行内代码，**x** 是加粗。
+ *
+ * 每一行都在本部署上实测过（2026-09-21，脚本 probe_params / probe_chat / probe_more），
+ * 不从 OpenAI、Anthropic 的规范里照抄——照抄的话会出现「文档说能用、实际被网关丢掉」：
+ *   - 出图的 seed/steps/cfg：网关转发时不带额外字段（dto/openai_image.go），到不了后端；
+ *   - 关思考的开关 glm 和 qwen 各认各的，写反了静默无效，reasoning_effort 两个都不认；
+ *   - glm 的 temperature 只接受 0～1，qwen 可以超过 1；
+ *   - encoding_format 被忽略，dimensions 超过原生维数不报错。
+ * 例外是视频：提交一条要真金白银，所以没有逐个实测，依据的是网关的转发逻辑
+ * （sora 适配器整包转发 JSON）和视频后端 bridge 的接口文档，界面上会注明。
+ */
+const ROWS = {
+  "model": ["model", "string", true, "模型 ID。"],
+  "messages": ["messages", "array", true, "对话消息，如 `[{\"role\": \"user\", \"content\": \"…\"}]`。"],
+  "max_tokens": ["max_tokens", "integer", false, "单次最多输出多少 token。**包含思考过程**：开着思考时设得太小，会在给出答案之前就截断（`finish_reason` 为 `length`）。"],
+  "temp_01": ["temperature", "number", false, "随机性，越大越发散。**只接受 0～1**，超出直接返回 400。"],
+  "temp_open": ["temperature", "number", false, "随机性，越大越发散，可以超过 1。"],
+  "temp_router": ["temperature", "number", false, "随机性，越大越发散。**按 0～1 写**：请求可能被路由到 glm，而 glm 超过 1 会返回 400。"],
+  "stream": ["stream", "boolean", false, "为 `true` 时以 SSE 流式返回。"],
+  "stop": ["stop", "string / array", false, "生成到停止词就结束。**开着思考时，停止词可能先在思考过程里命中，正文会是空的**；用 stop 时建议关掉思考。"],
+  "response_format": ["response_format", "object", false, "传 `{\"type\": \"json_object\"}` 时正文是合法 JSON；提示词里仍要写明需要 JSON。"],
+  "tools": ["tools", "array", false, "OpenAI 格式的工具定义；模型决定调用时返回 `tool_calls`。"],
+  "think_glm": ["thinking", "object", false, "传 `{\"type\": \"disabled\"}` 关闭思考，默认开着。`reasoning_effort` 不生效。"],
+  "think_qwen": ["chat_template_kwargs", "object", false, "传 `{\"enable_thinking\": false}` 关闭思考，默认开着。`reasoning_effort` 不生效。"],
+  "think_router": ["thinking / chat_template_kwargs", "object", false, "关闭思考时**两个都传**：`\"thinking\": {\"type\": \"disabled\"}` 管 glm，`\"chat_template_kwargs\": {\"enable_thinking\": false}` 管 qwen，路由到哪个后端就是哪个生效。"],
+  "a_max_tokens": ["max_tokens", "integer", true, "单次最多输出多少 token，**包含思考过程**。"],
+  "a_system": ["system", "string", false, "系统提示词。"],
+  "a_stream": ["stream", "boolean", false, "为 `true` 时以事件流返回（`message_start`、`content_block_delta` …）。"],
+  "a_stop": ["stop_sequences", "array", false, "生成到停止词就结束；建议关掉思考后使用。"],
+  "a_tools": ["tools", "array", false, "Anthropic 格式的工具定义（`input_schema`）；模型调用时返回 `tool_use` 内容块。"],
+  "a_thinking": ["thinking", "object", false, "传 `{\"type\": \"disabled\"}` 关闭思考；默认开着，返回里会先有一个 `thinking` 内容块。"],
+  "i_prompt": ["prompt", "string", true, "画面描述，最长 1,000 token。"],
+  "i_size": ["size", "string", false, "`宽x高`，如 `\"1024x1024\"`（默认）、`\"512x512\"`。"],
+  "i_n": ["n", "integer", false, "传多少都只返回 1 张。"],
+  "i_fmt": ["response_format", "string", false, "固定返回 `b64_json`，传 `url` 也一样。"],
+  "i_unsupported": ["seed / steps / cfg", "\u2014", false, "网关不转发这几个参数，传了也不生效。"],
+  "v_prompt": ["prompt", "string", true, "视频描述，最长 7,000 字符。"],
+  "v_seconds": ["seconds", "string", false, "时长，`\"4\"`～`\"15\"`，默认 `\"4\"`，超出范围直接报错。**写成字符串**。"],
+  "v_size": ["size", "string", false, "只取宽高比：`\"1280x720\"` 横屏，`\"720x1280\"` 竖屏（默认 9:16）；清晰度由平台固定，短边 768。"],
+  "v_image_url": ["image_url", "string", false, "参考图网址（须能公网访问），作为视频第一帧，即图生视频。"],
+  "v_image_b64": ["image_base64", "string", false, "参考图的 base64（原图不超过 30 MB，JPG / PNG / WEBP / HEIC）；和 `image_url` 只能二选一。"],
+  "v_negative": ["negative_prompt", "string", false, "不希望出现在画面里的内容。"],
+  "v_seed": ["seed", "integer", false, "随机种子。"],
+  "e_input": ["input", "string / array", true, "单条文本或文本数组；数组里每条单独计算、单独截断，互不影响。"],
+  "e_dim_qwen": ["dimensions", "integer", false, "裁剪到指定维数；超过 2,560 时不报错，返回 2,560 维。"],
+  "e_dim_bge": ["dimensions", "integer", false, "会被截断到指定维数，但 bge-m3 不是为裁剪维度训练的，截断后检索效果会下降，**不建议使用**。"],
+  "e_fmt": ["encoding_format", "string", false, "不生效，始终返回浮点数组。"],
+  "r_query": ["query", "string", true, "查询文本。"],
+  "r_docs": ["documents", "array", true, "候选文档，字符串数组。"],
+  "r_top": ["top_n", "integer", false, "只返回相关度最高的前 N 条；不传返回全部。"],
+  "r_ret": ["return_documents", "boolean", false, "为 `true` 时每条结果附带原文（`document.text`）。"],
+  "s_file": ["file", "file", true, "音频文件，WAV 或 MP3，用 multipart 上传。"],
+  "s_fmt": ["response_format", "string", false, "`json`（默认）、`verbose_json`（多返回时长）、`text`、`srt`、`vtt`。"],
+  "s_lang": ["language", "string", false, "语言提示，如 `zh`；后端会自动识别，传不传结果通常一样。"],
+  "s_ignored": ["prompt / temperature", "\u2014", false, "接受但不生效。"],
+  "t_input": ["input", "string", true, "要合成的文本。"],
+  "t_voice": ["voice", "string", false, "音色库里的音色名；不传用默认音色。OpenAI 的 `alloy`、`echo` 等不存在，填了返回 400。"],
+  "t_instr": ["instructions", "string", false, "语气、风格描述，如「用开心的语气」；效果有限。"],
+  "t_fmt": ["response_format", "string", false, "始终返回 wav（24kHz 单声道），建议直接写 `\"wav\"`。"],
+  "t_speed": ["speed", "number", false, "接受但不生效。"],
+};
+
+const PARAM_KEYS = {
+  "smart-router": ["model", "messages", "max_tokens", "temp_router", "stream", "stop", "response_format", "tools", "think_router"],
+  "glm": ["model", "messages", "max_tokens", "temp_01", "stream", "stop", "response_format", "tools", "think_glm"],
+  "qwen": ["model", "messages", "max_tokens", "temp_open", "stream", "stop", "response_format", "tools", "think_qwen"],
+  "glm-anthropic": ["model", "messages", "a_max_tokens", "a_system", "a_stream", "a_stop", "a_tools", "a_thinking"],
+  "qwen-image": ["model", "i_prompt", "i_size", "i_n", "i_fmt", "i_unsupported"],
+  "minimax-h3": ["model", "v_prompt", "v_seconds", "v_size", "v_image_url", "v_image_b64", "v_negative", "v_seed"],
+  "bge-m3": ["model", "e_input", "e_dim_bge", "e_fmt"],
+  "qwen3-embedding:4b": ["model", "e_input", "e_dim_qwen", "e_fmt"],
+  "bge-reranker-v2-m3": ["model", "r_query", "r_docs", "r_top", "r_ret"],
+  "qwen-asr": ["s_file", "model", "s_fmt", "s_lang", "s_ignored"],
+  "cosy-voice": ["model", "t_input", "t_voice", "t_instr", "t_fmt", "t_speed"],
+};
+
+export const UNTESTED_PARAMS = new Set(['minimax-h3']);
+
+export const callParams = (id) =>
+  (PARAM_KEYS[id] || []).map((k) => ROWS[k]).filter(Boolean);
 
 export const callNotes = (id) => CALL_SPEC[id]?.notes || [];
 export const hasCallDoc = (id) => Boolean(CALL_SPEC[id]);

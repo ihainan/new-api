@@ -544,7 +544,8 @@ function normalize(raw) {
     out.push({
       ...d,
       // 接口给的协议列表是真值，目录里那份只是没接口时的备份。
-      endpoints: eps.length ? eps : d.endpoints,
+      // 目录里写死了协议的（接口报错了的那种）以目录为准
+      endpoints: d.fixedEndpoints || (eps.length ? eps : d.endpoints),
     });
   }
   return out;
