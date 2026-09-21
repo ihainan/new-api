@@ -29,7 +29,9 @@ import {
   Skeleton,
   Stat,
   fmtCompact,
-  fmtInt, usePortalT } from './shared';
+  fmtInt,
+  usePortalT,
+} from './shared';
 
 /*
  * 概览。只回答「我自己用了多少、体验如何」，不放公告、服务可用性、用户排行
@@ -75,8 +77,10 @@ const PIE_COLORS = [
 // 请求数是单条线；Token 拆三条——缓存输入是省下来的，
 // 未缓存输入和输出才是真跑了算力的，混成一条就看不出这个差别。
 const LINE_COLOR = {
-  requests: ['#14181f'],
-  tokens: ['#2563d4', '#157f3c', '#8a5cd6'],
+  // 请求数原来是墨黑，一条又粗又黑的线压在卡片里很难看，且和正文抢注意力。
+  // 换成主题色，并在下面垫一层很淡的同色面积——单条线的图表这样才有形。
+  requests: ['#4000f6'],
+  tokens: ['#4000f6', '#157f3c', '#c9a227'],
 };
 const TOKEN_SERIES = [
   { key: 'uncached', label: '未缓存输入' },
@@ -182,7 +186,8 @@ export default function PortalOverview() {
           })
         : src.map((p) => ({ t: label(p), k: t('请求数'), v: p.requests }));
     return {
-      type: 'line',
+      // 单条线用面积图（线 + 淡填充）；三条线叠面积会互相糊住，还是用线
+      type: trend === 'requests' ? 'area' : 'line',
       data: [{ id: 'd', values: pts }],
       xField: 't',
       yField: 'v',
@@ -199,6 +204,22 @@ export default function PortalOverview() {
           : { visible: false },
       point: { visible: false },
       line: { style: { lineWidth: 2 } },
+      area: {
+        visible: trend === 'requests',
+        style: {
+          fill: {
+            gradient: 'linear',
+            x0: 0,
+            y0: 0,
+            x1: 0,
+            y1: 1,
+            stops: [
+              { offset: 0, color: '#4000f6', opacity: 0.16 },
+              { offset: 1, color: '#4000f6', opacity: 0.02 },
+            ],
+          },
+        },
+      },
       axes: [
         {
           orient: 'bottom',
@@ -289,16 +310,22 @@ export default function PortalOverview() {
       ) : null}
 
       <div className='pt-filters'>
-        {RANGES.map((r) => (
-          <button
-            key={r.v}
-            type='button'
-            className={`pt-btn sm${range === r.v ? ' primary' : ''}`}
-            onClick={() => setRange(r.v)}
-          >
-            {t(r.label)}
-          </button>
-        ))}
+        {/* 时间范围是分段选择，不是主按钮——它借用 primary 当选中态，
+            主按钮一改成主题色，这排就跟着变成了实心靛蓝，而别的页面同类筛选
+            还是墨黑 chip。统一用 chip。 */}
+        <div className='pt-chips' role='group' aria-label={t('时间范围')}>
+          {RANGES.map((r) => (
+            <button
+              key={r.v}
+              type='button'
+              className={`pt-chip${range === r.v ? ' on' : ''}`}
+              aria-pressed={range === r.v}
+              onClick={() => setRange(r.v)}
+            >
+              {t(r.label)}
+            </button>
+          ))}
+        </div>
         {loading ? (
           <span style={{ fontSize: 12, color: 'var(--pt-text-muted)' }}>
             {t('加载中…')}

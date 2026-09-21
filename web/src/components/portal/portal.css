@@ -20,6 +20,8 @@
      白底对比度 8.2:1（原先那支学院蓝是 5.5:1），正文级别也够。 */
   --pt-accent: #4000f6;
   --pt-accent-hover: #3600c9;
+  /* 主题色的浅底：用在侧栏选中项这种「要认得出、但不能抢正文」的地方 */
+  --pt-accent-soft: #eeeaff;
   /* 和卡片白只差 1.5%，卡片等于没有边界。压深一档，让白色卡片自己浮起来。
      次要文字 #646d7c 压在这个底色上对比度 4.8:1，仍然过线。 */
   --pt-bg-page: #f4f5f7;
@@ -121,19 +123,20 @@
   color: var(--pt-text-primary);
   background: var(--pt-bg-hover);
 }
+/* 选中态用主题色的浅底 + 主题色图标。原来是灰磁贴，和 hover 的灰几乎分不开，
+   「我现在在哪一页」要靠字重去猜。文字仍用近黑（主题色是高饱和的靛蓝，
+   整行都染上去会比正文还抢眼）。 */
 .pt-nav a.active {
   color: var(--pt-text-primary);
   font-weight: 550;
-  background: var(--pt-bg-subtle);
+  background: var(--pt-accent-soft);
 }
 .pt-nav a .pt-icon {
   color: var(--pt-text-muted);
   flex: none;
 }
-.pt-nav a:hover .pt-icon,
-.pt-nav a.active .pt-icon {
-  color: var(--pt-text-primary);
-}
+.pt-nav a:hover .pt-icon { color: var(--pt-text-primary); }
+.pt-nav a.active .pt-icon { color: var(--pt-accent); }
 .pt-nav .pt-lbl {
   flex: 1;
 }
