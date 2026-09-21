@@ -940,36 +940,45 @@
   color: var(--pt-text-meta);
 }
 
-/* 次要信息：一行一项，标签在左、值在右。
-   之前是「标签在上、值在下」再排成多列，短短两个字段也占掉三行高度，
-   看起来散。现在和上面的指标条用同一套读法。 */
+/*
+ * 次要规格排成两列的小表：左列标签、右列值，行间一条细线。
+ * 原来是横着流的「标签 值　标签 值」，值一长（参数规模带括号说明）就在
+ * 某处折行，两组对不齐，看着像排错了。
+ */
 .pt-specs-more {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 32px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  /* 这个元素同时带 .pt-specs（flex + gap），不清零的话列间距会把行线断成两截 */
+  gap: 0;
   margin-top: 20px;
+  border-top: 1px solid var(--pt-border);
 }
+/* dt/dd 要直接落进外层 grid，才能跨行对齐成两列 */
 .pt-specs-more > .pt-spec {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex: 0 1 auto;
-  max-width: 100%;
+  display: contents;
 }
-.pt-specs-more > .pt-spec.wide { flex-basis: 100%; }
-.pt-specs-more dt {
+.pt-specs-more dt,
+.pt-specs-more dd {
   margin: 0;
-  /* 标签和值在同一行并排，字号必须一致，否则一行里两种大小很刺眼；
-     配对关系靠颜色和字重区分就够 */
+  padding: 8px 0;
   font-size: 13px;
+  line-height: 1.6;
+  border-bottom: 1px solid var(--pt-border);
+}
+.pt-specs-more dt {
+  padding-right: 28px;
   color: var(--pt-text-meta);
   white-space: nowrap;
 }
 .pt-specs-more dd {
-  margin: 0;
-  font-size: 13px;
   font-weight: 500;
   color: var(--pt-text-secondary);
+  word-break: break-word;
+}
+/* 最后一行不画线，免得和卡片下沿并成两条 */
+.pt-specs-more > .pt-spec:last-child dt,
+.pt-specs-more > .pt-spec:last-child dd {
+  border-bottom: 0;
 }
 .pt-specs-more .pt-spec-note { font-size: 13px; font-weight: 400; }
 
@@ -988,6 +997,12 @@
     justify-content: flex-end;
   }
   .pt-specs { grid-template-columns: 1fr; gap: 10px; }
+  /* 上面那条会把这张小表也压成一列（它同时带 .pt-specs），标签和值就各占一行了 */
+  .pt-specs-more {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0;
+  }
+  .pt-specs-more dt { padding-right: 16px; }
 }
 
 .pt-pager {
