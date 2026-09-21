@@ -380,25 +380,68 @@ export function RangeFilter({ value, onChange }) {
       </div>
       {value.range === 'custom' ? (
         <div className='pt-daterange'>
+          {/*
+           * 两头互相卡住：结束日不能早于开始日。光靠 min/max 不够——
+           * 日期框还能直接打字，所以改动时再夹一次，把另一头顶过去。
+           * 这比弹个「日期不合法」体面：人想表达的是「就看这一天」。
+           */}
           <input
             type='date'
             className='pt-date'
             aria-label={t('开始日期')}
-            max={today}
+            max={value.to || today}
             value={value.from || ''}
-            onChange={(e) => set({ from: e.target.value })}
+            onChange={(e) => {
+              const from = e.target.value;
+              set(value.to && from > value.to ? { from, to: from } : { from });
+            }}
           />
           <span className='pt-sub'>{t('至')}</span>
           <input
             type='date'
             className='pt-date'
             aria-label={t('结束日期')}
+            min={value.from || undefined}
             max={today}
             value={value.to || ''}
-            onChange={(e) => set({ to: e.target.value })}
+            onChange={(e) => {
+              const to = e.target.value;
+              set(value.from && to < value.from ? { from: to, to } : { to });
+            }}
           />
         </div>
       ) : null}
     </>
   );
+}
+
+/*
+ * 描述里的两种标记：
+ *   `xxx`   -> 行内代码。「`response_format`」混在正文里不换字体根本认不出
+ *              那是要照抄的字符串。
+ *   **xxx** -> 加粗。只留给「不看就会踩」的那一句：静默截断、看不到图片、
+ *              额度不够正文会空——加粗是给信息用的，不是拿来点缀的。
+ */
+export function withMarks(text) {
+  return String(text)
+    .split(/(`[^`]+`|\*\*[^*]+\*\*)/)
+    .filter(Boolean)
+    .map((part, i) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code key={i} className='pt-inline-code'>
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      if (part.startsWith('**') && part.endsWith('**')) {
+        // 加粗里面还会有行内代码，要再解析一层，否则反引号会原样露出来
+        return (
+          <strong key={i} className='pt-em'>
+            {withMarks(part.slice(2, -2))}
+          </strong>
+        );
+      }
+      return part;
+    });
 }

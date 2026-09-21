@@ -20,8 +20,17 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
-import { Card, Empty, PageHead, Skeleton, usePortalT } from './shared';
+import {
+  Card,
+  Empty,
+  PageHead,
+  Skeleton,
+  usePortalT,
+  withMarks,
+} from './shared';
 import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
+import CallDocDrawer, { useDocParam } from './CallDocDrawer';
+import { hasCallDoc } from './callSpec';
 
 /*
  * 模型页。回答的是「我能调什么、该挑哪个」，不是价目表——倍率和计费是管理视角。
@@ -406,38 +415,7 @@ function SpecItem({ label, value, wide }) {
   );
 }
 
-/*
- * 描述里的两种标记：
- *   `xxx`   -> 行内代码。「`response_format`」混在正文里不换字体根本认不出
- *              那是要照抄的字符串。
- *   **xxx** -> 加粗。只留给「不看就会踩」的那一句：静默截断、看不到图片、
- *              额度不够正文会空——加粗是给信息用的，不是拿来点缀的。
- */
-function withMarks(text) {
-  return String(text)
-    .split(/(`[^`]+`|\*\*[^*]+\*\*)/)
-    .filter(Boolean)
-    .map((part, i) => {
-      if (part.startsWith('`') && part.endsWith('`')) {
-        return (
-          <code key={i} className='pt-inline-code'>
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-      if (part.startsWith('**') && part.endsWith('**')) {
-        // 加粗里面还会有行内代码，要再解析一层，否则反引号会原样露出来
-        return (
-          <strong key={i} className='pt-em'>
-            {withMarks(part.slice(2, -2))}
-          </strong>
-        );
-      }
-      return part;
-    });
-}
-
-function ModelRow({ m, open, onToggle }) {
+function ModelRow({ m, open, onToggle, onDoc }) {
   const t = usePortalT();
   const endpoints = m.endpoints || [];
   const protocols = endpoints
@@ -475,6 +453,17 @@ function ModelRow({ m, open, onToggle }) {
           </span>
         </button>
         <div className='pt-mdl-act'>
+          {/* 每个模型的调用方式都不一样，文档就挂在它自己这张卡上 */}
+          {hasCallDoc(m.id) ? (
+            <button
+              type='button'
+              className='pt-btn sm'
+              aria-label={t('查看 {{id}} 的调用文档', { id: m.id })}
+              onClick={() => onDoc(m.id)}
+            >
+              {t('调用文档')}
+            </button>
+          ) : null}
           <button
             type='button'
             className='pt-btn sm'
@@ -631,6 +620,8 @@ export default function PortalModels() {
   const [cat, setCat] = useState('all');
   const [openId, setOpenId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // ?doc=<模型 ID> 控制右侧抽屉，可以把链接直接发给同事
+  const { docId, openDoc, closeDoc } = useDocParam();
 
   useEffect(() => {
     let alive = true;
@@ -789,6 +780,7 @@ export default function PortalModels() {
                       m={m}
                       open={openId === m.id}
                       onToggle={() => setOpenId(openId === m.id ? null : m.id)}
+                      onDoc={openDoc}
                     />
                   ))}
                 </div>
@@ -797,6 +789,9 @@ export default function PortalModels() {
           )}
         </>
       )}
+      {docId && hasCallDoc(docId) ? (
+        <CallDocDrawer modelId={docId} onClose={closeDoc} />
+      ) : null}
     </div>
   );
 }

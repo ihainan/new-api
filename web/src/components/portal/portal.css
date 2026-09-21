@@ -1757,3 +1757,127 @@
   outline: 2px solid var(--pt-accent);
   outline-offset: 1px;
 }
+
+/* ── 调用文档抽屉 ─────────────────────────────────────────────
+   代码块需要宽度，卡片里放不下；抽屉又不用离开模型列表。
+   窄屏上改成整屏，420px 的宽度里再留一条遮罩条毫无意义。 */
+.pt-drawer-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+.pt-drawer-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 24, 31, 0.28);
+}
+.pt-drawer {
+  position: relative;
+  width: min(560px, 100%);
+  background: var(--pt-bg-card);
+  border-left: 1px solid var(--pt-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 28px rgba(20, 24, 31, 0.1);
+  animation: pt-slide-in 0.18s ease-out;
+}
+@keyframes pt-slide-in { from { transform: translateX(16px); opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) { .pt-drawer { animation: none; } }
+.pt-drawer:focus { outline: none; }
+.pt-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pt-border);
+}
+.pt-drawer-x {
+  border: 0;
+  background: none;
+  font-size: 15px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: var(--pt-radius-sm);
+  color: var(--pt-text-muted);
+  cursor: pointer;
+}
+.pt-drawer-x:hover { background: var(--pt-bg-hover); color: var(--pt-text-primary); }
+.pt-drawer-body {
+  padding: 16px 18px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pt-drawer-sum { margin: 0; font-size: 13.5px; color: var(--pt-text-secondary); }
+.pt-drawer-keyhint { margin: 0; font-size: 12.5px; color: var(--pt-text-muted); }
+.pt-drawer-pip { margin: -6px 0 0; }
+
+/* 接口地址 / 鉴权这类「公共部分」 */
+.pt-kv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--pt-bg-subtle);
+  border-radius: var(--pt-radius-md);
+}
+.pt-kv dt { font-size: 12px; color: var(--pt-text-muted); }
+.pt-kv dd { margin: 2px 0 0; font-size: 13px; word-break: break-all; }
+
+.pt-snip {
+  border: 1px solid var(--pt-border);
+  border-radius: var(--pt-radius-md);
+  overflow: hidden;
+}
+.pt-snip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 6px 12px;
+  background: var(--pt-bg-subtle);
+  border-bottom: 1px solid var(--pt-border);
+}
+.pt-snip-lang { font-size: 12px; color: var(--pt-text-muted); }
+.pt-snip-body {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--pt-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--pt-text-primary);
+  background: var(--pt-bg-card);
+}
+/* 代码高亮。没引 highlight.js 自带主题：那些主题带自己的背景色和字号，
+   会和门户的代码块打架。这里只给 hljs 的几个 token 类上色，克制到
+   「能分出字符串、注释、关键字」为止——花花绿绿的代码块不会更好读。 */
+.pt-snip-body .hljs-comment { color: #7a828e; font-style: italic; }
+.pt-snip-body .hljs-string,
+.pt-snip-body .hljs-meta .hljs-string { color: #157f3c; }
+.pt-snip-body .hljs-keyword,
+.pt-snip-body .hljs-built_in,
+.pt-snip-body .hljs-literal { color: var(--pt-accent); }
+.pt-snip-body .hljs-number { color: #b0640f; }
+.pt-snip-body .hljs-title,
+.pt-snip-body .hljs-title.function_ { color: #1d4ed8; }
+.pt-snip-body .hljs-attr,
+.pt-snip-body .hljs-variable,
+.pt-snip-body .hljs-template-variable { color: #7c3f00; }
+
+.pt-notes h3 { margin: 0 0 6px; font-size: 13.5px; }
+.pt-notes ul { margin: 0; padding-left: 18px; }
+.pt-notes li {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--pt-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .pt-drawer { width: 100%; border-left: 0; }
+  .pt-drawer-mask { display: none; }
+}
