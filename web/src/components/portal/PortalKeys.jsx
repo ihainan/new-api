@@ -17,43 +17,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  API,
-  copy,
-  getServerAddress,
-  showError,
-  showSuccess,
-} from '../../helpers';
-import { Card, CodeBlock, Empty, PageHead, Skeleton, Tabs, usePortalT } from './shared';
+import React, { useCallback, useEffect, useState } from 'react';
+import { API, showError } from '../../helpers';
+import { Card, Empty, PageHead, Skeleton, fmtTime, usePortalT } from './shared';
 
 /*
- * API 密钥页。原来这里写的是「暂无 Key，请联系管理员分配 API Key」——
- * 那句话本身就是要消灭的申请环节。现在密钥直接可见可复制，下面配好接入代码。
+ * API 密钥页。这里只做一件事：让人确认自己账号下有哪几把密钥、分别是哪一把。
  *
- * 明文不在列表接口里下发，只有用户主动点「显示」或「复制」时才向
- * POST /api/token/:id/key 取一次，那个接口带归属校验、限流和禁用缓存。
+ * 不显示完整密钥、不提供复制、也不放调用示例——密钥由智能创新部统一发放，
+ * 页面不承担分发职责。列表接口返回的本来就是打过码的 key（前四位 + 后四位），
+ * 明文那个接口这页根本不调。
  */
 
-const MASK = 'sk-••••••••••••••••••••••••••••••••';
-
-// 接口返回的是裸 key，展示与复制统一补上 sk- 前缀：鉴权侧会 TrimPrefix，两种都能用，
-// 但管理员界面和各家 SDK 的习惯都是带前缀，不该让员工看到两种形态。
-const withPrefix = (k) => (!k || k.startsWith('sk-') ? k : `sk-${k}`);
-
-const PROTOCOLS = [
-  { key: 'openai', label: 'OpenAI 兼容' },
-  { key: 'anthropic', label: 'Anthropic 兼容' },
-];
+// 列表接口给的是 `ltFC**********S3yP` 这种形态，这里只留前四位
+const prefixOf = (masked) => {
+  const head = String(masked || '').split('*')[0].slice(0, 4);
+  return head ? `sk-${head}••••••••` : 'sk-••••••••';
+};
 
 export default function PortalKeys() {
   const t = usePortalT();
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(null);
-  const [plain, setPlain] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [proto, setProto] = useState('openai');
-  const base = useMemo(() => getServerAddress(), []);
+  const [tokens, setTokens] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,173 +49,81 @@ export default function PortalKeys() {
         return;
       }
       const items = res.data.data?.items || [];
-      // 员工只关心「我现在能用哪一把」：启用中的优先，同类里取最新。
-      const usable = items.filter((it) => it.status === 1 && !it.deleted_at);
-      setToken(
-        (usable.length ? usable : items).sort(
-          (a, b) => (b.created_time || 0) - (a.created_time || 0),
-        )[0] || null,
+      // 启用中的排在前面，同类按创建时间倒序
+      setTokens(
+        [...items].sort(
+          (a, b) =>
+            (b.status === 1) - (a.status === 1) ||
+            (b.created_time || 0) - (a.created_time || 0),
+        ),
       );
     } catch (e) {
       showError(t('获取密钥失败'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const fetchPlain = async () => {
-    const res = await API.post(`/api/token/${token.id}/key`);
-    if (!res.data?.success)
-      throw new Error(res.data?.message || t('获取密钥失败'));
-    return withPrefix(res.data.data?.key || '');
-  };
-
-  const toggle = async () => {
-    if (plain) {
-      setPlain('');
-      return;
-    }
-    setBusy(true);
-    try {
-      setPlain(await fetchPlain());
-    } catch (e) {
-      showError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const copyKey = async () => {
-    setBusy(true);
-    try {
-      // 复制不显示明文——这两件事是分开的。
-      const v = plain || (await fetchPlain());
-      (await copy(v)) ? showSuccess(t('已复制')) : showError(t('复制失败'));
-    } catch (e) {
-      showError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const k = plain || 'YOUR_API_KEY';
-  const snippets = {
-    openai: [
-      `curl ${base}/v1/chat/completions \\
-  -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${k}" \\
-  -d '{"model": "smart-router", "messages": [{"role": "user", "content": "你好"}]}'`,
-      `from openai import OpenAI
-
-client = OpenAI(api_key="${k}", base_url="${base}/v1")
-resp = client.chat.completions.create(
-    model="smart-router",
-    messages=[{"role": "user", "content": "你好"}],
-)
-print(resp.choices[0].message.content)`,
-    ],
-    anthropic: [
-      `curl ${base}/v1/messages \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: ${k}" \\
-  -H "anthropic-version: 2023-06-01" \\
-  -d '{"model": "glm-anthropic", "max_tokens": 1024,
-       "messages": [{"role": "user", "content": "你好"}]}'`,
-      `import anthropic
-
-client = anthropic.Anthropic(api_key="${k}", base_url="${base}")
-msg = client.messages.create(
-    model="glm-anthropic",
-    max_tokens=1024,
-    messages=[{"role": "user", "content": "你好"}],
-)
-print(msg.content[0].text)`,
-    ],
-  };
-
-  if (loading)
-    return (
-      <div>
-        <PageHead title={t('API 密钥')} />
-        <Skeleton rows={3} />
-      </div>
-    );
-
-  if (!token) {
-    return (
-      <div>
-        <PageHead title={t('API 密钥')} />
-        <Card>
-          <Empty
-            text={t(
-              '还没有密钥。密钥会在账号开通时自动发放，如果这里一直是空的，说明发放环节出了问题，请告知管理员。',
-            )}
-          />
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <PageHead
-        title={t('API 密钥')}
-        sub={t('用它调用下面的接口，不需要额外申请')}
-      />
+      <PageHead title={t('API 密钥')} sub={t('你账号下已开通的密钥')} />
 
-      <Card className='pad'>
-        <div>
-          <div
-            style={{
-              fontSize: 12,
-              color: 'var(--pt-text-muted)',
-              marginBottom: 8,
-            }}
-          >
-            {token.name}
-          </div>
-          <div className='pt-keyrow'>
-            <code className='pt-keyval'>{plain || MASK}</code>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type='button'
-                className='pt-btn'
-                onClick={toggle}
-                disabled={busy}
-              >
-                {t(plain ? '隐藏' : '显示')}
-              </button>
-              <button
-                type='button'
-                className='pt-btn primary'
-                onClick={copyKey}
-                disabled={busy}
-              >
-                {t('复制')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className='pt-section'>
-        <h2 className='pt-section-title'>{t('怎么调用')}</h2>
-        <p className='pt-section-sub'>
+      {/* 这页最重要的一句话：密钥怎么拿。放在最上面，字号和字重都压过下面的列表 */}
+      <div className='pt-notice'>
+        <p className='pt-notice-main'>
+          {t('需要调用两院私有部署的模型，请联系智能创新部的符积高开通并获取密钥。')}
+        </p>
+        <p className='pt-notice-sub'>
           {t(
-            '选一种协议，复制走即可。示例里的 YOUR_API_KEY 在你点「显示」后会替换成真实密钥。',
+            '出于安全考虑，本页只显示密钥的前几位供核对，不展示完整内容，也不提供复制。密钥请勿转发或提交到代码仓库。',
           )}
         </p>
-        <Tabs items={PROTOCOLS} value={proto} onChange={setProto} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {snippets[proto].map((code, i) => (
-            <CodeBlock key={i} code={code} />
-          ))}
-        </div>
       </div>
+
+      {loading ? (
+        <Skeleton rows={3} />
+      ) : tokens.length === 0 ? (
+        <Card>
+          <Empty text={t('账号下还没有密钥。')} />
+        </Card>
+      ) : (
+        <Card>
+          <div className='pt-table-wrap'>
+            <table className='pt-table pt-key-table'>
+              <thead>
+                <tr>
+                  <th>{t('名称')}</th>
+                  <th>{t('密钥')}</th>
+                  <th>{t('状态')}</th>
+                  <th>{t('创建时间')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.map((it) => (
+                  <tr key={it.id}>
+                    <td>{it.name || '—'}</td>
+                    <td className='pt-mono'>{prefixOf(it.key)}</td>
+                    <td>
+                      <span
+                        className={`pt-tag ${it.status === 1 ? 'ok' : 'plain'}`}
+                      >
+                        {t(it.status === 1 ? '启用中' : '已停用')}
+                      </span>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {fmtTime(it.created_time)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
