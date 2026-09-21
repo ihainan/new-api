@@ -20,7 +20,13 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
-import { TASK_ACTION, taskDuration, taskModel, taskState } from './taskInfo';
+import {
+  TASK_ACTION,
+  taskDuration,
+  taskModel,
+  taskResultUrl,
+  taskState,
+} from './taskInfo';
 import {
   Card,
   Empty,
@@ -87,10 +93,11 @@ function TaskId({ r }) {
 
 function Result({ r }) {
   const t = usePortalT();
-  if (r.status === 'SUCCESS' && r.result_url) {
+  const url = taskResultUrl(r);
+  if (r.status === 'SUCCESS' && url) {
     return (
-      <a className='pt-btn sm' href={r.result_url} target='_blank' rel='noreferrer'>
-        {t('查看')}
+      <a className='pt-btn sm' href={url} target='_blank' rel='noreferrer'>
+        {t('打开视频')}
       </a>
     );
   }

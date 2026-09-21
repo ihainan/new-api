@@ -79,3 +79,24 @@ export function taskDuration(r) {
   const sec = Math.max(0, end - start);
   return sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
 }
+
+/*
+ * 结果链接。后端存的是 `{系统地址}/v1/videos/{任务ID}/content`，「系统地址」是管理员
+ * 在后台填的一个值——填错或没填，这条链接就指到别处去（本机 dev 填的是前端地址，
+ * 点过去落在前端的 404 页上）。
+ *
+ * 这个取视频的接口跟门户在同一台上、而且认登录态，所以自家的这条代理链接一律换成
+ * 同源的相对路径：无论系统地址填成什么，点了都对。外部直链（有些渠道直接给上游的
+ * mp4 地址）保持原样。
+ */
+export function taskResultUrl(task) {
+  const raw = String(task?.result_url || '').trim();
+  if (!raw || !task?.task_id) return raw;
+  const own = `/v1/videos/${task.task_id}/content`;
+  try {
+    if (new URL(raw, window.location.origin).pathname === own) return own;
+  } catch (e) {
+    return raw;
+  }
+  return raw;
+}

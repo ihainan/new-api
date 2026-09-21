@@ -94,6 +94,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // 取视频内容的接口（/v1/videos/:id/content）认登录态，前端要能转发到后端
+      '/v1': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/mj': {
         target: 'http://localhost:3000',
         changeOrigin: true,

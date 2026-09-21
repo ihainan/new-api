@@ -21,7 +21,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime, usePortalT } from './shared';
-import { taskDuration, taskState } from './taskInfo';
+import { taskDuration, taskResultUrl, taskState } from './taskInfo';
 
 /*
  * 对话日志的表格与窄屏卡片。
@@ -146,14 +146,14 @@ function TaskOutcome({ task }) {
       <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
       {st.running ? (
         <span className='pt-sub'>{task.progress || '0%'}</span>
-      ) : task.status === 'SUCCESS' && task.result_url ? (
+      ) : task.status === 'SUCCESS' && taskResultUrl(task) ? (
         <a
           className='pt-linkish'
-          href={task.result_url}
+          href={taskResultUrl(task)}
           target='_blank'
           rel='noreferrer'
         >
-          {t('查看')}
+          {t('打开视频')}
         </a>
       ) : task.fail_reason ? (
         <span className='pt-sub' style={{ color: 'var(--pt-danger-text)' }}>
