@@ -163,6 +163,8 @@ function RefundOutcome({ row, other }) {
  * 提交成功和视频生成成功是两回事，混在一起说会让人以为东西已经出来了。
  *
  * 成了就把视频链接摆在状态旁边——同一行，不换行，行高和别的记录保持一致。
+ * 用的是和「查看调用记录」「任务队列里的打开视频」同一种小按钮：
+ * 之前这里是一条主题色下划线文字，紧挨着浅绿的状态标签，蓝得跳出来。
  */
 function TaskOutcome({ task }) {
   const t = usePortalT();
@@ -172,7 +174,7 @@ function TaskOutcome({ task }) {
     <div className='pt-cell-row'>
       <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
       {url ? (
-        <a className='pt-linkish' href={url} target='_blank' rel='noreferrer'>
+        <a className='pt-btn sm' href={url} target='_blank' rel='noreferrer'>
           {t('打开视频')}
         </a>
       ) : null}
