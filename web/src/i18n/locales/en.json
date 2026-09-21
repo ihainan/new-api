@@ -4041,10 +4041,15 @@
     "BF16": "BF16",
     "FP32": "FP32",
     "你账号下已开通的密钥": "The keys issued to your account",
-    "出于安全考虑，本页只显示密钥的前几位供核对，不展示完整内容，也不提供复制。密钥请勿转发或提交到代码仓库。": "For safety this page shows only the first characters of each key, enough to tell them apart — never the whole key, and there is no copy button. Do not forward a key or commit one to a repository.",
     "账号下还没有密钥。": "No keys have been issued to this account yet.",
     "启用中": "Active",
     "已停用": "Disabled",
-    "需要调用两院私有部署的模型，请联系智能创新部的符积高开通并获取密钥。": "To call the academies’ privately hosted models, contact Fu Jigao in the Intelligent Innovation Department to have a key issued."
+    "需要调用两院私有部署的模型，请联系智能创新部的符积高开通并获取密钥。": "To call the academies’ privately hosted models, contact Fu Jigao in the Intelligent Innovation Department to have a key issued.",
+    "出于部门要求，本页只显示密钥的前几位供核对，不展示完整内容，也不提供复制。密钥请勿转发或提交到代码仓库。": "Per department policy this page shows only the first characters of each key, enough to tell them apart — never the whole key, and there is no copy button. Do not forward a key or commit one to a repository.",
+    "按密钥筛选": "Filter by key",
+    "全部密钥": "All keys",
+    "查看调用记录": "View calls",
+    "这段时间没有 {{token}} 的调用记录": "No calls with {{token}} in this period",
+    "生成中": "Running"
   }
 }

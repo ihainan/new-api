@@ -31,6 +31,36 @@ import { Card, Empty, PageHead, Tabs, fmtInt, fmtTime, usePortalT } from './shar
 
 const PAGE_SIZE = 20;
 
+/*
+ * 任务行里能给人看的东西藏在 properties 里：platform 存的是渠道类型编号（55），
+ * action 是上游原词（textGenerate），直接摆出来没人看得懂。
+ */
+function taskModel(r) {
+  try {
+    const p =
+      typeof r.properties === 'string' ? JSON.parse(r.properties) : r.properties;
+    return p?.origin_model_name || p?.upstream_model_name || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+const TASK_ACTION = {
+  textGenerate: '文生视频',
+  imageGenerate: '图生视频',
+  videoGenerate: '视频生成',
+};
+
+const TASK_STATUS = {
+  SUCCESS: '成功',
+  FAILURE: '失败',
+  QUEUED: '排队中',
+  IN_PROGRESS: '生成中',
+  SUBMITTED: '已提交',
+  NOT_START: '未开始',
+  UNKNOWN: '未知',
+};
+
 const TABS = [
   { key: 'chat', label: '对话' },
   { key: 'draw', label: '绘图' },
@@ -56,6 +86,11 @@ export default function PortalRecords() {
   const [range, setRange] = useState('7d');
   const [model, setModel] = useState('');
   const [models, setModels] = useState([]);
+  // 从密钥页点「查看调用记录」过来时带着 ?token=名称，直接预选上
+  const [tokenName, setTokenName] = useState(
+    () => new URLSearchParams(window.location.search).get('token') || '',
+  );
+  const [tokenNames, setTokenNames] = useState([]);
   const [openErr, setOpenErr] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -91,6 +126,24 @@ export default function PortalRecords() {
     })();
   }, []);
 
+  // 密钥下拉同样取自「账号下的密钥」而不是日志：停用很久没调用过的密钥也该能选到，
+  // 否则用它排查「这把 key 到底有没有人在用」就无从下手。
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await API.get('/api/token/?p=0&size=100');
+        if (res.data?.success) {
+          const names = (res.data.data?.items || [])
+            .map((it) => it.name)
+            .filter(Boolean);
+          setTokenNames([...new Set(names)]);
+        }
+      } catch (e) {
+        // 拿不到就只是少一个筛选项
+      }
+    })();
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -100,6 +153,7 @@ export default function PortalRecords() {
       if (tab === 'chat') {
         if (onlyFailed) q.push('type=5');
         if (model) q.push('model_name=' + encodeURIComponent(model));
+        if (tokenName) q.push('token_name=' + encodeURIComponent(tokenName));
         const hours = RANGES.find((r) => r.key === range)?.hours || 0;
         if (hours) {
           q.push(
@@ -126,7 +180,7 @@ export default function PortalRecords() {
     } finally {
       setLoading(false);
     }
-  }, [endpoint, page, onlyFailed, tab, range, model]);
+  }, [endpoint, page, onlyFailed, tab, range, model, tokenName]);
 
   useEffect(() => {
     load();
@@ -134,7 +188,7 @@ export default function PortalRecords() {
   useEffect(() => {
     setPage(1);
     setOpenErr(null);
-  }, [tab, onlyFailed, range, model]);
+  }, [tab, onlyFailed, range, model, tokenName]);
 
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -172,6 +226,19 @@ export default function PortalRecords() {
               </option>
             ))}
           </select>
+          <select
+            className='pt-select'
+            aria-label={t('按密钥筛选')}
+            value={tokenName}
+            onChange={(e) => setTokenName(e.target.value)}
+          >
+            <option value=''>{t('全部密钥')}</option>
+            {tokenNames.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
           <label className='pt-check'>
             <input
               type='checkbox'
@@ -199,9 +266,11 @@ export default function PortalRecords() {
             text={
               onlyFailed
                 ? t('这段时间没有失败记录')
-                : model
-                  ? t('这段时间没有 {{model}} 的调用记录', { model })
-                  : t('这段时间还没有调用记录')
+                : tokenName
+                  ? t('这段时间没有 {{token}} 的调用记录', { token: tokenName })
+                  : model
+                    ? t('这段时间没有 {{model}} 的调用记录', { model })
+                    : t('这段时间还没有调用记录')
             }
           />
         ) : (
@@ -275,9 +344,10 @@ export default function PortalRecords() {
                 <thead>
                   <tr>
                     <th>{t('提交时间')}</th>
-                    <th>{t('平台')}</th>
-                    <th>{t('动作')}</th>
+                    <th>{t('模型')}</th>
+                    <th>{t('类型')}</th>
                     <th>{t('状态')}</th>
+                    <th>{t('进度')}</th>
                     <th>{t('完成时间')}</th>
                     <th>{t('结果')}</th>
                   </tr>
@@ -288,15 +358,16 @@ export default function PortalRecords() {
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {fmtTime(r.submit_time)}
                       </td>
-                      <td>{r.platform || '—'}</td>
-                      <td>{r.action || '—'}</td>
+                      <td className='pt-mono'>{taskModel(r) || '—'}</td>
+                      <td>{t(TASK_ACTION[r.action] || r.action || '—')}</td>
                       <td>
                         <span
                           className={`pt-tag ${r.status === 'SUCCESS' ? 'ok' : r.status === 'FAILURE' ? 'bad' : 'plain'}`}
                         >
-                          {r.status || '—'}
+                          {t(TASK_STATUS[r.status] || r.status || '—')}
                         </span>
                       </td>
+                      <td className='pt-sub'>{r.progress || '—'}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {fmtTime(r.finish_time)}
                       </td>

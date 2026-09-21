@@ -1497,6 +1497,10 @@
   line-height: 1.75;
   color: var(--pt-text-secondary);
 }
+/* 窄屏放不下四列，先舍「创建时间」——名称、密钥、状态才是用来认人的 */
+@media (max-width: 640px) {
+  .pt-key-table .pt-col-time { display: none; }
+}
 /* 密钥这一列用等宽字，掩码的点才对得齐 */
 .pt-key-table td.pt-mono {
   font-family: var(--pt-mono);

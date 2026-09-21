@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { API, showError } from '../../helpers';
 import { Card, Empty, PageHead, Skeleton, fmtTime, usePortalT } from './shared';
 
@@ -79,7 +80,7 @@ export default function PortalKeys() {
         </p>
         <p className='pt-notice-sub'>
           {t(
-            '出于安全考虑，本页只显示密钥的前几位供核对，不展示完整内容，也不提供复制。密钥请勿转发或提交到代码仓库。',
+            '出于部门要求，本页只显示密钥的前几位供核对，不展示完整内容，也不提供复制。密钥请勿转发或提交到代码仓库。',
           )}
         </p>
       </div>
@@ -99,7 +100,8 @@ export default function PortalKeys() {
                   <th>{t('名称')}</th>
                   <th>{t('密钥')}</th>
                   <th>{t('状态')}</th>
-                  <th>{t('创建时间')}</th>
+                  <th className='pt-col-time'>{t('创建时间')}</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -114,8 +116,17 @@ export default function PortalKeys() {
                         {t(it.status === 1 ? '启用中' : '已停用')}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td className='pt-col-time' style={{ whiteSpace: 'nowrap' }}>
                       {fmtTime(it.created_time)}
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {/* 按密钥名筛日志：排查「这把 key 是谁在用、还在不在用」 */}
+                      <Link
+                        className='pt-btn sm'
+                        to={`/console/log?token=${encodeURIComponent(it.name || '')}`}
+                      >
+                        {t('查看调用记录')}
+                      </Link>
                     </td>
                   </tr>
                 ))}
