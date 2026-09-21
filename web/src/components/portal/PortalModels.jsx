@@ -575,9 +575,10 @@ function ModelRow({ m, open, onToggle }) {
               所以字号更小、颜色更弱，不跟上面的关键规格抢注意力。 */}
             <dl className='pt-specs pt-specs-more'>
               <SpecItem label={t('参数规模')} value={m.params && t(m.params)} />
-              {/* 「权重大小」会被理解成模型规模，而模型规模的行话是参数量；
-                这一行给的是官方 checkpoint 的下载体积，所以标签写「权重文件」 */}
-              <SpecItem label={t('权重文件')} value={m.size && t(m.size)} />
+              {/* 只给精度，不给体积：GB 是下载 checkpoint 才关心的事，调接口的人用不上。
+                写「官方」是因为这是公开仓库的精度，本平台跑的那一版未必相同——
+                走 Ollama 的几个大概率是量化版，查不到就不假装知道。 */}
+              <SpecItem label={t('官方权重精度')} value={m.size && t(m.size)} />
               <SpecItem
                 label={t('模型官方规格')}
                 value={
