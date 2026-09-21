@@ -1817,6 +1817,13 @@
   flex-direction: column;
   gap: 14px;
 }
+.pt-drawer-body > * {
+  /* 抽屉内容区是纵向 flex、自己负责滚动。子项默认 flex-shrink:1，
+     而代码块带 overflow:hidden（最小高度随之变 0），内容一多就被压扁，
+     下半截代码直接被切掉、也滚不到——屏幕矮一点就出现（800px 高切掉 114px）。
+     子项一律保持自然高度，多出来的交给内容区滚动。 */
+  flex-shrink: 0;
+}
 .pt-drawer-sum { margin: 0; font-size: 13.5px; color: var(--pt-text-secondary); }
 .pt-drawer-keyhint { margin: 0; font-size: 12.5px; color: var(--pt-text-muted); }
 .pt-drawer-pip { margin: -6px 0 0; }
