@@ -4258,6 +4258,9 @@
     "接口地址是否完整，一直写到 /v1/chat/completions。": "Check the endpoint is complete, all the way to /v1/chat/completions.",
     "API Key 前后有没有多粘了空格，密钥是否还在启用中。": "Check the API key has no stray spaces and is still enabled.",
     "模型名称是否是 smart-router，大小写和连字符都要一致。": "Check the model name is exactly smart-router, case and hyphen included.",
-    "以上都没问题仍然不行，请联系智能创新部。": "If all of that is right and it still fails, contact the Intelligent Innovation Department."
+    "以上都没问题仍然不行，请联系智能创新部。": "If all of that is right and it still fails, contact the Intelligent Innovation Department.",
+    "需要调用两院私有部署的模型，请联系智能创新中心开通并获取密钥。": "To call the privately deployed models, contact the Intelligent Innovation Center to have access set up and get a key.",
+    "以上都没问题仍然不行，请联系智能创新中心。": "If all of that is right and it still fails, contact the Intelligent Innovation Center.",
+    "勾选「工具调用」「图片输入」「思考模式」，其余保持默认。勾上「思考模式」后，「允许关闭思考」会自动勾上，不用单独点。": "Tick Tool calls, Image input and Thinking; leave the rest as default. Allow turning thinking off gets ticked automatically once Thinking is on."
   }
 }

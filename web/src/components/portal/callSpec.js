@@ -145,14 +145,17 @@ open("out.png", "wb").write(png)`,
       seconds: '4',
       num_inference_steps: 20,
     }),
+    // 生产地址（https://llm.inner.bza.edu.cn/hub）比开发地址长，下载那行最容易超宽：
+    // 任务 ID 提成变量，-L / -o 挪到下一行
     extraCurl: () => `# 2) 轮询：10～20 秒查一次，直到 completed
-curl %BASE%/v1/videos/task_xxxxxxxx \\
+TASK=task_xxxxxxxx
+curl %BASE%/v1/videos/$TASK \\
   -H "Authorization: Bearer \${${KEY_ENV}}"
 
 # 3) 下载成品
-curl -L %BASE%/v1/videos/task_xxxxxxxx/content \\
-  -H "Authorization: Bearer \${${KEY_ENV}}" \\
-  -o output.mp4
+curl %BASE%/v1/videos/$TASK/content \\
+  -L -o output.mp4 \\
+  -H "Authorization: Bearer \${${KEY_ENV}}"
 
 # 图生视频：请求体里加上参考图，它会成为第一帧
 #   "image_url": "https://…"

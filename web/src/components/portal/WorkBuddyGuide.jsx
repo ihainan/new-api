@@ -180,7 +180,7 @@ export default function WorkBuddyGuide({ onClose }) {
               <dt>{t('高级配置')}</dt>
               <dd>
                 {t(
-                  '勾选「工具调用」「图片输入」「思考模式」「允许关闭思考」，其余保持默认。',
+                  '勾选「工具调用」「图片输入」「思考模式」，其余保持默认。勾上「思考模式」后，「允许关闭思考」会自动勾上，不用单独点。',
                 )}
               </dd>
             </div>
@@ -214,7 +214,7 @@ export default function WorkBuddyGuide({ onClose }) {
           <li>{t('接口地址是否完整，一直写到 /v1/chat/completions。')}</li>
           <li>{t('API Key 前后有没有多粘了空格，密钥是否还在启用中。')}</li>
           <li>{t('模型名称是否是 smart-router，大小写和连字符都要一致。')}</li>
-          <li>{t('以上都没问题仍然不行，请联系智能创新部。')}</li>
+          <li>{t('以上都没问题仍然不行，请联系智能创新中心。')}</li>
         </ul>
       </div>
     </DrawerShell>
