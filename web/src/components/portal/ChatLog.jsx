@@ -163,19 +163,25 @@ function RefundOutcome({ row, other }) {
  * 提交成功和视频生成成功是两回事，混在一起说会让人以为东西已经出来了。
  *
  * 成了就把视频链接摆在状态旁边——同一行，不换行，行高和别的记录保持一致。
- * 用的是和「查看调用记录」「任务队列里的打开视频」同一种小按钮：
- * 之前这里是一条主题色下划线文字，紧挨着浅绿的状态标签，蓝得跳出来。
+ *
+ * 这个链接改过两版，都不好看：先是主题色下划线文字，紧挨着浅绿的状态标签，
+ * 蓝得跳出来；换成带框的小按钮之后，一格里并排两个圆角块、颜色和大小都不一样，
+ * 更乱。它是行内的次要动作，不该有框——现在是一句安静的文字，
+ * 默认次要色、无下划线，鼠标放上去才亮成主题色。
  */
 function TaskOutcome({ task }) {
   const t = usePortalT();
   const st = taskState(task);
   const url = task.status === 'SUCCESS' ? taskResultUrl(task) : '';
   return (
-    <div className='pt-cell-row'>
+    // pt-cell-row 是 flex-start（模型那一格要让图标跟第一行文字对齐），
+    // 这里标签 22px、按钮 28px，顶端对齐就差 3px 的中线，看着是歪的
+    <div className='pt-outcome'>
       <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
       {url ? (
-        <a className='pt-btn sm' href={url} target='_blank' rel='noreferrer'>
+        <a className='pt-rowlink' href={url} target='_blank' rel='noreferrer'>
           {t('打开视频')}
+          <span aria-hidden='true'> ↗</span>
         </a>
       ) : null}
     </div>
