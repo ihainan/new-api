@@ -297,7 +297,23 @@
 
 .pt-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  /*
+   * 一排 4 张卡：放得下就 4 列，放不下直接 2×2，不出现 3+1 落单一张
+   * （auto-fit 不会拉伸最后一行，1024 宽带侧栏时第 4 张卡孤零零占一行）。
+   * 这里只能按网格自己的宽度 100% 判断——侧栏会吃掉宽度，按视口的媒体查询不准。
+   * 716px = 4×170 + 3×12；网格窄于它时第三项是个大正数，最小列宽取半宽 → 2 列；
+   * 宽于它时第三项 ≤0，最小列宽取四分之一 → 4 列。减 0.1px 防舍入挤掉一列。
+   */
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      max(
+        calc((100% - 36px) / 4 - 0.1px),
+        min(calc((100% - 12px) / 2 - 0.1px), calc((716px - 100%) * 1000))
+      ),
+      1fr
+    )
+  );
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -1716,7 +1732,10 @@
 }
 .pt-drawer {
   position: relative;
-  width: min(560px, 100%);
+  /* 随屏幕放宽：560 太窄，代码要横向滚、教程截图字看不清；
+     小屏仍然是整屏，大屏封顶 800，别把背后的页面整个盖住 */
+  width: clamp(560px, 55vw, 800px);
+  max-width: 100%;
   background: var(--pt-bg-card);
   border-left: 1px solid var(--pt-border);
   display: flex;

@@ -82,6 +82,10 @@ const TREND_METRICS = [
 // 概览默认看近 24 小时（另外两页是近 7 天：那边翻的是明细，跨度要更大）
 const OVERVIEW_URL_DEFAULTS = { range: '24h', from: '', to: '' };
 
+// 上游调用失败比例暂时不对用户展示（产品决定，2026-09-21）。
+// 后端数据照常返回，恢复时把这里改回 true 即可。
+const SHOW_FAIL_RATE = false;
+
 export default function PortalOverview() {
   const t = usePortalT();
   // 时间范围也写进地址栏，和使用记录/任务队列一个规矩
@@ -373,15 +377,17 @@ export default function PortalOverview() {
             {...cache}
             hint={t('命中缓存的输入 Token 占比')}
           />
-          <Stat
-            label={t('上游调用失败比例')}
-            {...fail}
-            hint={
-              d.error_log_enabled
-                ? `${fmtInt(d.failed)} / ${fmtInt(d.fail_denom)}`
-                : t('需管理员开启')
-            }
-          />
+          {SHOW_FAIL_RATE ? (
+            <Stat
+              label={t('上游调用失败比例')}
+              {...fail}
+              hint={
+                d.error_log_enabled
+                  ? `${fmtInt(d.failed)} / ${fmtInt(d.fail_denom)}`
+                  : t('需管理员开启')
+              }
+            />
+          ) : null}
         </div>
       </div>
 
