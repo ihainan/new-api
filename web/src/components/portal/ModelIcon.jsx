@@ -33,6 +33,37 @@ import { describe } from './modelCatalog';
 const ICONS = { Zhipu, Qwen, Minimax, Gemma, BAAI, Alibaba };
 
 /*
+ * 两个图标不走图标库，和 ZGCAI Agent Platform 的模型选择器保持一致——
+ * 同一批人在两个系统里看同一批模型，图标不一样会以为不是同一个东西。
+ *
+ * GLM 用的是那边同一个 logo 文件（深色方块里一个 Z），图标库里的智谱标是另一版；
+ * 智能路由那边是自画的：一个输入分叉到两个输出，正好就是它干的事。
+ */
+const GLM_LOGO = '/logos/glm_logo.png';
+
+function RouterIcon({ size }) {
+  return (
+    <svg width={size} height={size} viewBox='0 0 16 16' fill='none'>
+      <path
+        d='M5 7.4C7.4 6.3 8.9 5.5 10.7 4.8'
+        stroke='#4f86f7'
+        strokeWidth='1.3'
+        strokeLinecap='round'
+      />
+      <path
+        d='M5 8.6C7.4 9.7 8.9 10.5 10.7 11.2'
+        stroke='#4f86f7'
+        strokeWidth='1.3'
+        strokeLinecap='round'
+      />
+      <circle cx='3.6' cy='8' r='1.75' fill='#4f86f7' />
+      <circle cx='12.3' cy='4.4' r='1.75' fill='#4f86f7' opacity='0.85' />
+      <circle cx='12.3' cy='11.6' r='1.75' fill='#4f86f7' opacity='0.85' />
+    </svg>
+  );
+}
+
+/*
  * 图标库里的 SVG 带写死的 id（渐变、蒙版之类）。同一页出现两个同款图标就有了
  * 重复 id——HTML 不允许，而且 url(#id) 只会认第一个，谁先渲染谁说了算。
  * 挂载后把这棵子树里的 id 和对它的引用一起改名，保证每个实例互不相干。
@@ -72,6 +103,23 @@ export default function ModelIcon({ icon, model, size = 26 }) {
   useUniqueSvgIds(ref, uid);
   // 传 model 时自己查目录，调用方不必关心映射关系
   const name = icon !== undefined ? icon : model ? describe(model).icon : null;
+
+  if (name === 'GLM' || name === 'router') {
+    return (
+      <span
+        className='pt-mdl-icon'
+        style={{ width: size, height: size }}
+        aria-hidden='true'
+      >
+        {name === 'GLM' ? (
+          <img src={GLM_LOGO} width={size} height={size} alt='' />
+        ) : (
+          <RouterIcon size={size} />
+        )}
+      </span>
+    );
+  }
+
   const Comp = name === 'brand' ? null : name ? ICONS[name] : null;
   const Rendered = Comp ? Comp.Color || Comp : null;
 

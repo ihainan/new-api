@@ -21,7 +21,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
 import { HIDDEN } from './modelCatalog';
-import { Card, Empty, PageHead, Pager, usePortalT } from './shared';
+import {
+  Card,
+  Empty,
+  PageHead,
+  Pager,
+  RangeFilter,
+  rangeParams,
+  usePortalT,
+} from './shared';
 import { taskState } from './taskInfo';
 
 /*
@@ -41,18 +49,12 @@ const PAGE_SIZE = 20;
  * 筛选全部走服务端。只筛当前这一页是骗人的——翻到第二页筛选条件就失效了，
  * 而且计数对不上。接口支持 type / start_timestamp / end_timestamp / model_name。
  */
-const RANGES = [
-  { key: '24h', label: '近 24 小时', hours: 24 },
-  { key: '7d', label: '近 7 天', hours: 24 * 7 },
-  { key: '30d', label: '近 30 天', hours: 24 * 30 },
-  { key: 'all', label: '全部', hours: 0 },
-];
-
 export default function PortalRecords() {
   const t = usePortalT();
   const [page, setPage] = useState(1);
   const [onlyFailed, setOnlyFailed] = useState(false);
-  const [range, setRange] = useState('7d');
+  // {range, from, to}：from/to 只有自定义档用得上
+  const [range, setRange] = useState({ range: '7d', from: '', to: '' });
   const [model, setModel] = useState('');
   const [models, setModels] = useState([]);
   // 从密钥页点「查看调用记录」过来时带着 ?token=名称，直接预选上
@@ -109,14 +111,7 @@ export default function PortalRecords() {
     setLoading(true);
     try {
       // 「只看失败」在日志里就是 type=5
-      const q = [`p=${page}`, `page_size=${PAGE_SIZE}`];
-      const hours = RANGES.find((r) => r.key === range)?.hours || 0;
-      if (hours) {
-        q.push(
-          'start_timestamp=' + (Math.floor(Date.now() / 1000) - hours * 3600),
-        );
-        q.push('end_timestamp=' + Math.floor(Date.now() / 1000));
-      }
+      const q = [`p=${page}`, `page_size=${PAGE_SIZE}`, ...rangeParams(range)];
       if (onlyFailed) q.push('type=5');
       if (model) q.push('model_name=' + encodeURIComponent(model));
       if (tokenName) q.push('token_name=' + encodeURIComponent(tokenName));
@@ -222,19 +217,7 @@ export default function PortalRecords() {
       <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
       <div className='pt-filters'>
-        <div className='pt-chips' role='group' aria-label={t('时间范围')}>
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              type='button'
-              className={`pt-chip${range === r.key ? ' on' : ''}`}
-              aria-pressed={range === r.key}
-              onClick={() => setRange(r.key)}
-            >
-              {t(r.label)}
-            </button>
-          ))}
-        </div>
+        <RangeFilter value={range} onChange={setRange} />
         <label className='pt-field'>
               <span className='pt-field-label'>{t('模型')}</span>
               <select

@@ -1043,6 +1043,51 @@
   color: #fff;
   cursor: default;
 }
+/* 跳页输入：只在页数多到点不过来时才出现 */
+.pt-pager-jump { margin-left: 4px; }
+.pt-pager-jump label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pt-text-muted);
+}
+.pt-pager-jump input {
+  width: 52px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--pt-border-strong);
+  border-radius: 8px;
+  background: var(--pt-bg-card);
+  color: var(--pt-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+}
+/* Chrome 的上下小箭头在 30px 高里挤成两坨，去掉 */
+.pt-pager-jump input::-webkit-outer-spin-button,
+.pt-pager-jump input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pt-pager-jump input { -moz-appearance: textfield; appearance: textfield; }
+
+/* 自定义日期范围 */
+.pt-daterange {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.pt-date {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--pt-border-strong);
+  border-radius: var(--pt-radius-md);
+  background: var(--pt-bg-card);
+  color: var(--pt-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
 .pt-page-gap {
   padding: 0 2px;
   color: var(--pt-text-muted);

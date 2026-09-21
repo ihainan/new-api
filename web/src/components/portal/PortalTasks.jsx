@@ -33,7 +33,9 @@ import {
   Empty,
   PageHead,
   Pager,
+  RangeFilter,
   fmtLogTime,
+  rangeParams,
   usePortalT,
 } from './shared';
 
@@ -52,13 +54,6 @@ import {
 
 const PAGE_SIZE = 20;
 const POLL_MS = 10000;
-
-const RANGES = [
-  { key: '24h', label: '近 24 小时', hours: 24 },
-  { key: '7d', label: '近 7 天', hours: 24 * 7 },
-  { key: '30d', label: '近 30 天', hours: 24 * 30 },
-  { key: 'all', label: '全部', hours: 0 },
-];
 
 /*
  * 状态筛选只列后端认得的单个取值。想筛「所有还没跑完的」得传一组状态，
@@ -111,7 +106,7 @@ function Result({ r }) {
 export default function PortalTasks() {
   const t = usePortalT();
   const [page, setPage] = useState(1);
-  const [range, setRange] = useState('7d');
+  const [range, setRange] = useState({ range: '7d', from: '', to: '' });
   const [state, setState] = useState('');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -123,13 +118,7 @@ export default function PortalTasks() {
     async (quiet) => {
       if (!quiet) setLoading(true);
       try {
-        const q = [`p=${page}`, `page_size=${PAGE_SIZE}`];
-        const hours = RANGES.find((r) => r.key === range)?.hours || 0;
-        if (hours) {
-          const now = Math.floor(Date.now() / 1000);
-          q.push('start_timestamp=' + (now - hours * 3600));
-          q.push('end_timestamp=' + now);
-        }
+        const q = [`p=${page}`, `page_size=${PAGE_SIZE}`, ...rangeParams(range)];
         if (state) q.push('status=' + state);
         const res = await API.get(`/api/task/self?${q.join('&')}`);
         if (!res.data?.success) {
@@ -207,19 +196,7 @@ export default function PortalTasks() {
             ))}
           </select>
         </label>
-        <div className='pt-chips' role='group' aria-label={t('时间范围')}>
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              type='button'
-              className={`pt-chip${range === r.key ? ' on' : ''}`}
-              aria-pressed={range === r.key}
-              onClick={() => setRange(r.key)}
-            >
-              {t(r.label)}
-            </button>
-          ))}
-        </div>
+        <RangeFilter value={range} onChange={setRange} />
         {/* 自动刷新是这页的默认行为，但得让人知道它在刷，否则数字自己跳会以为看花眼 */}
         <span className='pt-sub' aria-live='polite'>
           {running

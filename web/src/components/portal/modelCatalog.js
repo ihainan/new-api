@@ -84,7 +84,7 @@ export const MODELS = [
   {
     id: 'smart-router',
     name: '智能路由',
-    icon: 'brand',
+    icon: 'router',
     inputs: ['文本', '图像'],
     outputs: ['文本'],
     // 取决于落到哪个后端，本来就没有一个固定值
@@ -105,7 +105,7 @@ export const MODELS = [
   {
     id: 'glm',
     name: 'GLM 模型接口',
-    icon: 'Zhipu',
+    icon: 'GLM',
     inputs: ['文本'],
     outputs: ['文本'],
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
@@ -126,7 +126,7 @@ export const MODELS = [
   {
     id: 'glm-anthropic',
     name: 'GLM 模型接口（Anthropic 协议）',
-    icon: 'Zhipu',
+    icon: 'GLM',
     inputs: ['文本'],
     outputs: ['文本'],
     // 这一行是在真正的 /v1/messages 上测的，不是拿 glm 的 OpenAI 那轮顶的。

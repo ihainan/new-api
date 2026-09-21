@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copy, showError, showSuccess } from '../../helpers';
 
@@ -225,8 +225,17 @@ function Chevron({ back }) {
 
 export function Pager({ page, maxPage, total, pageSize, onPage }) {
   const t = usePortalT();
+  const [jump, setJump] = useState('');
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
+
+  // 页数一多，点数字也到不了第 137 页——省略号跳过的那一段没有入口
+  const go = (e) => {
+    e.preventDefault();
+    const n = Number(jump);
+    if (Number.isInteger(n) && n >= 1 && n <= maxPage && n !== page) onPage(n);
+    setJump('');
+  };
   return (
     <div className='pt-pager'>
       <span className='pt-pager-count'>
@@ -280,8 +289,116 @@ export function Pager({ page, maxPage, total, pageSize, onPage }) {
           >
             <Chevron />
           </button>
+          {maxPage > 5 ? (
+            <form className='pt-pager-jump' onSubmit={go}>
+              <label>
+                {t('跳至')}
+                <input
+                  type='number'
+                  min='1'
+                  max={maxPage}
+                  inputMode='numeric'
+                  value={jump}
+                  placeholder={String(page)}
+                  onChange={(e) => setJump(e.target.value)}
+                  onBlur={go}
+                />
+                {t('页')}
+              </label>
+            </form>
+          ) : null}
         </nav>
       ) : null}
     </div>
+  );
+}
+
+/*
+ * 时间范围筛选。四个常用档 + 自定义起止日期。
+ *
+ * 只有固定档的时候，「9 月 14 号那天出了什么事」是查不了的：近 7 天太宽、近 24 小时
+ * 又够不着。自定义按**本地时区的整天**算（开始日 00:00:00 到结束日 23:59:59）——
+ * 人说「9 月 14 日」指的是他自己那一天，不是 UTC 的那一天。
+ */
+export const RANGES = [
+  { key: '24h', label: '近 24 小时', hours: 24 },
+  { key: '7d', label: '近 7 天', hours: 24 * 7 },
+  { key: '30d', label: '近 30 天', hours: 24 * 30 },
+  { key: 'all', label: '全部', hours: 0 },
+  { key: 'custom', label: '自定义' },
+];
+
+const dayStr = (d) => {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
+// 接口要的是秒级时间戳，这里把界面上的选择换算过去
+export function rangeParams({ range, from, to }) {
+  const now = Math.floor(Date.now() / 1000);
+  if (range === 'custom') {
+    const a = from ? Math.floor(new Date(`${from}T00:00:00`).getTime() / 1000) : 0;
+    const b = to ? Math.floor(new Date(`${to}T23:59:59`).getTime() / 1000) : now;
+    // 两头都填了却反着填，就按人的本意对调，不要给个空结果了事
+    const [s, e] = a && b && a > b ? [b, a] : [a, b];
+    const out = [];
+    if (s) out.push('start_timestamp=' + s);
+    if (e) out.push('end_timestamp=' + e);
+    return out;
+  }
+  const hours = RANGES.find((r) => r.key === range)?.hours || 0;
+  return hours
+    ? ['start_timestamp=' + (now - hours * 3600), 'end_timestamp=' + now]
+    : [];
+}
+
+export function RangeFilter({ value, onChange }) {
+  const t = usePortalT();
+  const today = dayStr(new Date());
+  const set = (patch) => onChange({ ...value, ...patch });
+  return (
+    <>
+      <div className='pt-chips' role='group' aria-label={t('时间范围')}>
+        {RANGES.map((r) => (
+          <button
+            key={r.key}
+            type='button'
+            className={`pt-chip${value.range === r.key ? ' on' : ''}`}
+            aria-pressed={value.range === r.key}
+            onClick={() =>
+              // 切到自定义时先落在「今天」，而不是空着什么都查不出来
+              set(
+                r.key === 'custom' && !value.from && !value.to
+                  ? { range: r.key, from: today, to: today }
+                  : { range: r.key },
+              )
+            }
+          >
+            {t(r.label)}
+          </button>
+        ))}
+      </div>
+      {value.range === 'custom' ? (
+        <div className='pt-daterange'>
+          <input
+            type='date'
+            className='pt-date'
+            aria-label={t('开始日期')}
+            max={today}
+            value={value.from || ''}
+            onChange={(e) => set({ from: e.target.value })}
+          />
+          <span className='pt-sub'>{t('至')}</span>
+          <input
+            type='date'
+            className='pt-date'
+            aria-label={t('结束日期')}
+            max={today}
+            value={value.to || ''}
+            onChange={(e) => set({ to: e.target.value })}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }

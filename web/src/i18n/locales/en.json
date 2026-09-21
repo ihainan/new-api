@@ -4081,6 +4081,10 @@
     "分页": "Pagination",
     "第 {{page}} 页": "Page {{page}}",
     "已退款": "Refunded",
-    "任务失败，费用已退回": "Task failed; the charge was refunded"
+    "任务失败，费用已退回": "Task failed; the charge was refunded",
+    "开始日期": "Start date",
+    "结束日期": "End date",
+    "跳至": "Go to",
+    "页": "page"
   }
 }
