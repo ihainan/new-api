@@ -31,8 +31,8 @@ import './portal.css';
  * 这个文件不被管理端引用。
  *
  * 布局照搬 ZGCAI-Coding-Plan 的 portal：232px 白色侧栏 + 居中内容区，
- * 账号块沉在侧栏底部。四项导航是固定的核心功能，不做个性化隐藏——
- * 员工要做的事就这四件，给他一个可以关掉其中任何一件的开关只会制造困惑。
+ * 账号块沉在侧栏底部。导航是固定的核心功能，不做个性化隐藏——
+ * 给一个可以关掉其中任何一项的开关只会制造困惑。
  */
 
 const Icon = ({ path }) => (
@@ -88,6 +88,15 @@ const ICONS = {
       <path d='M4 19h10' />
     </>
   ),
+  // 队列：一个待办清单，最后一项还是空的（还没跑完）
+  tasks: (
+    <>
+      <path d='M4 6h12' />
+      <path d='M4 12h12' />
+      <path d='M4 18h8' />
+      <path d='M19 5l1.6 1.6L23 4' />
+    </>
+  ),
 };
 
 // 路由沿用现有的，不新增不改名：旧书签、文档链接、管理员跳转都不会断。
@@ -103,6 +112,9 @@ const NAV = [
   { key: 'keys', to: '/console/token', label: 'API 密钥', icon: 'keys' },
   { key: 'models', to: '/pricing', label: '模型', icon: 'models' },
   { key: 'records', to: '/console/log', label: '使用记录', icon: 'records' },
+  // 视频这类异步生成有自己的一套字段（状态/进度/结果链接），
+  // 塞进使用记录的筛选器里既挤又难找，单独给一页
+  { key: 'tasks', to: '/console/task', label: '任务队列', icon: 'tasks' },
 ];
 
 function Avatar({ name }) {

@@ -17,91 +17,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { API, copy, showError, showSuccess } from '../../helpers';
+import React, { useCallback, useEffect, useState } from 'react';
+import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
-import ModelIcon from './ModelIcon';
 import { HIDDEN } from './modelCatalog';
-import {
-  Card,
-  Empty,
-  PageHead,
-  fmtInt,
-  fmtLogTime,
-  usePortalT,
-} from './shared';
+import { Card, Empty, PageHead, fmtInt, usePortalT } from './shared';
 
 /*
- * 使用记录。三类记录（对话 / 绘图 / 任务）各有各的字段，硬塞进一张统一的稀疏表
- * 会丢信息，所以这里是「一个页面框架 + 类型切换 + 各自的表格」。
- * 本期不提供「全部类型」：跨三个数据源做全局时间排序与稳定分页需要新的后端聚合。
+ * 使用记录：账号下每一次调用。出图（qwen-image）和视频任务的提交也记在这里，
+ * 它们和对话共用同一张日志表，只是列的含义不同——见 ChatLog.jsx。
+ *
+ * 异步任务真正的进度不在这页：那是「任务队列」（/console/task）的事，
+ * 它的字段（状态、进度、结果链接）和日志没有重叠，合成一张表只会两头都难看。
  */
 
 const PAGE_SIZE = 20;
-
-/*
- * 任务行里能给人看的东西藏在 properties 里：platform 存的是渠道类型编号（55），
- * action 是上游原词（textGenerate），直接摆出来没人看得懂。
- */
-function taskModel(r) {
-  try {
-    const p =
-      typeof r.properties === 'string' ? JSON.parse(r.properties) : r.properties;
-    return p?.origin_model_name || p?.upstream_model_name || '';
-  } catch (e) {
-    return '';
-  }
-}
-
-const TASK_ACTION = {
-  textGenerate: '文生视频',
-  imageGenerate: '图生视频',
-  videoGenerate: '视频生成',
-};
-
-// 排队和生成中都还没有结果，用中性色；成功绿、失败红，和对话表一致
-function taskState(r) {
-  const st = String(r.status || '').toUpperCase();
-  if (st === 'SUCCESS') return { cls: 'ok', bar: 'fast', text: '成功' };
-  if (st === 'FAILURE') return { cls: 'bad', bar: 'slow', text: '失败' };
-  const running = ['QUEUED', 'IN_PROGRESS', 'SUBMITTED', 'NOT_START'].includes(st);
-  return {
-    cls: 'plain',
-    bar: running ? 'mid' : 'na',
-    text: TASK_STATUS[st] || r.status || '—',
-    running,
-  };
-}
-
-// 生成耗时：没结束的按「已等待」算，让人知道等了多久
-function taskDuration(r) {
-  const start = Number(r.submit_time || 0);
-  if (!start) return '—';
-  const end = Number(r.finish_time || 0) || Math.floor(Date.now() / 1000);
-  const sec = Math.max(0, end - start);
-  const shown = sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
-  return r.finish_time ? shown : `${shown}（进行中）`;
-}
-
-const TASK_STATUS = {
-  SUCCESS: '成功',
-  FAILURE: '失败',
-  QUEUED: '排队中',
-  IN_PROGRESS: '生成中',
-  SUBMITTED: '已提交',
-  NOT_START: '未开始',
-  UNKNOWN: '未知',
-};
-
-/*
- * 没有「绘图」：那个标签读的是 /api/mj/self，即 Midjourney 专用的任务表，
- * 本部署没有这类渠道，永远取不到数据。出图（qwen-image）走的是普通调用，
- * 记在「对话」里。
- */
-const TABS = [
-  { key: 'chat', label: '对话' },
-  { key: 'task', label: '任务' },
-];
 
 /*
  * 筛选全部走服务端。只筛当前这一页是骗人的——翻到第二页筛选条件就失效了，
@@ -116,7 +46,6 @@ const RANGES = [
 
 export default function PortalRecords() {
   const t = usePortalT();
-  const [tab, setTab] = useState('chat');
   const [page, setPage] = useState(1);
   const [onlyFailed, setOnlyFailed] = useState(false);
   const [range, setRange] = useState('7d');
@@ -131,15 +60,6 @@ export default function PortalRecords() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
-
-  const endpoint = useMemo(
-    () =>
-      ({
-        chat: '/api/log/self',
-        task: '/api/task/self',
-      })[tab],
-    [tab],
-  );
 
   // 模型下拉的选项取自「当前可调用的模型」，不是从日志里现扒——
   // 日志里只有用过的，没用过的就筛不到，那个下拉会越用越短。
@@ -182,11 +102,7 @@ export default function PortalRecords() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      /*
-       * 时间范围两个标签都支持；「只看失败」在对话日志里是 type=5，在任务里是
-       * status=FAILURE。模型和密钥只有对话日志能筛——任务表里没有这两个可查字段，
-       * 所以切到任务时那两个下拉不显示，而不是摆着却不起作用。
-       */
+      // 「只看失败」在日志里就是 type=5
       const q = [`p=${page}`, `page_size=${PAGE_SIZE}`];
       const hours = RANGES.find((r) => r.key === range)?.hours || 0;
       if (hours) {
@@ -195,14 +111,10 @@ export default function PortalRecords() {
         );
         q.push('end_timestamp=' + Math.floor(Date.now() / 1000));
       }
-      if (tab === 'chat') {
-        if (onlyFailed) q.push('type=5');
-        if (model) q.push('model_name=' + encodeURIComponent(model));
-        if (tokenName) q.push('token_name=' + encodeURIComponent(tokenName));
-      } else if (tab === 'task' && onlyFailed) {
-        q.push('status=FAILURE');
-      }
-      const res = await API.get(`${endpoint}?${q.join('&')}`);
+      if (onlyFailed) q.push('type=5');
+      if (model) q.push('model_name=' + encodeURIComponent(model));
+      if (tokenName) q.push('token_name=' + encodeURIComponent(tokenName));
+      const res = await API.get(`/api/log/self?${q.join('&')}`);
       if (!res.data?.success) {
         showError(res.data?.message || t('加载失败'));
         setRows([]);
@@ -220,7 +132,7 @@ export default function PortalRecords() {
     } finally {
       setLoading(false);
     }
-  }, [endpoint, page, onlyFailed, tab, range, model, tokenName]);
+  }, [page, onlyFailed, range, model, tokenName, t]);
 
   useEffect(() => {
     load();
@@ -228,7 +140,7 @@ export default function PortalRecords() {
   useEffect(() => {
     setPage(1);
     setOpenErr(null);
-  }, [tab, onlyFailed, range, model, tokenName]);
+  }, [onlyFailed, range, model, tokenName]);
 
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -236,25 +148,7 @@ export default function PortalRecords() {
     <div>
       <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
-      {/* 筛选条放在标签之外：时间范围和「只看失败」对两个标签都生效 */}
       <div className='pt-filters'>
-        {/* 「对话 / 任务」从标签改成下拉，和其它筛选项排在同一行：
-            它本来就是一个筛选条件，不是两个页面 */}
-        <label className='pt-field'>
-          <span className='pt-field-label'>{t('类型')}</span>
-          <select
-            className='pt-select'
-            aria-label={t('记录类型')}
-            value={tab}
-            onChange={(e) => setTab(e.target.value)}
-          >
-            {TABS.map((it) => (
-              <option key={it.key} value={it.key}>
-                {t(it.label)}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className='pt-chips' role='group' aria-label={t('时间范围')}>
           {RANGES.map((r) => (
             <button
@@ -268,10 +162,7 @@ export default function PortalRecords() {
             </button>
           ))}
         </div>
-        {/* 模型和密钥只有对话日志能筛，切到任务就不显示——摆着不生效更坑人 */}
-        {tab === 'chat' ? (
-          <>
-            <label className='pt-field'>
+        <label className='pt-field'>
               <span className='pt-field-label'>{t('模型')}</span>
               <select
                 className='pt-select'
@@ -303,8 +194,6 @@ export default function PortalRecords() {
                 ))}
               </select>
             </label>
-          </>
-        ) : null}
         <label className='pt-check'>
           <input
             type='checkbox'
@@ -340,124 +229,17 @@ export default function PortalRecords() {
           />
         ) : (
           <div className='pt-table-wrap'>
-            {tab === 'chat' && (
-              <>
-                <div className='pt-wide-only'>
-                  <ChatTable
-                    rows={rows}
-                    openId={openErr}
-                    onToggleErr={(id) => setOpenErr(openErr === id ? null : id)}
-                  />
-                </div>
-                {/* 八列的表在手机上只能横向拖，改成一条一张卡，信息不删 */}
-                <div className='pt-narrow-only'>
-                  <ChatCards rows={rows} />
-                </div>
-              </>
-            )}
-
-            {tab === 'task' && (
-              <table className='pt-table'>
-                <thead>
-                  <tr>
-                    <th>{t('模型')}</th>
-                    <th>{t('任务 ID')}</th>
-                    <th>{t('密钥')}</th>
-                    <th>{t('状态')}</th>
-                    <th>{t('耗时')}</th>
-                    <th>{t('结果')}</th>
-                    <th>{t('提交时间')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const st = taskState(r);
-                    const mdl = taskModel(r);
-                    return (
-                      <tr key={r.id || r.task_id}>
-                        <td>
-                          <div className='pt-cell-row'>
-                            <ModelIcon model={mdl} size={16} />
-                            <div className='pt-stack'>
-                              <span className='pt-mono'>{mdl || '—'}</span>
-                              <span className='pt-sub'>
-                                {t(TASK_ACTION[r.action] || r.action || '—')}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        {/* 任务 ID 是拿去问人的东西，必须能取到完整值：整段显示、可复制 */}
-                        <td>
-                          <button
-                            type='button'
-                            className='pt-copy-id'
-                            title={t('点击复制完整 ID')}
-                            onClick={async () => {
-                              (await copy(r.task_id || ''))
-                                ? showSuccess(t('已复制'))
-                                : showError(t('复制失败'));
-                            }}
-                          >
-                            {r.task_id || '—'}
-                          </button>
-                        </td>
-                        <td>
-                          <div className='pt-stack'>
-                            <span>{r.token_name || '—'}</span>
-                            {r.group ? (
-                              <span className='pt-sub'>
-                                {t('分组 {{name}}', { name: r.group })}
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td>
-                          <div className='pt-cell-row'>
-                            <i className={`pt-lat-bar ${st.bar}`} />
-                            <div className='pt-stack'>
-                              <span className={`pt-tag ${st.cls}`}>
-                                {t(st.text)}
-                              </span>
-                              {st.running ? (
-                                <span className='pt-sub'>
-                                  {r.progress || '0%'}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </td>
-                        <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
-                          {taskDuration(r)}
-                        </td>
-                        <td>
-                          {r.status === 'SUCCESS' && r.result_url ? (
-                            <a
-                              className='pt-btn sm'
-                              href={r.result_url}
-                              target='_blank'
-                              rel='noreferrer'
-                            >
-                              {t('查看')}
-                            </a>
-                          ) : r.fail_reason ? (
-                            <span style={{ color: 'var(--pt-danger-text)' }}>
-                              {r.fail_reason}
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--pt-text-muted)' }}>
-                              —
-                            </span>
-                          )}
-                        </td>
-                        <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
-                          {fmtLogTime(r.submit_time)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+            <div className='pt-wide-only'>
+              <ChatTable
+                rows={rows}
+                openId={openErr}
+                onToggleErr={(id) => setOpenErr(openErr === id ? null : id)}
+              />
+            </div>
+            {/* 七列的表在手机上只能横向拖，改成一条一张卡，信息不删 */}
+            <div className='pt-narrow-only'>
+              <ChatCards rows={rows} />
+            </div>
           </div>
         )}
 

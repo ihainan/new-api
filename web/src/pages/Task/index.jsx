@@ -19,11 +19,17 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import TaskLogsTable from '../../components/table/task-logs';
+import PortalTasks from '../../components/portal/PortalTasks';
+import { isAdmin } from '../../helpers/utils.jsx';
 
-const Task = () => (
-  <div className='mt-[60px] px-2'>
-    <TaskLogsTable />
-  </div>
-);
+// 管理员继续走原来的组件，普通员工走门户页。两条路径互不影响。
+const Task = () =>
+  isAdmin() ? (
+    <div className='mt-[60px] px-2'>
+      <TaskLogsTable />
+    </div>
+  ) : (
+    <PortalTasks />
+  );
 
 export default Task;

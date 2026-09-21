@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime, usePortalT } from './shared';
 
@@ -25,9 +26,19 @@ import { fmtInt, fmtLogTime, usePortalT } from './shared';
  * 对话日志的表格与窄屏卡片。
  *
  * 之前这张表只有时间/模型/结果/输入/输出/耗时六列，而日志行里其实还躺着
- * 首字延迟、缓存命中、入站路径、客户端 IP、是否流式、以及被映射到的真实上游模型
+ * 首字延迟、缓存命中、入站路径、是否流式、以及被映射到的真实上游模型
  * ——这些都是排查「为什么慢」「为什么贵」「到底调到了谁」时最要紧的信息。
  * 全在 other 那段 JSON 里，白白存着没给人看。
+ *
+ * 不显示客户端 IP：那一列由用户设置里的「记录 IP」开关决定，默认关闭，
+ * 本部署没有任何一行记了 IP，摆一列全是「—」只会让人以为是坏了。
+ *
+ * 另外这张表里混着三种行，不能按同一套列渲染：
+ *   对话  —— 按 token 计费，有首字延迟；
+ *   绘图  —— 同步出图，按张计费，没有 token 也没有首字；
+ *   任务  —— 异步提交（视频），这行只记「提交成功」，token 和耗时全是 0，
+ *            真正的进度在「任务」标签里。
+ * 早先三种一视同仁，minimax-h3 那行就显示成一排 0 和 0s，看着像坏了。
  */
 
 // other 是一段 JSON 字符串，坏掉的一行不该把整页带崩
@@ -43,11 +54,39 @@ function parseOther(row) {
   return o && typeof o === 'object' ? o : {};
 }
 
+// chat / image / task，见文件头注释
+function rowKind(o) {
+  if (o.is_task) return 'task';
+  const p = String(o.request_path || '');
+  if (p.includes('/images') || p.includes('/videos')) return 'image';
+  return 'chat';
+}
+
+// 绘图和任务不按 token 计费，计费参数后端只写在 content 这段中文串里。
+// 解析不出来就退回「—」，绝不显示成 0。
+function usageOf(row, kind) {
+  const c = String(row.content || '');
+  if (kind === 'task') {
+    const sec = c.match(/seconds:\s*([\d.]+)/);
+    return { main: sec ? Math.round(Number(sec[1])) + 's' : '—', sub: '视频' };
+  }
+  const size = c.match(/(\d{2,5})\s*[x×]\s*(\d{2,5})/);
+  const n = c.match(/生成数量\s*(\d+)/);
+  return {
+    main: size ? size[1] + '×' + size[2] : '—',
+    sub: n ? '{{n}} 张' : null,
+    n: n ? n[1] : null,
+  };
+}
+
 // 返回的是中文原文，同时也是 i18n 的 key——这是个普通函数，不能用 hook，
 // 由调用它的组件去 t() 包。
 export function chatOutcome(row) {
   if (row.type === 5) return { cls: 'bad', text: '失败' };
-  const end = parseOther(row).stream_status?.end_reason;
+  const o = parseOther(row);
+  // 任务行只代表「提交成功」，说成「成功」会让人以为视频已经出好了
+  if (o.is_task) return { cls: 'ok', text: '已提交' };
+  const end = o.stream_status?.end_reason;
   // 客户端自己断开的不算服务端失败，但也不是干净的成功——分开标，
   // 否则用户会以为是网关把请求掐了
   if (end === 'client_gone') return { cls: 'warn', text: '客户端断开' };
@@ -77,11 +116,18 @@ function latencyClass(sec) {
 function Cells({ r }) {
   const o = parseOther(r);
   const out = chatOutcome(r);
-  const upstream = o.is_model_mapped ? o.upstream_model_name : null;
+  const kind = rowKind(o);
+  // routed_model 是上游自己二次路由后真正跑的模型（smart-router 背后那台），
+  // 它比模型映射更接近事实，两者都有时以它为准
+  const real = o.routed_model || (o.is_model_mapped ? o.upstream_model_name : null);
   const frt = firstToken(o, r.is_stream);
   const cache = Number(o.cache_tokens || 0);
-  return { o, out, upstream, frt, cache };
+  const usage = kind === 'chat' ? null : usageOf(r, kind);
+  return { o, out, kind, upstream: real, frt, cache, usage };
 }
+
+// 三种行的「类型」列各说各的
+const KIND_LABEL = { image: '绘图', task: '异步任务' };
 
 export function ChatTable({ rows, openId, onToggleErr }) {
   const t = usePortalT();
@@ -91,9 +137,8 @@ export function ChatTable({ rows, openId, onToggleErr }) {
         <tr>
           <th>{t('模型')}</th>
           <th>{t('端点')}</th>
-          <th>IP</th>
           <th>{t('类型')}</th>
-          <th className='pt-num'>Token</th>
+          <th className='pt-num'>{t('用量')}</th>
           <th>{t('延迟')}</th>
           <th>{t('结果')}</th>
           <th>{t('时间')}</th>
@@ -101,7 +146,7 @@ export function ChatTable({ rows, openId, onToggleErr }) {
       </thead>
       <tbody>
         {rows.map((r) => {
-          const { o, out, upstream, frt, cache } = Cells({ r });
+          const { o, out, kind, upstream, frt, cache, usage } = Cells({ r });
           const failed = r.type === 5 && r.content;
           return (
             <React.Fragment key={r.id}>
@@ -131,41 +176,61 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                     ) : null}
                   </div>
                 </td>
-                <td className='pt-sub pt-mono' style={{ whiteSpace: 'nowrap' }}>
-                  {r.ip || '—'}
-                </td>
                 <td>
                   <span className='pt-tag plain'>
-                    {t(r.is_stream ? '流式' : '非流式')}
+                    {t(KIND_LABEL[kind] || (r.is_stream ? '流式' : '非流式'))}
                   </span>
                 </td>
                 <td className='pt-num'>
                   <div className='pt-stack'>
-                    <span className='pt-tok'>
-                      <i className='pt-arrow in'>↓</i>
-                      {fmtInt(r.prompt_tokens)}
-                      <i className='pt-arrow out'>↑</i>
-                      {fmtInt(r.completion_tokens)}
-                    </span>
-                    <span className='pt-sub'>
-                      {t('缓存 {{n}}', { n: fmtInt(cache) })}
-                    </span>
+                    {usage ? (
+                      <>
+                        <span className='pt-mono'>{usage.main}</span>
+                        {usage.sub ? (
+                          <span className='pt-sub'>
+                            {t(usage.sub, { n: usage.n })}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        <span className='pt-tok'>
+                          <i className='pt-arrow in'>↓</i>
+                          {fmtInt(r.prompt_tokens)}
+                          <i className='pt-arrow out'>↑</i>
+                          {fmtInt(r.completion_tokens)}
+                        </span>
+                        <span className='pt-sub'>
+                          {t('缓存 {{n}}', { n: fmtInt(cache) })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </td>
                 <td>
-                  <div className='pt-cell-row'>
-                    <i className={`pt-lat-bar ${latencyClass(r.use_time)}`} />
-                    <div className='pt-stack'>
-                      <span className='pt-sub'>
-                        {t('首字 {{v}}', { v: ms(frt) })}
-                      </span>
-                      <span className='pt-sub'>
-                        {t('总耗时 {{v}}', {
-                          v: r.use_time ? r.use_time + 's' : '—',
-                        })}
-                      </span>
+                  {kind === 'task' ? (
+                    // 任务是异步的：这行只记下「提交出去了」，真正的进度在
+                    // 「任务队列」那页。直接给条链接，别让人自己去找。
+                    <Link className='pt-linkish' to='/console/task'>
+                      {t('查看任务进度')}
+                    </Link>
+                  ) : (
+                    <div className='pt-cell-row'>
+                      <i className={`pt-lat-bar ${latencyClass(r.use_time)}`} />
+                      <div className='pt-stack'>
+                        {kind === 'chat' ? (
+                          <span className='pt-sub'>
+                            {t('首字 {{v}}', { v: ms(frt) })}
+                          </span>
+                        ) : null}
+                        <span className='pt-sub'>
+                          {t('总耗时 {{v}}', {
+                            v: r.use_time ? r.use_time + 's' : '—',
+                          })}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </td>
                 <td>
                   {failed ? (
@@ -192,7 +257,7 @@ export function ChatTable({ rows, openId, onToggleErr }) {
               </tr>
               {openId === r.id && failed ? (
                 <tr className='pt-err-row'>
-                  <td colSpan={8}>
+                  <td colSpan={7}>
                     <div className='pt-err-box'>{r.content}</div>
                   </td>
                 </tr>
@@ -215,7 +280,7 @@ export function ChatCards({ rows }) {
   return (
     <div className='pt-rec-cards'>
       {rows.map((r) => {
-        const { o, out, upstream, frt, cache } = Cells({ r });
+        const { o, out, kind, upstream, frt, cache, usage } = Cells({ r });
         const failed = r.type === 5 && r.content;
         return (
           <article key={r.id} className='pt-rec-card'>
@@ -244,34 +309,64 @@ export function ChatCards({ rows }) {
               <div className='pt-err-box'>{r.content}</div>
             ) : null}
             <dl className='pt-rec-grid'>
-              <div>
-                <dt>{t('输入')}</dt>
-                <dd>{fmtInt(r.prompt_tokens)}</dd>
-              </div>
-              <div>
-                <dt>{t('输出')}</dt>
-                <dd>{fmtInt(r.completion_tokens)}</dd>
-              </div>
-              <div>
-                <dt>{t('缓存')}</dt>
-                <dd>{fmtInt(cache)}</dd>
-              </div>
-              <div>
-                <dt>{t('首字')}</dt>
-                <dd>{ms(frt)}</dd>
-              </div>
-              <div>
-                <dt>{t('总耗时')}</dt>
-                <dd>{r.use_time ? r.use_time + 's' : '—'}</dd>
-              </div>
-              <div>
-                <dt>{t('类型')}</dt>
-                <dd>{t(r.is_stream ? '流式' : '非流式')}</dd>
-              </div>
+              {usage ? (
+                // 绘图/任务：窄屏上同样不能摆一排 0，只列它真正的计费参数
+                <>
+                  <div>
+                    <dt>{t('用量')}</dt>
+                    <dd>{usage.main}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('类型')}</dt>
+                    <dd>{t(KIND_LABEL[kind])}</dd>
+                  </div>
+                  <div>
+                    {/* 任务这一格放的是「去哪看进度」，标成总耗时就是胡说 */}
+                    <dt>{t(kind === 'task' ? '进度' : '总耗时')}</dt>
+                    <dd>
+                      {kind === 'task' ? (
+                        <Link className='pt-linkish' to='/console/task'>
+                          {t('查看任务进度')}
+                        </Link>
+                      ) : r.use_time ? (
+                        r.use_time + 's'
+                      ) : (
+                        '—'
+                      )}
+                    </dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <dt>{t('输入')}</dt>
+                    <dd>{fmtInt(r.prompt_tokens)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('输出')}</dt>
+                    <dd>{fmtInt(r.completion_tokens)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('缓存')}</dt>
+                    <dd>{fmtInt(cache)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('首字')}</dt>
+                    <dd>{ms(frt)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('总耗时')}</dt>
+                    <dd>{r.use_time ? r.use_time + 's' : '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t('类型')}</dt>
+                    <dd>{t(r.is_stream ? '流式' : '非流式')}</dd>
+                  </div>
+                </>
+              )}
             </dl>
             <div className='pt-rec-foot pt-sub pt-mono'>
               {(o.request_path || '').replace(/^\//, '') || '—'}
-              {r.ip ? ' · ' + r.ip : ''}
             </div>
           </article>
         );

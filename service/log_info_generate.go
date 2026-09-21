@@ -50,6 +50,14 @@ func GenerateTextOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, m
 		other["upstream_model_name"] = relayInfo.UpstreamModelName
 	}
 
+	// 上游二次路由的结果（smart-router → 真正跑的那个模型）
+	if routed := common.GetContextKeyString(ctx, constant.ContextKeyUpstreamRoutedModel); routed != "" {
+		other["routed_model"] = routed
+		if tier := common.GetContextKeyString(ctx, constant.ContextKeyUpstreamRouterTier); tier != "" {
+			other["router_tier"] = tier
+		}
+	}
+
 	isSystemPromptOverwritten := common.GetContextKeyBool(ctx, constant.ContextKeySystemPromptOverride)
 	if isSystemPromptOverwritten {
 		other["is_system_prompt_overwritten"] = true

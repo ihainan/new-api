@@ -63,6 +63,12 @@ const (
 	// It is not returned to end users, but can be persisted into consume/error logs for debugging.
 	ContextKeyAdminRejectReason ContextKey = "admin_reject_reason"
 
+	// ContextKeyUpstreamRoutedModel 记录上游自己做二次路由时真正选中的模型。
+	// smart-router 背后是 LiteLLM 的复杂度路由，请求打进去是一个名字，
+	// 跑起来是另一个模型，不抓下来日志里就永远只有 smart-router。
+	ContextKeyUpstreamRoutedModel ContextKey = "upstream_routed_model"
+	ContextKeyUpstreamRouterTier  ContextKey = "upstream_router_tier"
+
 	// ContextKeyLanguage stores the user's language preference for i18n
 	ContextKeyLanguage ContextKey = "language"
 	ContextKeyIsStream ContextKey = "is_stream"

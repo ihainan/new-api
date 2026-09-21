@@ -12,6 +12,7 @@ import (
 	"time"
 
 	common2 "github.com/QuantumNous/new-api/common"
+	ctxconstant "github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/constant"
@@ -524,9 +525,29 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 		return nil, errors.New("resp is nil")
 	}
 
+	captureUpstreamRouting(c, resp)
+
 	_ = req.Body.Close()
 	_ = c.Request.Body.Close()
 	return resp, nil
+}
+
+// 上游若自己又做了一层路由（smart-router 背后的 LiteLLM 复杂度路由），
+// 它会在响应头里回报这次实际选中的模型。这里抓一下存进 context，
+// 记日志时一并写进 other——否则日志里只剩 smart-router 这个入口名，
+// 事后没人说得清当时跑的是哪个模型。
+func captureUpstreamRouting(c *gin.Context, resp *http.Response) {
+	if c == nil || resp == nil {
+		return
+	}
+	routed := resp.Header.Get("X-Litellm-Routed-Model")
+	if routed == "" {
+		return
+	}
+	common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRoutedModel, routed)
+	if tier := resp.Header.Get("X-Litellm-Router-Tier"); tier != "" {
+		common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRouterTier, tier)
+	}
 }
 
 func DoTaskApiRequest(a TaskAdaptor, c *gin.Context, info *common.RelayInfo, requestBody io.Reader) (*http.Response, error) {
