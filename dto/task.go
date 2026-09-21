@@ -49,6 +49,7 @@ type TaskDto struct {
 	Progress   string          `json:"progress"`
 	Properties any             `json:"properties"`
 	Username   string          `json:"username,omitempty"`
+	TokenName  string          `json:"token_name,omitempty"` // 发起该任务的密钥名称
 	Data       json.RawMessage `json:"data"`
 }
 

@@ -60,6 +60,9 @@ type Task struct {
 	Progress   string                `json:"progress" gorm:"type:varchar(20);index"`
 	Properties Properties            `json:"properties" gorm:"type:json"`
 	Username   string                `json:"username,omitempty" gorm:"-"`
+	// 仅用于返回：任务落库时只记了 token_id（在 PrivateData 里，不下发给用户），
+	// 但「这个任务是哪把密钥发的」是用户自己要看的信息，查出来放这里。
+	TokenName string `json:"token_name,omitempty" gorm:"-"`
 	// 禁止返回给用户，内部可能包含key等隐私信息
 	PrivateData TaskPrivateData `json:"-" gorm:"column:private_data;type:json"`
 	Data        json.RawMessage `json:"data" gorm:"type:json"`

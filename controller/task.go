@@ -81,6 +81,23 @@ func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
 			}
 		}
 	}
+	// 一次把用到的密钥名查出来，避免每行一次查询
+	tokenNames := make(map[int]string)
+	for _, task := range tasks {
+		id := task.PrivateData.TokenId
+		if id == 0 {
+			continue
+		}
+		if _, ok := tokenNames[id]; ok {
+			continue
+		}
+		if token, err := model.GetTokenById(id); err == nil && token != nil {
+			tokenNames[id] = token.Name
+		} else {
+			tokenNames[id] = ""
+		}
+	}
+
 	result := make([]*dto.TaskDto, len(tasks))
 	for i, task := range tasks {
 		if fillUser {
@@ -88,6 +105,7 @@ func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
 				task.Username = user.Username
 			}
 		}
+		task.TokenName = tokenNames[task.PrivateData.TokenId]
 		result[i] = relay.TaskModel2Dto(task)
 	}
 	return result

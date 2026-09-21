@@ -18,14 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { API, showError } from '../../helpers';
+import { API, copy, showError, showSuccess } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
+import ModelIcon from './ModelIcon';
 import { HIDDEN } from './modelCatalog';
 import {
   Card,
   Empty,
   PageHead,
-  Tabs,
   fmtInt,
   fmtLogTime,
   usePortalT,
@@ -236,10 +236,25 @@ export default function PortalRecords() {
     <div>
       <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
-      <Tabs items={TABS} value={tab} onChange={setTab} />
-
       {/* 筛选条放在标签之外：时间范围和「只看失败」对两个标签都生效 */}
       <div className='pt-filters'>
+        {/* 「对话 / 任务」从标签改成下拉，和其它筛选项排在同一行：
+            它本来就是一个筛选条件，不是两个页面 */}
+        <label className='pt-field'>
+          <span className='pt-field-label'>{t('类型')}</span>
+          <select
+            className='pt-select'
+            aria-label={t('记录类型')}
+            value={tab}
+            onChange={(e) => setTab(e.target.value)}
+          >
+            {TABS.map((it) => (
+              <option key={it.key} value={it.key}>
+                {t(it.label)}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className='pt-chips' role='group' aria-label={t('时间范围')}>
           {RANGES.map((r) => (
             <button
@@ -346,7 +361,8 @@ export default function PortalRecords() {
                 <thead>
                   <tr>
                     <th>{t('模型')}</th>
-                    <th>{t('类型')}</th>
+                    <th>{t('任务 ID')}</th>
+                    <th>{t('密钥')}</th>
                     <th>{t('状态')}</th>
                     <th>{t('耗时')}</th>
                     <th>{t('结果')}</th>
@@ -356,29 +372,44 @@ export default function PortalRecords() {
                 <tbody>
                   {rows.map((r) => {
                     const st = taskState(r);
+                    const mdl = taskModel(r);
                     return (
                       <tr key={r.id || r.task_id}>
-                        {/* 和对话表同一套读法：主值在上、次要信息缩在下面一行 */}
                         <td>
-                          <div className='pt-stack'>
-                            <span className='pt-mono'>
-                              {taskModel(r) || '—'}
-                            </span>
-                            {/* 任务 ID 要能拿去问人，所以截断的同时把完整值挂在 title 上 */}
-                            <span
-                              className='pt-sub pt-mono'
-                              title={r.task_id || ''}
-                            >
-                              {r.task_id
-                                ? `${String(r.task_id).slice(0, 12)}…`
-                                : '—'}
-                            </span>
+                          <div className='pt-cell-row'>
+                            <ModelIcon model={mdl} size={16} />
+                            <div className='pt-stack'>
+                              <span className='pt-mono'>{mdl || '—'}</span>
+                              <span className='pt-sub'>
+                                {t(TASK_ACTION[r.action] || r.action || '—')}
+                              </span>
+                            </div>
                           </div>
                         </td>
+                        {/* 任务 ID 是拿去问人的东西，必须能取到完整值：整段显示、可复制 */}
                         <td>
-                          <span className='pt-tag plain'>
-                            {t(TASK_ACTION[r.action] || r.action || '—')}
-                          </span>
+                          <button
+                            type='button'
+                            className='pt-copy-id'
+                            title={t('点击复制完整 ID')}
+                            onClick={async () => {
+                              (await copy(r.task_id || ''))
+                                ? showSuccess(t('已复制'))
+                                : showError(t('复制失败'));
+                            }}
+                          >
+                            {r.task_id || '—'}
+                          </button>
+                        </td>
+                        <td>
+                          <div className='pt-stack'>
+                            <span>{r.token_name || '—'}</span>
+                            {r.group ? (
+                              <span className='pt-sub'>
+                                {t('分组 {{name}}', { name: r.group })}
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td>
                           <div className='pt-cell-row'>
@@ -399,7 +430,16 @@ export default function PortalRecords() {
                           {taskDuration(r)}
                         </td>
                         <td>
-                          {r.fail_reason ? (
+                          {r.status === 'SUCCESS' && r.result_url ? (
+                            <a
+                              className='pt-btn sm'
+                              href={r.result_url}
+                              target='_blank'
+                              rel='noreferrer'
+                            >
+                              {t('查看')}
+                            </a>
+                          ) : r.fail_reason ? (
                             <span style={{ color: 'var(--pt-danger-text)' }}>
                               {r.fail_reason}
                             </span>
@@ -409,10 +449,7 @@ export default function PortalRecords() {
                             </span>
                           )}
                         </td>
-                        <td
-                          className='pt-sub'
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
+                        <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
                           {fmtLogTime(r.submit_time)}
                         </td>
                       </tr>

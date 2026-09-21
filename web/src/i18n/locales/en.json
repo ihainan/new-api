@@ -4050,6 +4050,9 @@
     "全部密钥": "All keys",
     "查看调用记录": "View calls",
     "这段时间没有 {{token}} 的调用记录": "No calls with {{token}} in this period",
-    "生成中": "Running"
+    "生成中": "Running",
+    "记录类型": "Record type",
+    "点击复制完整 ID": "Click to copy the full id",
+    "耗时": "Elapsed"
   }
 }
