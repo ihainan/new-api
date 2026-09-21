@@ -14,7 +14,12 @@
 .pt-login {
   --pt-ink: #14181f;
   --pt-ink-hover: #2b313b;
-  --pt-accent: #2563d4;
+  /* 学院主色。取自 www.bza.edu.cn 的 --el-color-primary(#4000f6)——
+     那边只把它用在搜索块和一个「了解更多」按钮上，其余全是黑白灰，
+     这里照着克制用：交互强调和唯一的主按钮，不铺大面积。
+     白底对比度 8.2:1（原先那支学院蓝是 5.5:1），正文级别也够。 */
+  --pt-accent: #4000f6;
+  --pt-accent-hover: #3600c9;
   /* 和卡片白只差 1.5%，卡片等于没有边界。压深一档，让白色卡片自己浮起来。
      次要文字 #646d7c 压在这个底色上对比度 4.8:1，仍然过线。 */
   --pt-bg-page: #f4f5f7;
@@ -407,12 +412,14 @@
 }
 .pt-btn:hover { background: var(--pt-bg-hover); }
 .pt-btn:disabled { opacity: 0.5; cursor: default; }
+/* 唯一的主按钮（登录）用学院色填充，和官网那个「了解更多」是同一种用法。
+   选中态的 chip、当前页码仍是墨黑——那些东西一多，满屏高饱和的蓝会很吵。 */
 .pt-btn.primary {
-  background: var(--pt-ink);
-  border-color: var(--pt-ink);
+  background: var(--pt-accent);
+  border-color: var(--pt-accent);
   color: #fff;
 }
-.pt-btn.primary:hover { background: var(--pt-ink-hover); border-color: var(--pt-ink-hover); }
+.pt-btn.primary:hover { background: var(--pt-accent-hover); border-color: var(--pt-accent-hover); }
 .pt-btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
 
 .pt-code {
@@ -561,7 +568,7 @@
   margin: 0 0 10px;
 }
 .pt-cat-icon { flex: none; }
-.pt-cat-icon.cat-chat { color: #2563d4; }       /* 学院蓝，和 --pt-accent 同源 */
+.pt-cat-icon.cat-chat { color: var(--pt-accent); }
 .pt-cat-icon.cat-image { color: #8a5cd6; }      /* 紫：出图 */
 .pt-cat-icon.cat-audio { color: #1d8a8a; }      /* 青：语音 */
 .pt-cat-icon.cat-video { color: #c8372f; }      /* 红：视频，与 --pt-danger-text 同值 */
