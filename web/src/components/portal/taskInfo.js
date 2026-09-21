@@ -55,6 +55,38 @@ const TASK_STATUS = {
 
 const RUNNING = ['QUEUED', 'IN_PROGRESS', 'SUBMITTED', 'NOT_START'];
 
+/*
+ * 任务走三步：排队 → 生成 → 完成。
+ *
+ * 不要显示 progress 那个百分比：后端 service/task_polling.go 是按状态塞的固定值
+ * （已提交 10%、排队 20%、生成中 30%、完成 100%），上游真实的进度压根没存进来
+ * ——实测一个排队中的任务，上游回的是 progress: 0，我们显示成 20%。
+ * 把阶段画成三步，说的是同一件事，而且不骗人。
+ */
+export const TASK_STEPS = ['排队', '生成', '完成'];
+
+// 返回每一步的状态：done / cur / bad / todo
+export function taskSteps(r) {
+  const st = String(r.status || '').toUpperCase();
+  if (st === 'SUCCESS') return ['done', 'done', 'done'];
+  if (st === 'FAILURE') {
+    // 失败停在哪一步：跑起来过就是倒在生成上，没跑起来就是倒在排队上
+    return r.start_time ? ['done', 'bad', 'todo'] : ['bad', 'todo', 'todo'];
+  }
+  if (st === 'IN_PROGRESS') return ['done', 'cur', 'todo'];
+  return ['cur', 'todo', 'todo'];
+}
+
+// 每个状态多一句人话，鼠标悬停时说清楚现在到底卡在哪
+export const TASK_HINT = {
+  NOT_START: '已提交，等待上游接收',
+  SUBMITTED: '已提交，等待上游排队',
+  QUEUED: '在上游排队，还没开始生成',
+  IN_PROGRESS: '上游正在生成',
+  SUCCESS: '已生成完成',
+  FAILURE: '任务失败',
+};
+
 // 排队和生成中都还没有结果，用中性色；成功绿、失败红，和对话表一致
 export function taskState(r) {
   const st = String(r.status || '').toUpperCase();

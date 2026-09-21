@@ -202,6 +202,14 @@ export default function PortalRecords() {
     const id = setInterval(loadTasks, 10000);
     return () => clearInterval(id);
   }, [anyRunning, loadTasks]);
+
+  // 任务行那一格显示的是「已经等了多久」，每秒重渲染一次才会走（不发请求）
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!anyRunning) return undefined;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [anyRunning]);
   useEffect(() => {
     setPage(1);
     setOpenErr(null);

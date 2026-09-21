@@ -21,6 +21,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime, usePortalT } from './shared';
+import TaskStatus from './TaskStatus';
 import { taskDuration, taskResultUrl, taskState } from './taskInfo';
 
 /*
@@ -143,10 +144,8 @@ function TaskOutcome({ task }) {
   const st = taskState(task);
   return (
     <div className='pt-stack'>
-      <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
-      {st.running ? (
-        <span className='pt-sub'>{task.progress || '0%'}</span>
-      ) : task.status === 'SUCCESS' && taskResultUrl(task) ? (
+      <TaskStatus task={task} />
+      {st.running ? null : task.status === 'SUCCESS' && taskResultUrl(task) ? (
         <a
           className='pt-linkish'
           href={taskResultUrl(task)}

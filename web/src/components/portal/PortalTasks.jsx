@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
+import TaskStatus from './TaskStatus';
 import {
   TASK_ACTION,
   taskDuration,
@@ -170,6 +171,17 @@ export default function PortalTasks() {
     return () => clearInterval(id);
   }, [running, load]);
 
+  /*
+   * 「耗时」算的是提交到此刻，得每秒重新渲染一次它才会走。只靠 10 秒一次的轮询，
+   * 这个数字看上去是卡住的——用户第一眼就是这么反馈的。这一下不发请求。
+   */
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!running) return undefined;
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -254,7 +266,6 @@ export default function PortalTasks() {
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const st = taskState(r);
                   const mdl = taskModel(r);
                   return (
                     <tr key={r.id || r.task_id}>
@@ -283,15 +294,7 @@ export default function PortalTasks() {
                         </div>
                       </td>
                       <td>
-                        <div className='pt-cell-row'>
-                          <i className={`pt-lat-bar ${st.bar}`} />
-                          <div className='pt-stack'>
-                            <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
-                            {st.running ? (
-                              <span className='pt-sub'>{r.progress || '0%'}</span>
-                            ) : null}
-                          </div>
-                        </div>
+                        <TaskStatus task={r} />
                       </td>
                       <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
                         {r.finish_time
@@ -314,13 +317,12 @@ export default function PortalTasks() {
             {/* 七列的表在手机上只能横向拖，改成一条一张卡，信息不删 */}
             <div className='pt-narrow-only pt-rec-cards'>
               {rows.map((r) => {
-                const st = taskState(r);
                 const mdl = taskModel(r);
                 return (
                   <article key={r.id || r.task_id} className='pt-rec-card'>
                     <div className='pt-rec-top'>
                       <span className='pt-sub'>{fmtLogTime(r.submit_time)}</span>
-                      <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
+                      <TaskStatus task={r} />
                     </div>
                     <div className='pt-cell-row' style={{ marginTop: 6 }}>
                       <ModelIcon model={mdl} size={16} />
@@ -337,10 +339,6 @@ export default function PortalTasks() {
                             ? taskDuration(r)
                             : t('{{v}}（进行中）', { v: taskDuration(r) })}
                         </dd>
-                      </div>
-                      <div>
-                        <dt>{t('进度')}</dt>
-                        <dd>{st.running ? r.progress || '0%' : '—'}</dd>
                       </div>
                       <div>
                         <dt>{t('密钥')}</dt>
