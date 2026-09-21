@@ -21,7 +21,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime, usePortalT } from './shared';
-import TaskStatus from './TaskStatus';
 import { taskDuration, taskResultUrl, taskState } from './taskInfo';
 
 /*
@@ -44,8 +43,12 @@ import { taskDuration, taskResultUrl, taskState } from './taskInfo';
  * 早先三种一视同仁，minimax-h3 那行就显示成一排 0 和 0s，看着像坏了。
  *
  * 任务行的真实状态来自 tasks 表：调用方按日志里的 task_id 查到对应任务，
- * 从 tasks 这个 prop 传进来，于是「生成中 40%」「成功 + 查看」就直接显示在这一行，
- * 不用先跑去任务队列页。查不到（老记录没有 task_id）才退回一句链接。
+ * 从 tasks 这个 prop 传进来，于是「生成中」「成功 + 打开视频」就直接显示在这一行。
+ * 查不到（老记录没有 task_id）才退回一句链接。
+ *
+ * 这里只给一句结论，不画三步进度条：那是「盯着它跑」时才需要的东西，属于任务队列页。
+ * 日志一行回答的是「这次调用是什么、跑了多久、成没成」，和别的行一样高，
+ * 塞进进度条只会让这一行鼓出来。
  */
 
 // other 是一段 JSON 字符串，坏掉的一行不该把整页带崩
@@ -158,26 +161,20 @@ function RefundOutcome({ row, other }) {
 /*
  * 任务行的「结果」：显示任务此刻的状态，而不是日志那行写死的「已提交」。
  * 提交成功和视频生成成功是两回事，混在一起说会让人以为东西已经出来了。
+ *
+ * 成了就把视频链接摆在状态旁边——同一行，不换行，行高和别的记录保持一致。
  */
 function TaskOutcome({ task }) {
   const t = usePortalT();
   const st = taskState(task);
+  const url = task.status === 'SUCCESS' ? taskResultUrl(task) : '';
   return (
-    <div className='pt-stack'>
-      <TaskStatus task={task} />
-      {st.running ? null : task.status === 'SUCCESS' && taskResultUrl(task) ? (
-        <a
-          className='pt-linkish'
-          href={taskResultUrl(task)}
-          target='_blank'
-          rel='noreferrer'
-        >
+    <div className='pt-cell-row'>
+      <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
+      {url ? (
+        <a className='pt-linkish' href={url} target='_blank' rel='noreferrer'>
           {t('打开视频')}
         </a>
-      ) : task.fail_reason ? (
-        <span className='pt-sub' style={{ color: 'var(--pt-danger-text)' }}>
-          {task.fail_reason}
-        </span>
       ) : null}
     </div>
   );
@@ -369,7 +366,9 @@ export function ChatCards({ rows, tasks }) {
               {kind === 'refund' ? (
                 <span className='pt-tag warn'>{t('已退款')}</span>
               ) : kind === 'task' && task ? (
-                <TaskStatus task={task} only='tag' />
+                <span className={`pt-tag ${taskState(task).cls}`}>
+                  {t(taskState(task).text)}
+                </span>
               ) : (
                 <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
               )}
@@ -380,12 +379,6 @@ export function ChatCards({ rows, tasks }) {
             </div>
             {upstream ? (
               <div className='pt-sub pt-mono'>└ {upstream}</div>
-            ) : null}
-            {/* 三步进度单独占一行：塞进右上角会把卡片挤歪 */}
-            {kind === 'task' && task ? (
-              <div style={{ marginTop: 8 }}>
-                <TaskStatus task={task} only='steps' />
-              </div>
             ) : null}
             {failed ? (
               <button
