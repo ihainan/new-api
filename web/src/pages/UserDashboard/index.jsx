@@ -18,9 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import PortalOverview from '../../components/portal/PortalOverview';
+import { isAdmin } from '../../helpers/utils.jsx';
 
-// 这个路由（/console/dashboard）只有普通员工会走到；管理员的数据看板在 /console。
-const UserDashboard = () => <PortalOverview />;
+// /console/dashboard 是员工门户的概览。管理员走到这里（旧书签、手敲地址）
+// 就送回管理后台自己的数据看板，不让他落进员工门户。
+const UserDashboard = () =>
+  isAdmin() ? <Navigate to='/console' replace /> : <PortalOverview />;
 
 export default UserDashboard;

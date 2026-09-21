@@ -125,6 +125,21 @@ function latencyClass(sec) {
   return 'slow';
 }
 
+/*
+ * 这一行的输入总量，和后端概览统计（model/portal_metrics.go 的 portalInputTotal）
+ * 同一个口径：Claude 格式的日志里 prompt_tokens 只是没命中缓存的部分，
+ * 缓存读取/写入另记在 other 里，不加回来的话「输入 28、缓存 128」看着像缓存比输入还多。
+ */
+export function inputTokens(r, o) {
+  const prompt = Number(r.prompt_tokens || 0);
+  if (Number(o.input_tokens_total) > 0) return Number(o.input_tokens_total);
+  if (o.usage_semantic === 'anthropic') {
+    const write = Number(o.cache_write_tokens || o.cache_creation_tokens || 0);
+    return prompt + Number(o.cache_tokens || 0) + write;
+  }
+  return prompt;
+}
+
 function Cells({ r, tasks }) {
   const o = parseOther(r);
   const out = chatOutcome(r);
@@ -137,7 +152,8 @@ function Cells({ r, tasks }) {
   const usage = kind === 'chat' || kind === 'refund' ? null : usageOf(r, kind);
   // 退款行也带着 task_id，同样能把它对应的任务查出来
   const task = o.task_id ? tasks?.[o.task_id] : null;
-  return { o, out, kind, upstream: real, frt, cache, usage, task };
+  const input = inputTokens(r, o);
+  return { o, out, kind, upstream: real, frt, cache, input, usage, task };
 }
 
 // 各类行的「类型」列各说各的
@@ -205,7 +221,7 @@ export function ChatTable({ rows, openId, onToggleErr, tasks }) {
       </thead>
       <tbody>
         {rows.map((r) => {
-          const { o, out, kind, upstream, frt, cache, usage, task } = Cells({
+          const { o, out, kind, upstream, frt, cache, input, usage, task } = Cells({
             r,
             tasks,
           });
@@ -260,7 +276,7 @@ export function ChatTable({ rows, openId, onToggleErr, tasks }) {
                       <>
                         <span className='pt-tok'>
                           <i className='pt-arrow in'>↓</i>
-                          {fmtInt(r.prompt_tokens)}
+                          {fmtInt(input)}
                           <i className='pt-arrow out'>↑</i>
                           {fmtInt(r.completion_tokens)}
                         </span>
@@ -362,7 +378,7 @@ export function ChatCards({ rows, tasks }) {
   return (
     <div className='pt-rec-cards'>
       {rows.map((r) => {
-        const { o, out, kind, upstream, frt, cache, usage, task } = Cells({
+        const { o, out, kind, upstream, frt, cache, input, usage, task } = Cells({
           r,
           tasks,
         });
@@ -446,7 +462,7 @@ export function ChatCards({ rows, tasks }) {
                 <>
                   <div>
                     <dt>{t('输入')}</dt>
-                    <dd>{fmtInt(r.prompt_tokens)}</dd>
+                    <dd>{fmtInt(input)}</dd>
                   </div>
                   <div>
                     <dt>{t('输出')}</dt>

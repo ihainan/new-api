@@ -81,8 +81,9 @@ func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
 			}
 		}
 	}
-	// 一次把用到的密钥名查出来，避免每行一次查询
+	// 用到的密钥名一次查出来（WHERE id IN），不按行、也不按密钥逐个查
 	tokenNames := make(map[int]string)
+	ids := make([]int, 0, len(tasks))
 	for _, task := range tasks {
 		id := task.PrivateData.TokenId
 		if id == 0 {
@@ -91,10 +92,15 @@ func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
 		if _, ok := tokenNames[id]; ok {
 			continue
 		}
-		if token, err := model.GetTokenById(id); err == nil && token != nil {
-			tokenNames[id] = token.Name
-		} else {
-			tokenNames[id] = ""
+		tokenNames[id] = ""
+		ids = append(ids, id)
+	}
+	if len(ids) > 0 {
+		var toks []model.Token
+		if err := model.DB.Select("id", "name").Where("id IN ?", ids).Find(&toks).Error; err == nil {
+			for _, tk := range toks {
+				tokenNames[tk.Id] = tk.Name
+			}
 		}
 	}
 

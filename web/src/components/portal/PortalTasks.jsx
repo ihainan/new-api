@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
 import TaskStatus from './TaskStatus';
@@ -37,6 +37,7 @@ import {
   fmtLogTime,
   rangeParams,
   useUrlState,
+  usePageVisible,
   usePortalT,
 } from './shared';
 
@@ -155,13 +156,19 @@ export default function PortalTasks() {
     load(false);
   }, [load]);
 
-  // 有任务在跑才轮询，跑完就停
+  // 有任务在跑、而且页面在前台才轮询；切回前台先立刻刷一次，不干等下一个周期
   const running = rows.some((r) => taskState(r).running);
+  const visible = usePageVisible();
   useEffect(() => {
-    if (!running) return undefined;
+    if (!running || !visible) return undefined;
     const id = setInterval(() => load(true), POLL_MS);
     return () => clearInterval(id);
-  }, [running, load]);
+  }, [running, visible, load]);
+  const wasVisible = useRef(visible);
+  useEffect(() => {
+    if (visible && !wasVisible.current && running) load(true);
+    wasVisible.current = visible;
+  }, [visible, running, load]);
 
   /*
    * 「耗时」算的是提交到此刻，得每秒重新渲染一次它才会走。只靠 10 秒一次的轮询，

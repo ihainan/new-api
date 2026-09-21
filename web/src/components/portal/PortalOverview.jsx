@@ -82,6 +82,14 @@ const TREND_METRICS = [
 // 概览默认看近 24 小时（另外两页是近 7 天：那边翻的是明细，跨度要更大）
 const OVERVIEW_URL_DEFAULTS = { range: '24h', from: '', to: '' };
 
+/*
+ * 概览不提供「全部」：统计接口一次最多算一年，「全部」原先会发出
+ * start_timestamp=null，后端解析失败退回近 24 小时——下拉框写着「全部」，
+ * 数字却是 24 小时的（2026-09-21 评审发现）。历史总量看「累计 Token」卡片。
+ * 使用记录、任务队列是分页列表，不受这个限制，照常保留「全部」。
+ */
+const OVERVIEW_EXCLUDE = ['all'];
+
 // 上游调用失败比例暂时不对用户展示（产品决定，2026-09-21）。
 // 后端数据照常返回，恢复时把这里改回 true 即可。
 const SHOW_FAIL_RATE = false;
@@ -90,8 +98,12 @@ export default function PortalOverview() {
   const t = usePortalT();
   // 时间范围也写进地址栏，和使用记录/任务队列一个规矩
   const [urlState, patch] = useUrlState(OVERVIEW_URL_DEFAULTS);
-  const range = { range: urlState.range, from: urlState.from, to: urlState.to };
-  const { range: rangeKey, from, to } = urlState;
+  // 旧链接里的 ?range=all 按默认档处理，别让下拉框和数字对不上
+  const rangeKey = OVERVIEW_EXCLUDE.includes(urlState.range)
+    ? OVERVIEW_URL_DEFAULTS.range
+    : urlState.range;
+  const { from, to } = urlState;
+  const range = { range: rangeKey, from, to };
   // 趋势图看哪个口径。后端每个时间点本来就同时返回请求数和 Token，
   // 之前只画了请求数——不是数据没有，是前端没用。
   const [trend, setTrend] = useState('requests');
@@ -111,7 +123,13 @@ export default function PortalOverview() {
   const load = useCallback(async () => {
     setLoading(true);
     // range 每次渲染都是新对象，不能进依赖，按原始字段传
-    const [start, end] = rangeBounds({ range: rangeKey, from, to });
+    // 自定义时开始日被清空，rangeBounds 会给 null，拼进查询串就成了
+    // start_timestamp=null，后端又会静默退回 24 小时。按结束日那一天算。
+    const [start, end] = rangeBounds({
+      range: rangeKey,
+      from: from || to || new Date().toLocaleDateString('sv-SE'),
+      to,
+    });
     try {
       const res = await API.get(
         `/api/log/self/metrics?start_timestamp=${start}&end_timestamp=${end}`,
@@ -163,7 +181,7 @@ export default function PortalOverview() {
         month: '2-digit',
         day: '2-digit',
         // 跨度大的时候只显示日期，否则 x 轴标签糊成一片
-        ...(rangeKey === '30d' || rangeKey === 'all' || rangeKey === 'custom'
+        ...(rangeKey === '30d' || rangeKey === 'custom'
           ? {}
           : { hour: '2-digit', minute: '2-digit' }),
       });
@@ -313,7 +331,11 @@ export default function PortalOverview() {
         {/* 时间范围是分段选择，不是主按钮——它借用 primary 当选中态，
             主按钮一改成主题色，这排就跟着变成了实心靛蓝，而别的页面同类筛选
             还是墨黑 chip。统一用 chip。 */}
-        <RangeFilter value={range} onChange={(v) => patch(v)} />
+        <RangeFilter
+          value={range}
+          onChange={(v) => patch(v)}
+          exclude={OVERVIEW_EXCLUDE}
+        />
         {loading ? (
           <span style={{ fontSize: 12, color: 'var(--pt-text-muted)' }}>
             {t('加载中…')}

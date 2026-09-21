@@ -366,7 +366,8 @@ export function rangeParams(value) {
   return out;
 }
 
-export function RangeFilter({ value, onChange }) {
+// exclude：这一页不提供的档位（概览没有「全部」，见 PortalOverview）
+export function RangeFilter({ value, onChange, exclude = [] }) {
   const t = usePortalT();
   const today = dayStr(new Date());
   const set = (patch) => onChange({ ...value, ...patch });
@@ -390,7 +391,7 @@ export function RangeFilter({ value, onChange }) {
             );
           }}
         >
-          {RANGES.map((r) => (
+          {RANGES.filter((r) => !exclude.includes(r.key)).map((r) => (
             <option key={r.key} value={r.key}>
               {t(r.label)}
             </option>
@@ -527,4 +528,20 @@ export function useUrlState(defaults, pageKey = 'p') {
   );
 
   return [state, patch];
+}
+
+/*
+ * 页面当前是否在前台。轮询只在看得见的时候跑：标签页切到后台还每 10 秒打一次
+ * /api，多开几个页面就会和同一出口 IP 的其他请求一起撞上 /api 的按 IP 限流。
+ */
+export function usePageVisible() {
+  const [visible, setVisible] = useState(
+    () => typeof document === 'undefined' || !document.hidden,
+  );
+  useEffect(() => {
+    const on = () => setVisible(!document.hidden);
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+  return visible;
 }

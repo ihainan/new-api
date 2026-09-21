@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
 import { HIDDEN } from './modelCatalog';
@@ -29,6 +29,7 @@ import {
   RangeFilter,
   rangeParams,
   useUrlState,
+  usePageVisible,
   usePortalT,
 } from './shared';
 import { taskState } from './taskInfo';
@@ -212,13 +213,19 @@ export default function PortalRecords() {
     loadTasks();
   }, [loadTasks]);
 
-  // 还有任务在跑就接着刷，跑完自动停
+  // 还有任务在跑、而且页面在前台就接着刷；跑完或切到后台就停，切回来先刷一次
   const anyRunning = Object.values(tasks).some((it) => taskState(it).running);
+  const visible = usePageVisible();
   useEffect(() => {
-    if (!anyRunning) return undefined;
+    if (!anyRunning || !visible) return undefined;
     const id = setInterval(loadTasks, 10000);
     return () => clearInterval(id);
-  }, [anyRunning, loadTasks]);
+  }, [anyRunning, visible, loadTasks]);
+  const wasVisible = useRef(visible);
+  useEffect(() => {
+    if (visible && !wasVisible.current && anyRunning) loadTasks();
+    wasVisible.current = visible;
+  }, [visible, anyRunning, loadTasks]);
 
   // 任务行那一格显示的是「已经等了多久」，每秒重渲染一次才会走（不发请求）
   const [, tick] = useState(0);

@@ -540,14 +540,10 @@ func captureUpstreamRouting(c *gin.Context, resp *http.Response) {
 	if c == nil || resp == nil {
 		return
 	}
-	routed := resp.Header.Get("X-Litellm-Routed-Model")
-	if routed == "" {
-		return
-	}
-	common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRoutedModel, routed)
-	if tier := resp.Header.Get("X-Litellm-Router-Tier"); tier != "" {
-		common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRouterTier, tier)
-	}
+	// 每次都整体覆盖，包括清空：重试时上一次（失败的）上游留下的值不能
+	// 带进最终成功的那条日志；只有模型头没有档位头时也不能沿用旧档位。
+	common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRoutedModel, resp.Header.Get("X-Litellm-Routed-Model"))
+	common2.SetContextKey(c, ctxconstant.ContextKeyUpstreamRouterTier, resp.Header.Get("X-Litellm-Router-Tier"))
 }
 
 func DoTaskApiRequest(a TaskAdaptor, c *gin.Context, info *common.RelayInfo, requestBody io.Reader) (*http.Response, error) {

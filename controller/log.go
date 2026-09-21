@@ -188,6 +188,18 @@ func GetPortalMetrics(c *gin.Context) {
 	if v, err := strconv.ParseInt(c.Query("end_timestamp"), 10, 64); err == nil && v > 0 {
 		end = v
 	}
+	/*
+	 * 时间戳来自请求参数，必须先夹到合理范围再往下算：不夹的话传一个接近
+	 * int64 上限的值，后面按粒度累加就会溢出（2026-09-21 评审发现，一个请求
+	 * 就能把进程拖死）。未来的数据不存在，结束时间最多到此刻；开始不能为负。
+	 */
+	now := time.Now().Unix()
+	if end > now {
+		end = now
+	}
+	if start < 0 {
+		start = 0
+	}
 	if end <= start {
 		common.ApiErrorMsg(c, "invalid time range")
 		return

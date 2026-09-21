@@ -189,6 +189,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
+		clearUpstreamRouting(c)
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
@@ -509,6 +510,7 @@ func RelayTask(c *gin.Context) {
 	}
 
 	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+		clearUpstreamRouting(c)
 		var channel *model.Channel
 
 		if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
@@ -650,4 +652,13 @@ func shouldRetryTaskRelay(c *gin.Context, channelId int, taskErr *dto.TaskError,
 		return false
 	}
 	return true
+}
+
+// clearUpstreamRouting 在每次（重试）尝试开始前清掉上一次上游回报的路由结果。
+// 不是所有通道都走 doRequest（例如 AWS 用 SDK 发请求，不会经过
+// captureUpstreamRouting），只在那里覆盖的话，重试切到这类通道并成功时，
+// 日志里记的仍是上一次失败尝试的模型。
+func clearUpstreamRouting(c *gin.Context) {
+	common.SetContextKey(c, constant.ContextKeyUpstreamRoutedModel, "")
+	common.SetContextKey(c, constant.ContextKeyUpstreamRouterTier, "")
 }

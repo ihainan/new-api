@@ -53,6 +53,7 @@ import PersonalSetting from './components/settings/PersonalSetting';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
 
+const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const UserDashboard = lazy(() => import('./pages/UserDashboard'));
 const About = lazy(() => import('./pages/About'));
@@ -68,7 +69,11 @@ function App() {
   const location = useLocation();
   const [statusState] = useContext(StatusContext);
   const [userState] = useContext(UserContext);
-  const isUserLoggedIn = !!userState?.user?.id;
+  // 整页刷新后第一次渲染时 UserContext 还没从 localStorage 灌进来，只看它会把
+  // 已登录的人当成未登录送去 /login（管理员再被登录页转去 /console/token）。
+  // 和 isAdmin()、PrivateRoute 一样，以 localStorage 为准。
+  const isUserLoggedIn =
+    !!userState?.user?.id || !!localStorage.getItem('user');
 
   // 获取模型广场权限配置
   const pricingRequireAuth = useMemo(() => {
@@ -96,16 +101,22 @@ function App() {
     <SetupCheck>
       <Routes>
         {/*
-          * 首页不再是那张宣传页。这套系统只有登录后的控制台有意义，
-          * 没登录的人看一屏口号还得自己找登录入口。
+          * 员工的首页不再是那张宣传页：没登录的人看一屏口号还得自己找登录入口，
+          * 登录了的直接进门户概览。管理员保持原样（管理后台行为不变）。
           */}
         <Route
           path='/'
           element={
-            <Navigate
-              to={isUserLoggedIn ? '/console/dashboard' : '/login'}
-              replace
-            />
+            isUserLoggedIn && isAdmin() ? (
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <Home />
+              </Suspense>
+            ) : (
+              <Navigate
+                to={isUserLoggedIn ? '/console/dashboard' : '/login'}
+                replace
+              />
+            )
           }
         />
         <Route

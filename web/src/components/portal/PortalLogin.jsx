@@ -69,7 +69,8 @@ export default function PortalLogin() {
     userDispatch({ type: 'login', payload: data });
     setUserData(data);
     updateAPI();
-    navigate('/console/dashboard');
+    // 管理员落在原来的登录落地页（和改版前的 LoginForm 一致），员工进门户概览
+    navigate(data?.role >= 10 ? '/console/token' : '/console/dashboard');
   };
 
   const handleDingTalk = () => {
