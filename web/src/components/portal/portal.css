@@ -1508,3 +1508,37 @@
   color: var(--pt-text-secondary);
   white-space: nowrap;
 }
+
+/* ---------- 带固定前缀的下拉 ---------- */
+/*
+ * 下拉只显示「全部」时看不出筛的是什么，所以左边固定一个标签，和输入框拼成一个控件。
+ * 不把前缀塞进每个 option（「模型：glm」这种），展开列表时那串前缀会重复十几遍。
+ */
+.pt-field {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--pt-border-strong);
+  border-radius: var(--pt-radius-md);
+  background: var(--pt-bg-card);
+  overflow: hidden;
+}
+.pt-field-label {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: var(--pt-bg-subtle);
+  border-right: 1px solid var(--pt-border-strong);
+  font-size: 13px;
+  color: var(--pt-text-secondary);
+  white-space: nowrap;
+}
+.pt-field .pt-select {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.pt-field:focus-within {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 1px;
+}
+.pt-field .pt-select:focus-visible { outline: none; }
