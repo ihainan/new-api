@@ -1008,13 +1008,74 @@
 .pt-pager {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 12px;
-  /* 左右必须有内边距：卡片自己不带，按钮会顶到边框上 */
-  padding: 14px 16px 16px;
   flex-wrap: wrap;
+  /* 一条细线把它和表格分开：它是表格的页脚，不是飘在下面的三个按钮 */
+  border-top: 1px solid var(--pt-border);
+  padding: 10px 16px;
   font-size: 13px;
   color: var(--pt-text-secondary);
+}
+.pt-pager-count { color: var(--pt-text-muted); }
+.pt-pager-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pt-page {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--pt-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.pt-page:hover { background: var(--pt-bg-hover); }
+/* 当前页用实心块，和时间范围那排 chip 是同一套语言 */
+.pt-page.on {
+  background: var(--pt-ink);
+  border-color: var(--pt-ink);
+  color: #fff;
+  cursor: default;
+}
+.pt-page-gap {
+  padding: 0 2px;
+  color: var(--pt-text-muted);
+  user-select: none;
+}
+.pt-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--pt-border);
+  border-radius: 8px;
+  background: var(--pt-bg-card);
+  color: var(--pt-text-primary);
+  cursor: pointer;
+}
+.pt-pager-btn:hover:not(:disabled) {
+  background: var(--pt-bg-hover);
+  border-color: var(--pt-border-strong, var(--pt-border));
+}
+.pt-pager-btn:disabled {
+  color: var(--pt-text-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+/* 窄屏一行放不下两块，让它们各占一行并排开，别挤成一团；
+   页码也只留当前页左右各一个，十个数字挤在 420px 上没法点 */
+@media (max-width: 520px) {
+  .pt-pager { justify-content: center; }
+  .pt-pager-count { width: 100%; text-align: center; }
+  .pt-page.far { display: none; }
 }
 
 .pt-skel-card { padding: 16px; }

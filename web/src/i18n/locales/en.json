@@ -4075,6 +4075,10 @@
     "在上游排队，还没开始生成": "Waiting in the upstream queue; generation has not started",
     "上游正在生成": "Generating upstream",
     "已生成完成": "Generated",
-    "任务失败": "Task failed"
+    "任务失败": "Task failed",
+    "第 {{from}}–{{to}} 条，共 {{total}} 条": "{{from}}–{{to}} of {{total}}",
+    "第 {{page}} / {{max}} 页": "Page {{page}} / {{max}}",
+    "分页": "Pagination",
+    "第 {{page}} 页": "Page {{page}}"
   }
 }

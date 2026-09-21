@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
 import { HIDDEN } from './modelCatalog';
-import { Card, Empty, PageHead, fmtInt, usePortalT } from './shared';
+import { Card, Empty, PageHead, Pager, usePortalT } from './shared';
 import { taskState } from './taskInfo';
 
 /*
@@ -318,31 +318,13 @@ export default function PortalRecords() {
         )}
 
         {!loading && rows.length > 0 && (
-          <div className='pt-pager'>
-            <button
-              type='button'
-              className='pt-btn sm'
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              {t('上一页')}
-            </button>
-            <span>
-              {t('第 {{page}} / {{max}} 页 · 共 {{total}} 条', {
-                page,
-                max: maxPage,
-                total: fmtInt(total),
-              })}
-            </span>
-            <button
-              type='button'
-              className='pt-btn sm'
-              disabled={page >= maxPage}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              {t('下一页')}
-            </button>
-          </div>
+          <Pager
+            page={page}
+            maxPage={maxPage}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPage={setPage}
+          />
         )}
       </Card>
     </div>

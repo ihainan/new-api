@@ -341,7 +341,7 @@ export function ChatCards({ rows, tasks }) {
             <div className='pt-rec-top'>
               <span className='pt-sub'>{fmtLogTime(r.created_at)}</span>
               {kind === 'task' && task ? (
-                <TaskOutcome task={task} />
+                <TaskStatus task={task} only='tag' />
               ) : (
                 <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
               )}
@@ -352,6 +352,12 @@ export function ChatCards({ rows, tasks }) {
             </div>
             {upstream ? (
               <div className='pt-sub pt-mono'>└ {upstream}</div>
+            ) : null}
+            {/* 三步进度单独占一行：塞进右上角会把卡片挤歪 */}
+            {kind === 'task' && task ? (
+              <div style={{ marginTop: 8 }}>
+                <TaskStatus task={task} only='steps' />
+              </div>
             ) : null}
             {failed ? (
               <button
@@ -434,6 +440,17 @@ export function ChatCards({ rows, tasks }) {
             <div className='pt-rec-foot pt-sub pt-mono'>
               {(o.request_path || '').replace(/^\//, '') || '—'}
             </div>
+            {kind === 'task' && task?.status === 'SUCCESS' && taskResultUrl(task) ? (
+              <a
+                className='pt-btn sm'
+                style={{ marginTop: 8 }}
+                href={taskResultUrl(task)}
+                target='_blank'
+                rel='noreferrer'
+              >
+                {t('打开视频')}
+              </a>
+            ) : null}
           </article>
         );
       })}

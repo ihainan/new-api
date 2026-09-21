@@ -176,3 +176,112 @@ export function fmtTime(sec) {
     ? '—'
     : d.toLocaleString(lang(), { hour12: false });
 }
+
+/*
+ * 表格页脚的分页器。
+ *
+ * 原来是「上一页 ｜ 第 1/1 页 · 共 2 条 ｜ 下一页」三块挤在正中间，只有一页时
+ * 还摆着两个点不动的灰按钮——占着地方，什么也没告诉人。
+ *
+ * 现在左边回答「我在看哪几条」（第 21–40 条，共 978 条），右边是页码；
+ * 只有一页时右边整个不出现，只留那句计数。
+ *
+ * 页码要能直接点：只有上一页/下一页的话，从第 1 页到第 20 页得点二十次。
+ * 页数多时中间用省略号收起来，窄屏再收一圈（只留当前页左右各一个）——
+ * 420px 上摆十个数字会挤成一团。
+ */
+
+// 首页、末页、当前页左右各 span 个，中间断开处放省略号
+function pageList(page, max, span) {
+  const keep = new Set([1, max]);
+  for (let i = page - span; i <= page + span; i += 1) {
+    if (i >= 1 && i <= max) keep.add(i);
+  }
+  const nums = [...keep].sort((a, b) => a - b);
+  const out = [];
+  nums.forEach((n, i) => {
+    if (i && n - nums[i - 1] > 1) out.push('gap' + n);
+    out.push(n);
+  });
+  return out;
+}
+function Chevron({ back }) {
+  return (
+    <svg
+      width='16'
+      height='16'
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='2'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      aria-hidden='true'
+    >
+      <path d={back ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
+    </svg>
+  );
+}
+
+export function Pager({ page, maxPage, total, pageSize, onPage }) {
+  const t = usePortalT();
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  return (
+    <div className='pt-pager'>
+      <span className='pt-pager-count'>
+        {t('第 {{from}}–{{to}} 条，共 {{total}} 条', {
+          from: fmtInt(from),
+          to: fmtInt(to),
+          total: fmtInt(total),
+        })}
+      </span>
+      {maxPage > 1 ? (
+        <nav className='pt-pager-nav' aria-label={t('分页')}>
+          <button
+            type='button'
+            className='pt-pager-btn'
+            aria-label={t('上一页')}
+            disabled={page <= 1}
+            onClick={() => onPage(Math.max(1, page - 1))}
+          >
+            <Chevron back />
+          </button>
+          {pageList(page, maxPage, 2).map((it) =>
+            typeof it === 'number' ? (
+              <button
+                key={it}
+                type='button'
+                // 离当前页两格的那圈，窄屏上收起来；首页和末页永远留着，
+                // 否则从中间页没法一步跳回头或跳到底
+                className={`pt-page${it === page ? ' on' : ''}${
+                  Math.abs(it - page) > 1 && it !== 1 && it !== maxPage
+                    ? ' far'
+                    : ''
+                }`}
+                aria-label={t('第 {{page}} 页', { page: it })}
+                aria-current={it === page ? 'page' : undefined}
+                onClick={() => onPage(it)}
+              >
+                {it}
+              </button>
+            ) : (
+              <span key={it} className='pt-page-gap' aria-hidden='true'>
+                …
+              </span>
+            ),
+          )}
+          <button
+            type='button'
+            className='pt-pager-btn'
+            aria-label={t('下一页')}
+            disabled={page >= maxPage}
+            onClick={() => onPage(page + 1)}
+          >
+            <Chevron />
+          </button>
+        </nav>
+      ) : null}
+    </div>
+  );
+}

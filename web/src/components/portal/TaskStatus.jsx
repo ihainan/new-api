@@ -28,14 +28,27 @@ import { TASK_HINT, TASK_STEPS, taskSteps, taskState } from './taskInfo';
  * （详见 taskInfo.js），摆出来只会让人以为「已经做了五分之一」。三步走反而
  * 把它真正想说的事说清楚了：现在卡在哪一步、还剩几步。
  */
-export default function TaskStatus({ task }) {
+/*
+ * only='tag' / only='steps'：窄屏卡片上这两块要分开放——状态词跟着时间排在卡片顶上，
+ * 三步进度条单独占一行。挤在右上角会把整张卡压歪。
+ */
+export default function TaskStatus({ task, only }) {
   const st = taskState(task);
   const t = usePortalT();
   const steps = taskSteps(task);
   const hint = TASK_HINT[String(task.status || '').toUpperCase()];
+  if (only === 'tag') {
+    return (
+      <span className={`pt-tag ${st.cls}`} title={hint ? t(hint) : undefined}>
+        {t(st.text)}
+      </span>
+    );
+  }
   return (
     <div className='pt-tstat' title={hint ? t(hint) : undefined}>
-      <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
+      {only === 'steps' ? null : (
+        <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
+      )}
       <ol
         className='pt-steps'
         aria-label={TASK_STEPS.map((s) => t(s)).join(' → ')}
