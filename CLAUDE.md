@@ -173,6 +173,35 @@ from real breakage during the 2026-08-26 rebuild+redeploy. Read before building.
 5. **Rollback (seconds):** `docker tag new-api-local:pre-<change>-<date> new-api-local:latest`
    then `docker-compose -f docker-compose.local.yml up -d`.
 
+### Employee portal release (2026-09-21) — what changed in the deploy recipe
+
+- **Ship the image you tested; do not rebuild on the gateway.** The frontend build
+  output depends on the build environment: `oven/bun` 1.3 auto-loads
+  `web/.env.development` during `bun run build`, and Vite lets process `VITE_*`
+  variables override `.env.production`, so a gateway-side build silently pointed the
+  portal and the public docs at the dev proxy (local Bun 1.4 did not reproduce it).
+  `web/vite.config.js` now reads `VITE_LLM_PROXY_BASE` from `.env.<mode>` directly
+  and **fails the production build** on an empty/non-https/dev address — but still
+  build from a clean clone locally, verify the image, then
+  `docker save new-api-local:<tag> | gzip -1 | ssh ubuntu@gateway.zgci.org 'gunzip | docker load'`,
+  and compare `sha256sum /new-api` inside both images (image IDs differ across
+  docker storage backends; the binary hash must not).
+- **Rate limits are raised in `.env.local`:** `GLOBAL_WEB_RATE_LIMIT=600`,
+  `GLOBAL_API_RATE_LIMIT=900` (per IP per 180s). The default web limit (60) is
+  static assets too; a first-time portal visitor uses ~40 of it in one tour, and
+  exceeding it blanks the page (chunk loads 429). Client IPs reach the gateway as
+  real intranet addresses (10.100.x.x), so the budget is per person.
+- **No `SESSION_SECRET` is configured**, so every container recreate logs out all
+  web users. Relay (`/v1`) keys are unaffected.
+- The system name shown by the portal is the `SystemName` option (was "Astra Gate",
+  set to "ZGCAI Model Hub" on 2026-09-21).
+- Measured downtime for `up -d` with a pre-loaded image: **1.8s** (0.1s probe).
+- Rollback tag for this release: `new-api-local:pre-portal-20260921`; env backup at
+  `~/backups/new-api.env.local.pre-portal-20260921` on the gateway.
+- Acceptance that proves the new code is live (not just "container running"):
+  `https://hub.zgci.org/docs/models/glm.md` shows `https://llm.inner.bza.edu.cn/hub`,
+  and a fresh `smart-router` log row has `other.routed_model` set.
+
 ### Traffic reality
 - The gateway is used ~24/7 (real users + OpenClaw/Hermes agents); there is often **no
   multi-minute idle window** even at night. Plan restarts as "brief accepted downtime"
