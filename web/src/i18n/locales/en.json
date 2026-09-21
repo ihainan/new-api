@@ -4079,6 +4079,8 @@
     "第 {{from}}–{{to}} 条，共 {{total}} 条": "{{from}}–{{to}} of {{total}}",
     "第 {{page}} / {{max}} 页": "Page {{page}} / {{max}}",
     "分页": "Pagination",
-    "第 {{page}} 页": "Page {{page}}"
+    "第 {{page}} 页": "Page {{page}}",
+    "已退款": "Refunded",
+    "任务失败，费用已退回": "Task failed; the charge was refunded"
   }
 }

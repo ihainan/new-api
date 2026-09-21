@@ -38,7 +38,9 @@ import { taskDuration, taskResultUrl, taskState } from './taskInfo';
  * 另外这张表里混着三种行，不能按同一套列渲染：
  *   对话  —— 按 token 计费，有首字延迟；
  *   绘图  —— 同步出图，按张计费，没有 token 也没有首字；
- *   任务  —— 异步提交（视频），这行只记「提交成功」，token 和耗时全是 0。
+ *   任务  —— 异步提交（视频），这行只记「提交成功」，token 和耗时全是 0；
+ *   退款  —— 任务失败后系统自动退费写的一行（type 6）。它既没有 is_task 也没有
+ *            请求路径，不单独认的话会被当成对话行，又渲染成一排 0。
  * 早先三种一视同仁，minimax-h3 那行就显示成一排 0 和 0s，看着像坏了。
  *
  * 任务行的真实状态来自 tasks 表：调用方按日志里的 task_id 查到对应任务，
@@ -59,8 +61,10 @@ function parseOther(row) {
   return o && typeof o === 'object' ? o : {};
 }
 
-// chat / image / task，见文件头注释
-function rowKind(o) {
+// chat / image / task / refund，见文件头注释
+function rowKind(o, row) {
+  // 退款是日志自己的类型，不用猜
+  if (row.type === 6) return 'refund';
   if (o.is_task) return 'task';
   const p = String(o.request_path || '');
   if (p.includes('/images') || p.includes('/videos')) return 'image';
@@ -121,19 +125,35 @@ function latencyClass(sec) {
 function Cells({ r, tasks }) {
   const o = parseOther(r);
   const out = chatOutcome(r);
-  const kind = rowKind(o);
+  const kind = rowKind(o, r);
   // routed_model 是上游自己二次路由后真正跑的模型（smart-router 背后那台），
   // 它比模型映射更接近事实，两者都有时以它为准
   const real = o.routed_model || (o.is_model_mapped ? o.upstream_model_name : null);
   const frt = firstToken(o, r.is_stream);
   const cache = Number(o.cache_tokens || 0);
-  const usage = kind === 'chat' ? null : usageOf(r, kind);
-  const task = kind === 'task' && o.task_id ? tasks?.[o.task_id] : null;
+  const usage = kind === 'chat' || kind === 'refund' ? null : usageOf(r, kind);
+  // 退款行也带着 task_id，同样能把它对应的任务查出来
+  const task = o.task_id ? tasks?.[o.task_id] : null;
   return { o, out, kind, upstream: real, frt, cache, usage, task };
 }
 
-// 三种行的「类型」列各说各的
-const KIND_LABEL = { image: '绘图', task: '异步任务' };
+// 各类行的「类型」列各说各的
+const KIND_LABEL = { image: '绘图', task: '异步任务', refund: '退款' };
+
+/*
+ * 退款行的「结果」：这行本身不是一次调用，是任务失败之后系统把钱退回来。
+ * 直接说「任务失败，费用已退回」，再把上游给的原因摆出来。
+ */
+function RefundOutcome({ row, other }) {
+  const t = usePortalT();
+  const reason = other.reason || row.content || '';
+  return (
+    <div className='pt-stack'>
+      <span className='pt-tag warn'>{t('已退款')}</span>
+      <span className='pt-sub'>{reason || t('任务失败，费用已退回')}</span>
+    </div>
+  );
+}
 
 /*
  * 任务行的「结果」：显示任务此刻的状态，而不是日志那行写死的「已提交」。
@@ -220,7 +240,9 @@ export function ChatTable({ rows, openId, onToggleErr, tasks }) {
                 </td>
                 <td className='pt-num'>
                   <div className='pt-stack'>
-                    {usage ? (
+                    {kind === 'refund' ? (
+                      <span className='pt-sub'>—</span>
+                    ) : usage ? (
                       <>
                         <span className='pt-mono'>{usage.main}</span>
                         {usage.sub ? (
@@ -245,7 +267,9 @@ export function ChatTable({ rows, openId, onToggleErr, tasks }) {
                   </div>
                 </td>
                 <td>
-                  {kind === 'task' ? (
+                  {kind === 'refund' ? (
+                    <span className='pt-sub'>—</span>
+                  ) : kind === 'task' ? (
                     // 日志那行的 use_time 是 0（提交就返回了），任务真正跑了多久
                     // 要从 tasks 表算：提交到结束，没结束就是「已等这么久」。
                     task ? (
@@ -282,7 +306,9 @@ export function ChatTable({ rows, openId, onToggleErr, tasks }) {
                   )}
                 </td>
                 <td>
-                  {kind === 'task' && task ? (
+                  {kind === 'refund' ? (
+                    <RefundOutcome row={r} other={o} />
+                  ) : kind === 'task' && task ? (
                     <TaskOutcome task={task} />
                   ) : failed ? (
                     // 「失败」两个字没法告诉人该改什么，服务端原文才有用。
@@ -340,7 +366,9 @@ export function ChatCards({ rows, tasks }) {
           <article key={r.id} className='pt-rec-card'>
             <div className='pt-rec-top'>
               <span className='pt-sub'>{fmtLogTime(r.created_at)}</span>
-              {kind === 'task' && task ? (
+              {kind === 'refund' ? (
+                <span className='pt-tag warn'>{t('已退款')}</span>
+              ) : kind === 'task' && task ? (
                 <TaskStatus task={task} only='tag' />
               ) : (
                 <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
@@ -372,8 +400,13 @@ export function ChatCards({ rows, tasks }) {
             {open === r.id && failed ? (
               <div className='pt-err-box'>{r.content}</div>
             ) : null}
+            {kind === 'refund' ? (
+              <div className='pt-sub' style={{ marginTop: 6 }}>
+                {o.reason || t('任务失败，费用已退回')}
+              </div>
+            ) : null}
             <dl className='pt-rec-grid'>
-              {usage ? (
+              {kind === 'refund' ? null : usage ? (
                 // 绘图/任务：窄屏上同样不能摆一排 0，只列它真正的计费参数
                 <>
                   <div>
