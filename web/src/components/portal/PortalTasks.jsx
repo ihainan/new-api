@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
+import { TASK_ACTION, taskDuration, taskModel, taskState } from './taskInfo';
 import {
   Card,
   Empty,
@@ -30,73 +31,20 @@ import {
 } from './shared';
 
 /*
- * 任务队列。视频这类生成是异步的：提交完请求就返回了，真正的活在后台跑几十秒
- * 到几分钟，所以它需要一张能看「排到哪了」的表，而不是和对话日志挤在一个筛选器里
- * ——两者的字段几乎没有重叠（对话看 token 和首字延迟，任务看状态、进度、结果链接）。
+ * 任务队列：所有异步生成（目前是视频）的全量清单，可以按状态筛。
  *
- * 这页有一件对话页不需要的事：只要当前页上还有没跑完的任务，就每 10 秒自动刷一次。
+ * 使用记录里那条视频记录也会就地显示它的实时状态（见 ChatLog.jsx），
+ * 两边读的是同一张 tasks 表、同一套说法（taskInfo.js）。分成两页是因为
+ * 它们回答的问题不同：使用记录回答「我这次调用花了什么」，一行写完就不再变；
+ * 这一页回答「我那个视频好了没」，同一行会被后台反复改。
+ *
+ * 这页有一件日志页不需要的事：只要当前页上还有没跑完的任务，就每 10 秒自动刷一次。
  * 不这么做的话，人盯着「生成中 0%」得自己按 F5。没有在跑的任务就不刷——
  * /api/* 有每 IP 180 次/180 秒的限流，空转没有意义。
  */
 
 const PAGE_SIZE = 20;
 const POLL_MS = 10000;
-
-/*
- * 任务行里能给人看的东西藏在 properties 里：platform 存的是渠道类型编号（55），
- * action 是上游原词（textGenerate），直接摆出来没人看得懂。
- */
-function taskModel(r) {
-  try {
-    const p =
-      typeof r.properties === 'string' ? JSON.parse(r.properties) : r.properties;
-    return p?.origin_model_name || p?.upstream_model_name || '';
-  } catch (e) {
-    return '';
-  }
-}
-
-const TASK_ACTION = {
-  textGenerate: '文生视频',
-  imageGenerate: '图生视频',
-  videoGenerate: '视频生成',
-};
-
-const TASK_STATUS = {
-  SUCCESS: '成功',
-  FAILURE: '失败',
-  QUEUED: '排队中',
-  IN_PROGRESS: '生成中',
-  SUBMITTED: '已提交',
-  NOT_START: '未开始',
-  UNKNOWN: '未知',
-};
-
-const RUNNING = ['QUEUED', 'IN_PROGRESS', 'SUBMITTED', 'NOT_START'];
-
-// 排队和生成中都还没有结果，用中性色；成功绿、失败红，和对话表一致
-function taskState(r) {
-  const st = String(r.status || '').toUpperCase();
-  if (st === 'SUCCESS') return { cls: 'ok', bar: 'fast', text: '成功' };
-  if (st === 'FAILURE') return { cls: 'bad', bar: 'slow', text: '失败' };
-  const running = RUNNING.includes(st);
-  return {
-    cls: 'plain',
-    bar: running ? 'mid' : 'na',
-    text: TASK_STATUS[st] || r.status || '—',
-    running,
-  };
-}
-
-// 生成耗时：没结束的按「已等待」算，让人知道等了多久
-function taskDuration(r) {
-  const start = Number(r.submit_time || 0);
-  if (!start) return '—';
-  const end = Number(r.finish_time || 0) || Math.floor(Date.now() / 1000);
-  const sec = Math.max(0, end - start);
-  const shown = sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
-  return r.finish_time ? shown : `${shown}（进行中）`;
-}
 
 const RANGES = [
   { key: '24h', label: '近 24 小时', hours: 24 },
@@ -339,7 +287,9 @@ export default function PortalTasks() {
                         </div>
                       </td>
                       <td className='pt-sub' style={{ whiteSpace: 'nowrap' }}>
-                        {taskDuration(r)}
+                        {r.finish_time
+                          ? taskDuration(r)
+                          : t('{{v}}（进行中）', { v: taskDuration(r) })}
                       </td>
                       <td>
                         <Result r={r} />
@@ -375,7 +325,11 @@ export default function PortalTasks() {
                     <dl className='pt-rec-grid'>
                       <div>
                         <dt>{t('耗时')}</dt>
-                        <dd>{taskDuration(r)}</dd>
+                        <dd>
+                          {r.finish_time
+                            ? taskDuration(r)
+                            : t('{{v}}（进行中）', { v: taskDuration(r) })}
+                        </dd>
                       </div>
                       <div>
                         <dt>{t('进度')}</dt>

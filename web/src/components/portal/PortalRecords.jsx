@@ -22,13 +22,17 @@ import { API, showError } from '../../helpers';
 import { ChatCards, ChatTable } from './ChatLog';
 import { HIDDEN } from './modelCatalog';
 import { Card, Empty, PageHead, fmtInt, usePortalT } from './shared';
+import { taskState } from './taskInfo';
 
 /*
  * 使用记录：账号下每一次调用。出图（qwen-image）和视频任务的提交也记在这里，
  * 它们和对话共用同一张日志表，只是列的含义不同——见 ChatLog.jsx。
  *
- * 异步任务真正的进度不在这页：那是「任务队列」（/console/task）的事，
- * 它的字段（状态、进度、结果链接）和日志没有重叠，合成一张表只会两头都难看。
+ * 视频这类异步任务，日志只记下「提交出去了」——真正的进度存在另一张表里。
+ * 所以当页出现任务行时，这里按日志里的 task_id 把对应的任务捞一次，
+ * 直接把「生成中 40%」「成功 + 查看」显示在那一行上。还有在跑的就每 10 秒再捞一次，
+ * 只捞任务、不重拉整页日志——日志写完就不会变，陪着刷是白费。
+ * 全量清单和按状态筛仍在「任务队列」（/console/task）。
  */
 
 const PAGE_SIZE = 20;
@@ -60,6 +64,8 @@ export default function PortalRecords() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
+  // 日志里的任务行 → tasks 表里那条任务（按 task_id）
+  const [tasks, setTasks] = useState({});
 
   // 模型下拉的选项取自「当前可调用的模型」，不是从日志里现扒——
   // 日志里只有用过的，没用过的就筛不到，那个下拉会越用越短。
@@ -137,6 +143,65 @@ export default function PortalRecords() {
   useEffect(() => {
     load();
   }, [load]);
+
+  /*
+   * 当页的任务行 → 对应的任务。接口按时间窗口查，所以窗口取这些行的提交时间
+   * 前后各留一分钟，够把它们全包进去；查不到的行会退回成一条「查看任务进度」链接。
+   */
+  const taskIds = rows
+    .map((r) => {
+      try {
+        const o = typeof r.other === 'string' ? JSON.parse(r.other) : r.other;
+        return o?.is_task ? o.task_id : null;
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  const taskKey = taskIds.join(',');
+  const times = rows.map((r) => Number(r.created_at || 0)).filter(Boolean);
+
+  const loadTasks = useCallback(async () => {
+    if (!taskKey) {
+      setTasks({});
+      return;
+    }
+    try {
+      const wanted = new Set(taskKey.split(','));
+      const q = [
+        'p=1',
+        'page_size=100',
+        'start_timestamp=' + (Math.min(...times) - 60),
+        'end_timestamp=' + (Math.max(...times) + 60),
+      ];
+      const res = await API.get(`/api/task/self?${q.join('&')}`);
+      if (!res.data?.success) return;
+      const d = res.data.data;
+      const items = Array.isArray(d) ? d : d?.items || [];
+      const map = {};
+      items.forEach((it) => {
+        if (wanted.has(it.task_id)) map[it.task_id] = it;
+      });
+      setTasks(map);
+    } catch (e) {
+      // 查不到就退回链接，不值得为此弹个错
+    }
+    // times 每次渲染都是新数组，进依赖会把这个 effect 变成死循环；
+    // 真正决定要查什么的是 taskKey。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskKey]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  // 还有任务在跑就接着刷，跑完自动停
+  const anyRunning = Object.values(tasks).some((it) => taskState(it).running);
+  useEffect(() => {
+    if (!anyRunning) return undefined;
+    const id = setInterval(loadTasks, 10000);
+    return () => clearInterval(id);
+  }, [anyRunning, loadTasks]);
   useEffect(() => {
     setPage(1);
     setOpenErr(null);
@@ -234,11 +299,12 @@ export default function PortalRecords() {
                 rows={rows}
                 openId={openErr}
                 onToggleErr={(id) => setOpenErr(openErr === id ? null : id)}
+                tasks={tasks}
               />
             </div>
             {/* 七列的表在手机上只能横向拖，改成一条一张卡，信息不删 */}
             <div className='pt-narrow-only'>
-              <ChatCards rows={rows} />
+              <ChatCards rows={rows} tasks={tasks} />
             </div>
           </div>
         )}

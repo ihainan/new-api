@@ -37,6 +37,11 @@ func LogTaskConsumption(c *gin.Context, info *relaycommon.RelayInfo) {
 	}
 	other := make(map[string]interface{})
 	other["is_task"] = true
+	// 记下公开任务 ID：这行日志只代表「提交出去了」，真正的进度在 tasks 表里。
+	// 不写这个 ID，使用记录那一行就永远连不到对应的任务，人只能自己去队列里猜。
+	if info.TaskRelayInfo != nil && info.TaskRelayInfo.PublicTaskID != "" {
+		other["task_id"] = info.TaskRelayInfo.PublicTaskID
+	}
 	other["request_path"] = c.Request.URL.Path
 	other["model_price"] = info.PriceData.ModelPrice
 	if info.PriceData.ModelRatio > 0 {

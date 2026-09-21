@@ -21,6 +21,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ModelIcon from './ModelIcon';
 import { fmtInt, fmtLogTime, usePortalT } from './shared';
+import { taskDuration, taskState } from './taskInfo';
 
 /*
  * 对话日志的表格与窄屏卡片。
@@ -36,9 +37,12 @@ import { fmtInt, fmtLogTime, usePortalT } from './shared';
  * 另外这张表里混着三种行，不能按同一套列渲染：
  *   对话  —— 按 token 计费，有首字延迟；
  *   绘图  —— 同步出图，按张计费，没有 token 也没有首字；
- *   任务  —— 异步提交（视频），这行只记「提交成功」，token 和耗时全是 0，
- *            真正的进度在「任务」标签里。
+ *   任务  —— 异步提交（视频），这行只记「提交成功」，token 和耗时全是 0。
  * 早先三种一视同仁，minimax-h3 那行就显示成一排 0 和 0s，看着像坏了。
+ *
+ * 任务行的真实状态来自 tasks 表：调用方按日志里的 task_id 查到对应任务，
+ * 从 tasks 这个 prop 传进来，于是「生成中 40%」「成功 + 查看」就直接显示在这一行，
+ * 不用先跑去任务队列页。查不到（老记录没有 task_id）才退回一句链接。
  */
 
 // other 是一段 JSON 字符串，坏掉的一行不该把整页带崩
@@ -113,7 +117,7 @@ function latencyClass(sec) {
   return 'slow';
 }
 
-function Cells({ r }) {
+function Cells({ r, tasks }) {
   const o = parseOther(r);
   const out = chatOutcome(r);
   const kind = rowKind(o);
@@ -123,13 +127,44 @@ function Cells({ r }) {
   const frt = firstToken(o, r.is_stream);
   const cache = Number(o.cache_tokens || 0);
   const usage = kind === 'chat' ? null : usageOf(r, kind);
-  return { o, out, kind, upstream: real, frt, cache, usage };
+  const task = kind === 'task' && o.task_id ? tasks?.[o.task_id] : null;
+  return { o, out, kind, upstream: real, frt, cache, usage, task };
 }
 
 // 三种行的「类型」列各说各的
 const KIND_LABEL = { image: '绘图', task: '异步任务' };
 
-export function ChatTable({ rows, openId, onToggleErr }) {
+/*
+ * 任务行的「结果」：显示任务此刻的状态，而不是日志那行写死的「已提交」。
+ * 提交成功和视频生成成功是两回事，混在一起说会让人以为东西已经出来了。
+ */
+function TaskOutcome({ task }) {
+  const t = usePortalT();
+  const st = taskState(task);
+  return (
+    <div className='pt-stack'>
+      <span className={`pt-tag ${st.cls}`}>{t(st.text)}</span>
+      {st.running ? (
+        <span className='pt-sub'>{task.progress || '0%'}</span>
+      ) : task.status === 'SUCCESS' && task.result_url ? (
+        <a
+          className='pt-linkish'
+          href={task.result_url}
+          target='_blank'
+          rel='noreferrer'
+        >
+          {t('查看')}
+        </a>
+      ) : task.fail_reason ? (
+        <span className='pt-sub' style={{ color: 'var(--pt-danger-text)' }}>
+          {task.fail_reason}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function ChatTable({ rows, openId, onToggleErr, tasks }) {
   const t = usePortalT();
   return (
     <table className='pt-table pt-log-table'>
@@ -146,7 +181,10 @@ export function ChatTable({ rows, openId, onToggleErr }) {
       </thead>
       <tbody>
         {rows.map((r) => {
-          const { o, out, kind, upstream, frt, cache, usage } = Cells({ r });
+          const { o, out, kind, upstream, frt, cache, usage, task } = Cells({
+            r,
+            tasks,
+          });
           const failed = r.type === 5 && r.content;
           return (
             <React.Fragment key={r.id}>
@@ -209,11 +247,23 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                 </td>
                 <td>
                   {kind === 'task' ? (
-                    // 任务是异步的：这行只记下「提交出去了」，真正的进度在
-                    // 「任务队列」那页。直接给条链接，别让人自己去找。
-                    <Link className='pt-linkish' to='/console/task'>
-                      {t('查看任务进度')}
-                    </Link>
+                    // 日志那行的 use_time 是 0（提交就返回了），任务真正跑了多久
+                    // 要从 tasks 表算：提交到结束，没结束就是「已等这么久」。
+                    task ? (
+                      <div className='pt-cell-row'>
+                        <i className={`pt-lat-bar ${taskState(task).bar}`} />
+                        <span className='pt-sub'>
+                          {task.finish_time
+                            ? taskDuration(task)
+                            : t('{{v}}（进行中）', { v: taskDuration(task) })}
+                        </span>
+                      </div>
+                    ) : (
+                      // 查不到对应任务（改动之前的老记录没记 task_id），只能给条路
+                      <Link className='pt-linkish' to='/console/task'>
+                        {t('查看任务进度')}
+                      </Link>
+                    )
                   ) : (
                     <div className='pt-cell-row'>
                       <i className={`pt-lat-bar ${latencyClass(r.use_time)}`} />
@@ -233,7 +283,9 @@ export function ChatTable({ rows, openId, onToggleErr }) {
                   )}
                 </td>
                 <td>
-                  {failed ? (
+                  {kind === 'task' && task ? (
+                    <TaskOutcome task={task} />
+                  ) : failed ? (
                     // 「失败」两个字没法告诉人该改什么，服务端原文才有用。
                     // 展开成一行而不是浮窗：不用引库，键盘也能用。
                     <button
@@ -274,19 +326,26 @@ export function ChatTable({ rows, openId, onToggleErr }) {
  * 窄屏卡片。八列的表格在手机上只能横向拖，逐条读不了，
  * 但信息一条都不能少——不是把列删掉，是换个排法。
  */
-export function ChatCards({ rows }) {
+export function ChatCards({ rows, tasks }) {
   const t = usePortalT();
   const [open, setOpen] = useState(null);
   return (
     <div className='pt-rec-cards'>
       {rows.map((r) => {
-        const { o, out, kind, upstream, frt, cache, usage } = Cells({ r });
+        const { o, out, kind, upstream, frt, cache, usage, task } = Cells({
+          r,
+          tasks,
+        });
         const failed = r.type === 5 && r.content;
         return (
           <article key={r.id} className='pt-rec-card'>
             <div className='pt-rec-top'>
               <span className='pt-sub'>{fmtLogTime(r.created_at)}</span>
-              <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
+              {kind === 'task' && task ? (
+                <TaskOutcome task={task} />
+              ) : (
+                <span className={`pt-tag ${out.cls}`}>{t(out.text)}</span>
+              )}
             </div>
             <div className='pt-cell-row' style={{ marginTop: 6 }}>
               <ModelIcon model={r.model_name} size={16} />
@@ -321,13 +380,21 @@ export function ChatCards({ rows }) {
                     <dd>{t(KIND_LABEL[kind])}</dd>
                   </div>
                   <div>
-                    {/* 任务这一格放的是「去哪看进度」，标成总耗时就是胡说 */}
-                    <dt>{t(kind === 'task' ? '进度' : '总耗时')}</dt>
+                    <dt>{t('总耗时')}</dt>
                     <dd>
                       {kind === 'task' ? (
-                        <Link className='pt-linkish' to='/console/task'>
-                          {t('查看任务进度')}
-                        </Link>
+                        task ? (
+                          task.finish_time ? (
+                            taskDuration(task)
+                          ) : (
+                            t('{{v}}（进行中）', { v: taskDuration(task) })
+                          )
+                        ) : (
+                          // 老记录没有 task_id，查不到对应任务
+                          <Link className='pt-linkish' to='/console/task'>
+                            {t('查看任务进度')}
+                          </Link>
+                        )
                       ) : r.use_time ? (
                         r.use_time + 's'
                       ) : (

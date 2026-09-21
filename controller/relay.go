@@ -569,6 +569,11 @@ func RelayTask(c *gin.Context) {
 		if settleErr := service.SettleBilling(c, relayInfo, result.Quota); settleErr != nil {
 			common.SysError("settle task billing error: " + settleErr.Error())
 		}
+		// 先把公开任务 ID 定下来再记日志：InitTask 里也会生成同一个值，
+		// 两边必须是同一个，否则日志指向一个不存在的任务。
+		if relayInfo.TaskRelayInfo != nil && relayInfo.TaskRelayInfo.PublicTaskID == "" {
+			relayInfo.TaskRelayInfo.PublicTaskID = model.GenerateTaskID()
+		}
 		service.LogTaskConsumption(c, relayInfo)
 
 		task := model.InitTask(result.Platform, relayInfo)
