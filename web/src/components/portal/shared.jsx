@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copy, showError, showSuccess } from '../../helpers';
 
@@ -322,6 +322,8 @@ export function Pager({ page, maxPage, total, pageSize, onPage }) {
  */
 export const RANGES = [
   { key: '24h', label: '近 24 小时', hours: 24 },
+  // 「今天」不是固定时长，是从今天零点到此刻——排查「今天怎么回事」时最常用
+  { key: 'today', label: '今天' },
   { key: '7d', label: '近 7 天', hours: 24 * 7 },
   { key: '30d', label: '近 30 天', hours: 24 * 30 },
   { key: 'all', label: '全部', hours: 0 },
@@ -333,23 +335,35 @@ const dayStr = (d) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-// 接口要的是秒级时间戳，这里把界面上的选择换算过去
-export function rangeParams({ range, from, to }) {
+/*
+ * 界面上的选择 → [起, 止] 两个秒级时间戳。null 表示「这头不设限」。
+ * 概览要的是两个数（它自己拼查询串），日志和任务要的是查询串片段，
+ * 所以算在一处、各取所需，免得两边对「今天」「自定义」的理解跑偏。
+ */
+export function rangeBounds({ range, from, to }) {
   const now = Math.floor(Date.now() / 1000);
   if (range === 'custom') {
-    const a = from ? Math.floor(new Date(`${from}T00:00:00`).getTime() / 1000) : 0;
+    const a = from ? Math.floor(new Date(`${from}T00:00:00`).getTime() / 1000) : null;
     const b = to ? Math.floor(new Date(`${to}T23:59:59`).getTime() / 1000) : now;
     // 两头都填了却反着填，就按人的本意对调，不要给个空结果了事
-    const [s, e] = a && b && a > b ? [b, a] : [a, b];
-    const out = [];
-    if (s) out.push('start_timestamp=' + s);
-    if (e) out.push('end_timestamp=' + e);
-    return out;
+    return a && b && a > b ? [b, a] : [a, b];
+  }
+  if (range === 'today') {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return [Math.floor(d.getTime() / 1000), now];
   }
   const hours = RANGES.find((r) => r.key === range)?.hours || 0;
-  return hours
-    ? ['start_timestamp=' + (now - hours * 3600), 'end_timestamp=' + now]
-    : [];
+  return hours ? [now - hours * 3600, now] : [null, null];
+}
+
+// 日志/任务接口要的是查询串片段
+export function rangeParams(value) {
+  const [s, e] = rangeBounds(value);
+  const out = [];
+  if (s) out.push('start_timestamp=' + s);
+  if (e) out.push('end_timestamp=' + e);
+  return out;
 }
 
 export function RangeFilter({ value, onChange }) {
@@ -358,26 +372,31 @@ export function RangeFilter({ value, onChange }) {
   const set = (patch) => onChange({ ...value, ...patch });
   return (
     <>
-      <div className='pt-chips' role='group' aria-label={t('时间范围')}>
-        {RANGES.map((r) => (
-          <button
-            key={r.key}
-            type='button'
-            className={`pt-chip${value.range === r.key ? ' on' : ''}`}
-            aria-pressed={value.range === r.key}
-            onClick={() =>
-              // 切到自定义时先落在「今天」，而不是空着什么都查不出来
-              set(
-                r.key === 'custom' && !value.from && !value.to
-                  ? { range: r.key, from: today, to: today }
-                  : { range: r.key },
-              )
-            }
-          >
-            {t(r.label)}
-          </button>
-        ))}
-      </div>
+      {/* 六个档位做成一排按钮太占地方，和旁边的模型、密钥下拉也不是一个样子，
+          统一成带标签的下拉框 */}
+      <label className='pt-field'>
+        <span className='pt-field-label'>{t('时间')}</span>
+        <select
+          className='pt-select'
+          aria-label={t('时间范围')}
+          value={value.range}
+          onChange={(e) => {
+            const key = e.target.value;
+            // 切到自定义时先落在「今天」，而不是空着什么都查不出来
+            set(
+              key === 'custom' && !value.from && !value.to
+                ? { range: key, from: today, to: today }
+                : { range: key },
+            );
+          }}
+        >
+          {RANGES.map((r) => (
+            <option key={r.key} value={r.key}>
+              {t(r.label)}
+            </option>
+          ))}
+        </select>
+      </label>
       {value.range === 'custom' ? (
         <div className='pt-daterange'>
           {/*
@@ -444,4 +463,68 @@ export function withMarks(text) {
       }
       return part;
     });
+}
+
+/*
+ * 把筛选状态挂到地址栏上。
+ *
+ * 之前只有从密钥页带过来的 ?token= 是活的，其它筛选一改地址栏纹丝不动：
+ * 刷新一下回到默认、把链接发给同事对方看到的是另一个东西、浏览器前进后退也不认。
+ *
+ * 约定：
+ *   - defaults 必须是模块级常量（identity 要稳定），值的类型决定怎么解析；
+ *   - 等于默认值的参数不写进地址栏，免得一个干净的页面挂一串 range=7d&p=1；
+ *   - 用 replaceState 不用 pushState：筛选是在同一个页面上调参数，
+ *     每调一次就往历史里塞一条，后退键就变成了「撤销上一次勾选」，很烦人；
+ *   - 改任何筛选都把页码顶回第 1 页——停在第 9 页换筛选条件，多半是空的。
+ */
+export function useUrlState(defaults, pageKey = 'p') {
+  const read = useCallback(() => {
+    const q = new URLSearchParams(window.location.search);
+    const out = {};
+    for (const [k, def] of Object.entries(defaults)) {
+      const raw = q.get(k);
+      if (raw == null) out[k] = def;
+      else if (typeof def === 'number') out[k] = Number(raw) || def;
+      else if (typeof def === 'boolean') out[k] = raw === '1';
+      else out[k] = raw;
+    }
+    return out;
+  }, [defaults]);
+
+  const [state, setState] = useState(read);
+
+  // 后退／前进要能回到当时那套筛选
+  useEffect(() => {
+    const onPop = () => setState(read());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [read]);
+
+  const patch = useCallback(
+    (next) => {
+      setState((prev) => {
+        const merged = { ...prev, ...next };
+        // 动的不是页码，就回到第 1 页
+        if (pageKey in defaults && !(pageKey in next)) merged[pageKey] = defaults[pageKey];
+        const q = new URLSearchParams(window.location.search);
+        for (const [k, def] of Object.entries(defaults)) {
+          const v = merged[k];
+          const isDefault = typeof def === 'boolean' ? v === def : String(v) === String(def);
+          if (isDefault || v === '' || v == null) q.delete(k);
+          else q.set(k, typeof def === 'boolean' ? '1' : String(v));
+        }
+        const qs = q.toString();
+        window.history.replaceState(
+          {},
+          '',
+          window.location.pathname + (qs ? '?' + qs : ''),
+        );
+        return merged;
+      });
+    },
+    [defaults, pageKey],
+  );
+
+  return [state, patch];
 }

@@ -24,13 +24,7 @@ import python from 'highlight.js/lib/languages/python';
 import { copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
 import { describe } from './modelCatalog';
-import {
-  KEY_ENV,
-  callNotes,
-  curlSnippet,
-  pythonInstall,
-  pythonSnippet,
-} from './callSpec';
+import { KEY_ENV, callNotes, curlSnippet, pythonSnippet } from './callSpec';
 import { usePortalT, withMarks } from './shared';
 
 /*
@@ -82,8 +76,11 @@ function Snippet({ code, lang }) {
       </div>
       <pre className='pt-snip-body'>
         {html ? (
+          // 不用 hljs 这个类名：全站 markdown.css 里的 .hljs 给它加了
+          // display:block + overflow-x:auto + 管理端的颜色变量，
+          // 结果代码块自己变成一个没有滚动条、也滚不动的框（用户实测指出）。
           <code
-            className='hljs'
+            className='pt-hl'
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
@@ -112,6 +109,24 @@ export default function CallDocDrawer({ modelId, onClose }) {
     panel.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  /*
+   * 抽屉开着的时候锁住背后的页面：不锁的话触摸板一滚，背后的模型列表跟着跑，
+   * 关掉抽屉发现自己已经不在原来的位置了（用户实测指出）。
+   * 直接 overflow:hidden 会让竖直滚动条消失、页面横向跳一下，
+   * 所以把滚动条那点宽度补成 padding。
+   */
+  useEffect(() => {
+    const { body } = document;
+    const gap = window.innerWidth - document.documentElement.clientWidth;
+    const prev = { overflow: body.style.overflow, pad: body.style.paddingRight };
+    body.style.overflow = 'hidden';
+    if (gap > 0) body.style.paddingRight = `${gap}px`;
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.paddingRight = prev.pad;
+    };
+  }, []);
 
   const m = describe(modelId);
   const notes = callNotes(modelId);
@@ -179,11 +194,6 @@ export default function CallDocDrawer({ modelId, onClose }) {
             ))}
           </div>
 
-          {tab === 'python' ? (
-            <p className='pt-sub pt-mono pt-drawer-pip'>
-              {pythonInstall(modelId)}
-            </p>
-          ) : null}
           <Snippet code={code} lang={tab === 'curl' ? 'bash' : 'python'} />
 
           {notes.length ? (

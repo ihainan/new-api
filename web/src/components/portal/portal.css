@@ -1088,7 +1088,9 @@
   gap: 8px;
 }
 .pt-date {
-  height: 32px;
+  /* 和旁边带标签的下拉框（.pt-field，34px）等高：矮 2px 并排放着一眼就看得出 */
+  height: 34px;
+  box-sizing: border-box;
   padding: 0 8px;
   border: 1px solid var(--pt-border-strong);
   border-radius: var(--pt-radius-md);
@@ -1772,6 +1774,7 @@
   position: absolute;
   inset: 0;
   background: rgba(20, 24, 31, 0.28);
+  overscroll-behavior: contain;
 }
 .pt-drawer {
   position: relative;
@@ -1808,6 +1811,8 @@
 .pt-drawer-body {
   padding: 16px 18px 28px;
   overflow-y: auto;
+  /* 滚到头就停住，别把剩下的滚动量甩给背后的模型列表 */
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1833,6 +1838,7 @@
   border: 1px solid var(--pt-border);
   border-radius: var(--pt-radius-md);
   overflow: hidden;
+  min-width: 0;
 }
 .pt-snip-head {
   display: flex;
@@ -1846,6 +1852,10 @@
 .pt-snip-body {
   margin: 0;
   padding: 12px 14px;
+  /* 横向滚动要真的能滚：外层 .pt-snip 是 flex 子项，min-width 默认 auto，
+     内容一宽就把自己撑开、被 overflow:hidden 切掉，滚动条根本不出现；
+     里面的 <code> 还得是 inline-block + min-width:100%，否则它按容器宽度
+     定宽，长行溢出不计入可滚动区域。两条缺一不可。 */
   overflow-x: auto;
   font-family: var(--pt-mono);
   font-size: 12.5px;
@@ -1853,6 +1863,23 @@
   color: var(--pt-text-primary);
   background: var(--pt-bg-card);
 }
+.pt-snip-body .pt-hl {
+  display: inline-block;
+  min-width: 100%;
+}
+/* Mac 上的悬浮滚动条平时不显示，用户看到的就是「内容被切掉、也没法拉」。
+   这里画一条常驻的细条，有溢出时一眼能看出还能往右。 */
+.pt-snip-body::-webkit-scrollbar { height: 8px; }
+.pt-snip-body::-webkit-scrollbar-track {
+  background: var(--pt-bg-subtle);
+  border-radius: 4px;
+}
+.pt-snip-body::-webkit-scrollbar-thumb {
+  background: #c7ccd4;
+  border-radius: 4px;
+}
+.pt-snip-body::-webkit-scrollbar-thumb:hover { background: #aeb5bf; }
+
 /* 代码高亮。没引 highlight.js 自带主题：那些主题带自己的背景色和字号，
    会和门户的代码块打架。这里只给 hljs 的几个 token 类上色，克制到
    「能分出字符串、注释、关键字」为止——花花绿绿的代码块不会更好读。 */
@@ -1880,4 +1907,17 @@
 @media (max-width: 640px) {
   .pt-drawer { width: 100%; border-left: 0; }
   .pt-drawer-mask { display: none; }
+  /* 窄屏塞不下代码就折行，而不是横向拖：手机上横向拖代码块基本没法用 */
+  .pt-snip-body,
+  .pt-snip-body .pt-hl {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  /* 窄屏下别用省略号截断：这一格没有「展开看全」的入口，截掉就真没了 */
+  .pt-metric-value {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
 }

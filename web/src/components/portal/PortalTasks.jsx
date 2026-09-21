@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { API, copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
 import TaskStatus from './TaskStatus';
@@ -36,6 +36,7 @@ import {
   RangeFilter,
   fmtLogTime,
   rangeParams,
+  useUrlState,
   usePortalT,
 } from './shared';
 
@@ -103,22 +104,32 @@ function Result({ r }) {
   return <span style={{ color: 'var(--pt-text-muted)' }}>—</span>;
 }
 
+// 筛选和页码都写进地址栏，和使用记录一个规矩
+const URL_DEFAULTS = { p: 1, status: '', range: '7d', from: '', to: '' };
+
 export default function PortalTasks() {
   const t = usePortalT();
-  const [page, setPage] = useState(1);
-  const [range, setRange] = useState({ range: '7d', from: '', to: '' });
-  const [state, setState] = useState('');
+  const [urlState, patch] = useUrlState(URL_DEFAULTS);
+  const page = urlState.p;
+  const state = urlState.status;
+  const range = { range: urlState.range, from: urlState.from, to: urlState.to };
+  const { range: rangeKey, from, to } = urlState;
+  const setPage = (n) => patch({ p: typeof n === 'function' ? n(page) : n });
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [refreshedAt, setRefreshedAt] = useState(0);
-  const firstLoad = useRef(true);
 
   const load = useCallback(
     async (quiet) => {
       if (!quiet) setLoading(true);
       try {
-        const q = [`p=${page}`, `page_size=${PAGE_SIZE}`, ...rangeParams(range)];
+        // range 每次渲染都是新对象，不能进依赖，按原始字段传
+        const q = [
+          `p=${page}`,
+          `page_size=${PAGE_SIZE}`,
+          ...rangeParams({ range: rangeKey, from, to }),
+        ];
         if (state) q.push('status=' + state);
         const res = await API.get(`/api/task/self?${q.join('&')}`);
         if (!res.data?.success) {
@@ -137,20 +148,12 @@ export default function PortalTasks() {
         if (!quiet) setLoading(false);
       }
     },
-    [page, range, state, t],
+    [page, rangeKey, from, to, state, t],
   );
 
   useEffect(() => {
     load(false);
   }, [load]);
-
-  useEffect(() => {
-    if (firstLoad.current) {
-      firstLoad.current = false;
-      return;
-    }
-    setPage(1);
-  }, [range, state]);
 
   // 有任务在跑才轮询，跑完就停
   const running = rows.some((r) => taskState(r).running);
@@ -187,7 +190,7 @@ export default function PortalTasks() {
             className='pt-select'
             aria-label={t('按状态筛选')}
             value={state}
-            onChange={(e) => setState(e.target.value)}
+            onChange={(e) => patch({ status: e.target.value })}
           >
             {STATES.map((s) => (
               <option key={s.key} value={s.key}>
@@ -196,7 +199,7 @@ export default function PortalTasks() {
             ))}
           </select>
         </label>
-        <RangeFilter value={range} onChange={setRange} />
+        <RangeFilter value={range} onChange={(v) => patch(v)} />
         {/* 自动刷新是这页的默认行为，但得让人知道它在刷，否则数字自己跳会以为看花眼 */}
         <span className='pt-sub' aria-live='polite'>
           {running

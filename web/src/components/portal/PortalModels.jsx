@@ -25,6 +25,7 @@ import {
   Empty,
   PageHead,
   Skeleton,
+  useUrlState,
   usePortalT,
   withMarks,
 } from './shared';
@@ -611,13 +612,20 @@ function normalize(raw) {
   return out;
 }
 
+// 地址栏参数（doc 由抽屉自己管，不在这里）
+const MODELS_URL_DEFAULTS = { q: '', cat: 'all' };
+
 export default function PortalModels() {
   const t = usePortalT();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [available, setAvailable] = useState([]);
-  const [kw, setKw] = useState('');
-  const [cat, setCat] = useState('all');
+  // 搜索词和分类也写进地址栏：筛完了能把链接直接发给同事
+  const [urlState, patch] = useUrlState(MODELS_URL_DEFAULTS);
+  const kw = urlState.q;
+  const cat = urlState.cat;
+  const setKw = (v) => patch({ q: v });
+  const setCat = (v) => patch({ cat: v });
   const [openId, setOpenId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   // ?doc=<模型 ID> 控制右侧抽屉，可以把链接直接发给同事

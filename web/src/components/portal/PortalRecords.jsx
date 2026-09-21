@@ -28,6 +28,7 @@ import {
   Pager,
   RangeFilter,
   rangeParams,
+  useUrlState,
   usePortalT,
 } from './shared';
 import { taskState } from './taskInfo';
@@ -49,18 +50,32 @@ const PAGE_SIZE = 20;
  * 筛选全部走服务端。只筛当前这一页是骗人的——翻到第二页筛选条件就失效了，
  * 而且计数对不上。接口支持 type / start_timestamp / end_timestamp / model_name。
  */
+/*
+ * 地址栏里认这几个参数。默认值不会出现在地址栏里，所以干净的页面就是干净的 URL。
+ * token 这个名字是从密钥页「查看调用记录」跳过来时带的，不能改。
+ */
+const URL_DEFAULTS = {
+  p: 1,
+  token: '',
+  model: '',
+  range: '7d',
+  from: '',
+  to: '',
+  failed: false,
+};
+
 export default function PortalRecords() {
   const t = usePortalT();
-  const [page, setPage] = useState(1);
-  const [onlyFailed, setOnlyFailed] = useState(false);
-  // {range, from, to}：from/to 只有自定义档用得上
-  const [range, setRange] = useState({ range: '7d', from: '', to: '' });
-  const [model, setModel] = useState('');
+  // 所有筛选和页码都住在地址栏里：刷新、分享链接、前进后退都还是这一屏
+  const [urlState, patch] = useUrlState(URL_DEFAULTS);
+  const page = urlState.p;
+  const onlyFailed = urlState.failed;
+  const model = urlState.model;
+  const tokenName = urlState.token;
+  // RangeFilter 要的是 {range, from, to} 这个形状
+  const range = { range: urlState.range, from: urlState.from, to: urlState.to };
+  const setPage = (n) => patch({ p: typeof n === 'function' ? n(page) : n });
   const [models, setModels] = useState([]);
-  // 从密钥页点「查看调用记录」过来时带着 ?token=名称，直接预选上
-  const [tokenName, setTokenName] = useState(
-    () => new URLSearchParams(window.location.search).get('token') || '',
-  );
   const [tokenNames, setTokenNames] = useState([]);
   const [openErr, setOpenErr] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,11 +122,18 @@ export default function PortalRecords() {
     })();
   }, []);
 
+  const { range: rangeKey, from, to } = urlState;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       // 「只看失败」在日志里就是 type=5
-      const q = [`p=${page}`, `page_size=${PAGE_SIZE}`, ...rangeParams(range)];
+      const q = [
+        `p=${page}`,
+        `page_size=${PAGE_SIZE}`,
+        // range 每次渲染都是新对象，不能进依赖，这里按原始字段传
+        ...rangeParams({ range: rangeKey, from, to }),
+      ];
       if (onlyFailed) q.push('type=5');
       if (model) q.push('model_name=' + encodeURIComponent(model));
       if (tokenName) q.push('token_name=' + encodeURIComponent(tokenName));
@@ -133,7 +155,7 @@ export default function PortalRecords() {
     } finally {
       setLoading(false);
     }
-  }, [page, onlyFailed, range, model, tokenName, t]);
+  }, [page, onlyFailed, rangeKey, from, to, model, tokenName, t]);
 
   useEffect(() => {
     load();
@@ -205,10 +227,10 @@ export default function PortalRecords() {
     const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [anyRunning]);
+  // 换了筛选条件就把展开的错误详情收起来（页码回第 1 页由 useUrlState 负责）
   useEffect(() => {
-    setPage(1);
     setOpenErr(null);
-  }, [onlyFailed, range, model, tokenName]);
+  }, [onlyFailed, rangeKey, from, to, model, tokenName]);
 
   const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -217,14 +239,14 @@ export default function PortalRecords() {
       <PageHead title={t('使用记录')} sub={t('你的每一次调用')} />
 
       <div className='pt-filters'>
-        <RangeFilter value={range} onChange={setRange} />
+        <RangeFilter value={range} onChange={(v) => patch(v)} />
         <label className='pt-field'>
               <span className='pt-field-label'>{t('模型')}</span>
               <select
                 className='pt-select'
                 aria-label={t('按模型筛选')}
                 value={model}
-                onChange={(e) => setModel(e.target.value)}
+                onChange={(e) => patch({ model: e.target.value })}
               >
                 <option value=''>{t('全部')}</option>
                 {models.map((m) => (
@@ -240,7 +262,7 @@ export default function PortalRecords() {
                 className='pt-select'
                 aria-label={t('按密钥筛选')}
                 value={tokenName}
-                onChange={(e) => setTokenName(e.target.value)}
+                onChange={(e) => patch({ token: e.target.value })}
               >
                 <option value=''>{t('全部')}</option>
                 {tokenNames.map((n) => (
@@ -254,7 +276,7 @@ export default function PortalRecords() {
           <input
             type='checkbox'
             checked={onlyFailed}
-            onChange={(e) => setOnlyFailed(e.target.checked)}
+            onChange={(e) => patch({ failed: e.target.checked })}
           />
           {t('只看失败')}
         </label>

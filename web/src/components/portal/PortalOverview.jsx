@@ -31,6 +31,9 @@ import {
   fmtCompact,
   fmtInt,
   usePortalT,
+  RangeFilter,
+  rangeBounds,
+  useUrlState,
 } from './shared';
 
 /*
@@ -42,23 +45,6 @@ import {
  * 单次查询还被限制在 30 天内。也不用 /api/log/self/stat：它按 username 聚合，
  * 而用户名是可以改的。
  */
-
-const RANGES = [
-  { v: '24h', label: '近 24 小时', span: 24 * 3600 },
-  { v: 'today', label: '今天', span: null },
-  { v: '7d', label: '近 7 天', span: 7 * 86400 },
-  { v: '30d', label: '近 30 天', span: 30 * 86400 },
-];
-
-function rangeBounds(v) {
-  const now = Math.floor(Date.now() / 1000);
-  if (v === 'today') {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return [Math.floor(d.getTime() / 1000), now];
-  }
-  return [now - (RANGES.find((r) => r.v === v)?.span || 86400), now];
-}
 
 // 图表配色沿用门户的单色基调，不引入花哨的多彩色板。
 /*
@@ -93,9 +79,15 @@ const TREND_METRICS = [
   { key: 'tokens', label: 'Token' },
 ];
 
+// 概览默认看近 24 小时（另外两页是近 7 天：那边翻的是明细，跨度要更大）
+const OVERVIEW_URL_DEFAULTS = { range: '24h', from: '', to: '' };
+
 export default function PortalOverview() {
   const t = usePortalT();
-  const [range, setRange] = useState('24h');
+  // 时间范围也写进地址栏，和使用记录/任务队列一个规矩
+  const [urlState, patch] = useUrlState(OVERVIEW_URL_DEFAULTS);
+  const range = { range: urlState.range, from: urlState.from, to: urlState.to };
+  const { range: rangeKey, from, to } = urlState;
   // 趋势图看哪个口径。后端每个时间点本来就同时返回请求数和 Token，
   // 之前只画了请求数——不是数据没有，是前端没用。
   const [trend, setTrend] = useState('requests');
@@ -114,7 +106,8 @@ export default function PortalOverview() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [start, end] = rangeBounds(range);
+    // range 每次渲染都是新对象，不能进依赖，按原始字段传
+    const [start, end] = rangeBounds({ range: rangeKey, from, to });
     try {
       const res = await API.get(
         `/api/log/self/metrics?start_timestamp=${start}&end_timestamp=${end}`,
@@ -133,7 +126,7 @@ export default function PortalOverview() {
     } finally {
       setLoading(false);
     }
-  }, [range, t]);
+  }, [rangeKey, from, to, t]);
 
   useEffect(() => {
     load();
@@ -165,7 +158,10 @@ export default function PortalOverview() {
         hour12: false,
         month: '2-digit',
         day: '2-digit',
-        ...(range === '30d' ? {} : { hour: '2-digit', minute: '2-digit' }),
+        // 跨度大的时候只显示日期，否则 x 轴标签糊成一片
+        ...(rangeKey === '30d' || rangeKey === 'all' || rangeKey === 'custom'
+          ? {}
+          : { hour: '2-digit', minute: '2-digit' }),
       });
     const src = data?.series || [];
     const pts =
@@ -238,7 +234,7 @@ export default function PortalOverview() {
 
       padding: { top: 8, right: 8, bottom: 4, left: 4 },
     };
-  }, [data, range, trend, t]);
+  }, [data, rangeKey, trend, t]);
 
   const pieSpec = useMemo(() => {
     const top = (data?.models || []).slice(0, 6);
@@ -313,19 +309,7 @@ export default function PortalOverview() {
         {/* 时间范围是分段选择，不是主按钮——它借用 primary 当选中态，
             主按钮一改成主题色，这排就跟着变成了实心靛蓝，而别的页面同类筛选
             还是墨黑 chip。统一用 chip。 */}
-        <div className='pt-chips' role='group' aria-label={t('时间范围')}>
-          {RANGES.map((r) => (
-            <button
-              key={r.v}
-              type='button'
-              className={`pt-chip${range === r.v ? ' on' : ''}`}
-              aria-pressed={range === r.v}
-              onClick={() => setRange(r.v)}
-            >
-              {t(r.label)}
-            </button>
-          ))}
-        </div>
+        <RangeFilter value={range} onChange={(v) => patch(v)} />
         {loading ? (
           <span style={{ fontSize: 12, color: 'var(--pt-text-muted)' }}>
             {t('加载中…')}

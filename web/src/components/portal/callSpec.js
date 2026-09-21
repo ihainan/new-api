@@ -26,6 +26,11 @@ For commercial licensing, please contact support@quantumnous.com
  * 同时有对话、Anthropic 协议、出图、异步视频、向量、重排、语音转文字、
  * 文字转语音，路径、请求体和返回全不一样。
  *
+ * 代码行宽也有硬约束：抽屉里一行大约放得下 66 个等宽字符，生成出来的代码
+ * 必须自己守住（示例里的 BASE 是个 Python 变量，不能让占位符把完整 URL
+ * 插进 f-string，那样生产域名一长就又超了）。窄屏另外折行。
+ * 指望横向滚动条兜底是不行的：Mac 上的悬浮滚动条平时根本不显示。
+ *
  * 每一段示例都在本机对着网关真跑过并拿到 200（2026-09-21），验收脚本
  * verify_docs.py 每次从**页面渲染出来的**代码块里抄出 curl 再执行一遍——
  * 文档里的代码跑不通就判失败。只有视频那条不真发（一条要花钱），只核参数形状。
@@ -49,11 +54,16 @@ const SHAPES = {
     }),
     py: (id) => `from openai import OpenAI
 
-client = OpenAI(base_url="{BASE}/v1", api_key=os.environ["${KEY_ENV}"])
+client = OpenAI(
+    base_url="%BASE%/v1",
+    api_key=os.environ["${KEY_ENV}"],
+)
 
 resp = client.chat.completions.create(
     model="${id}",
-    messages=[{"role": "user", "content": "用一句话解释什么是向量数据库"}],
+    messages=[
+        {"role": "user", "content": "什么是向量数据库？一句话说明"},
+    ],
 )
 print(resp.choices[0].message.content)`,
     pyHead: 'import os\n\n',
@@ -70,12 +80,17 @@ print(resp.choices[0].message.content)`,
     }),
     py: (id) => `from anthropic import Anthropic
 
-client = Anthropic(base_url="{BASE}", api_key=os.environ["${KEY_ENV}"])
+client = Anthropic(
+    base_url="%BASE%",
+    api_key=os.environ["${KEY_ENV}"],
+)
 
 msg = client.messages.create(
     model="${id}",
     max_tokens=1024,
-    messages=[{"role": "user", "content": "用一句话解释什么是向量数据库"}],
+    messages=[
+        {"role": "user", "content": "什么是向量数据库？一句话说明"},
+    ],
 )
 print(msg.content[0].text)`,
     pyHead: 'import os\n\n',
@@ -92,7 +107,10 @@ print(msg.content[0].text)`,
     }),
     py: (id) => `from openai import OpenAI
 
-client = OpenAI(base_url="{BASE}/v1", api_key=os.environ["${KEY_ENV}"])
+client = OpenAI(
+    base_url="%BASE%/v1",
+    api_key=os.environ["${KEY_ENV}"],
+)
 
 img = client.images.generate(
     model="${id}",
@@ -114,31 +132,38 @@ print(img.data[0].url)`,
       seconds: '4',
     }),
     extraCurl: () => `# 2) 轮询任务状态（status 变成 completed 后取视频）
-curl {BASE}/v1/videos/task_xxxxxxxx \\
+curl %BASE%/v1/videos/task_xxxxxxxx \\
   -H "Authorization: Bearer \${${KEY_ENV}}"`,
     py: (id) => `import os, time, requests
 
-BASE = "{BASE}"
-HEAD = {"Authorization": f"Bearer {os.environ['${KEY_ENV}']}"}
+BASE = "%BASE%"
+KEY = os.environ["${KEY_ENV}"]
+HEAD = {"Authorization": f"Bearer {KEY}"}
 
 # 1) 提交
-task = requests.post(f"{BASE}/v1/videos", headers=HEAD, json={
-    "model": "${id}",
-    "prompt": "清晨的院子里下着小雨，一只橘猫蹲在屋檐下",
-    "seconds": "4",
-}).json()
+task = requests.post(
+    f"{BASE}/v1/videos",
+    headers=HEAD,
+    json={
+        "model": "${id}",
+        "prompt": "清晨的院子里下着小雨，一只橘猫蹲在屋檐下",
+        "seconds": "4",
+    },
+).json()
+tid = task["task_id"]
 
 # 2) 轮询：生成以分钟计，别按同步请求写超时
 while True:
-    st = requests.get(f"{BASE}/v1/videos/{task['task_id']}", headers=HEAD).json()
+    r = requests.get(f"{BASE}/v1/videos/{tid}", headers=HEAD)
+    st = r.json()
     if st["status"] in ("completed", "failed"):
         break
     time.sleep(10)
 
 # 3) 取视频内容（登录态或密钥都能取）
-open("out.mp4", "wb").write(
-    requests.get(f"{BASE}/v1/videos/{task['task_id']}/content", headers=HEAD).content
-)`,
+url = f"{BASE}/v1/videos/{tid}/content"
+video = requests.get(url, headers=HEAD).content
+open("out.mp4", "wb").write(video)`,
   },
 
   embedding: {
@@ -147,9 +172,15 @@ open("out.mp4", "wb").write(
     body: (id) => ({ model: id, input: ['需要转成向量的文本'] }),
     py: (id) => `from openai import OpenAI
 
-client = OpenAI(base_url="{BASE}/v1", api_key=os.environ["${KEY_ENV}"])
+client = OpenAI(
+    base_url="%BASE%/v1",
+    api_key=os.environ["${KEY_ENV}"],
+)
 
-out = client.embeddings.create(model="${id}", input=["需要转成向量的文本"])
+out = client.embeddings.create(
+    model="${id}",
+    input=["需要转成向量的文本"],
+)
 print(len(out.data[0].embedding))`,
     pyHead: 'import os\n\n',
   },
@@ -166,14 +197,21 @@ print(len(out.data[0].embedding))`,
     }),
     py: (id) => `import os, requests
 
-r = requests.post("{BASE}/v1/rerank",
-    headers={"Authorization": f"Bearer {os.environ['${KEY_ENV}']}"},
+KEY = os.environ["${KEY_ENV}"]
+
+r = requests.post(
+    "%BASE%/v1/rerank",
+    headers={"Authorization": f"Bearer {KEY}"},
     json={
         "model": "${id}",
         "query": "苹果的营养价值",
-        "documents": ["苹果富含维生素与膳食纤维", "北京今天有雨"],
+        "documents": [
+            "苹果富含维生素与膳食纤维",
+            "北京今天有雨",
+        ],
         "top_n": 2,
-    })
+    },
+)
 for hit in r.json()["results"]:
     print(hit["index"], hit["relevance_score"])`,
   },
@@ -184,10 +222,16 @@ for hit in r.json()["results"]:
     form: (id) => [['file', '@meeting.wav'], ['model', id]],
     py: (id) => `from openai import OpenAI
 
-client = OpenAI(base_url="{BASE}/v1", api_key=os.environ["${KEY_ENV}"])
+client = OpenAI(
+    base_url="%BASE%/v1",
+    api_key=os.environ["${KEY_ENV}"],
+)
 
 with open("meeting.wav", "rb") as f:
-    out = client.audio.transcriptions.create(model="${id}", file=f)
+    out = client.audio.transcriptions.create(
+        model="${id}",
+        file=f,
+    )
 print(out.text)`,
     pyHead: 'import os\n\n',
   },
@@ -200,10 +244,18 @@ print(out.text)`,
     body: (id) => ({ model: id, input: '今天下午三点开会，地点在二楼会议室。' }),
     py: (id) => `import os, requests
 
-r = requests.post("{BASE}/v1/audio/speech",
-    headers={"Authorization": f"Bearer {os.environ['${KEY_ENV}']}"},
-    json={"model": "${id}", "input": "今天下午三点开会，地点在二楼会议室。"})
-open("say.wav", "wb").write(r.content)   # 返回的是 wav，24kHz 单声道`,
+KEY = os.environ["${KEY_ENV}"]
+
+r = requests.post(
+    "%BASE%/v1/audio/speech",
+    headers={"Authorization": f"Bearer {KEY}"},
+    json={
+        "model": "${id}",
+        "input": "今天下午三点开会，地点在二楼会议室。",
+    },
+)
+# 返回的是 wav（24kHz 单声道）
+open("say.wav", "wb").write(r.content)`,
   },
 };
 
@@ -299,22 +351,14 @@ export function curlSnippet(id, base) {
   }
   let out = lines.join('\n');
   if (sh.extraCurl) out = `# 1) 提交任务\n${out}\n\n${sh.extraCurl()}`;
-  return out.split('{BASE}').join(base);
+  return out.split('%BASE%').join(base);
 }
 
 export function pythonSnippet(id, base) {
   const spec = CALL_SPEC[id];
   const sh = SHAPES[spec?.shape];
   if (!sh) return '';
-  return ((sh.pyHead || '') + sh.py(id)).split('{BASE}').join(base);
-}
-
-// 装 SDK 的那一行，跟着示例走
-export function pythonInstall(id) {
-  const shape = CALL_SPEC[id]?.shape;
-  if (shape === 'anthropic') return 'pip install anthropic';
-  if (['rerank', 'tts', 'video'].includes(shape)) return 'pip install requests';
-  return 'pip install openai';
+  return ((sh.pyHead || '') + sh.py(id)).split('%BASE%').join(base);
 }
 
 export const callNotes = (id) => CALL_SPEC[id]?.notes || [];
