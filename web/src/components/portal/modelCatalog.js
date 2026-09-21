@@ -88,18 +88,18 @@ export const MODELS = [
     inputs: ['文本', '图像'],
     outputs: ['文本'],
     // 取决于落到哪个后端，本来就没有一个固定值
-    maxOutput: 'GLM 131,072 tokens；Qwen 与上下文共用',
+    maxOutput: '131,072 tokens（两个后端中的较小值）',
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '两院智能路由入口，按请求内容自动选择底层模型。',
+    summary: '统一入口，按请求内容在两个后端模型之间自动分发。',
     detail:
-      '两院智能路由入口，会根据请求内容自动选择底层模型。目前接入 GLM-5.2（不支持图片输入）和 Qwen3.6-35B-A3B（支持图片输入），分发规则如下：日常问答、简单任务以及带图片的请求由 Qwen3.6-35B-A3B 处理，代码、金融与行情分析、需要多步推理的问题交给 GLM-5.2。两个后端的上下文和单次输出上限不同，下面的规格按后端分别列出。如果某类任务必须固定在某个模型上，请直接填写该模型的 ID。`smart-router` 是平台维护的稳定别名，底层模型和分发规则调整时这个 ID 不变。',
+      '`smart-router` 是两院模型平台的统一入口：一个模型 ID，按请求内容自动选择合适的后端。日常问答、简单任务以及带图片的请求交给 Qwen3.6-35B-A3B，代码、金融与行情分析、需要多步推理的问题交给 GLM-5.2，调用方不必关心切换细节。下方规格按两个后端中较小的一档给出——上下文 262,144 token、单次输出 131,072 token，按这个上限写代码，请求落到任一后端都不会超限。需要固定使用某个模型时，直接填写该模型的 ID。底层模型与分发规则会随平台调整，`smart-router` 这个 ID 保持不变。',
     // 这里写的是模型家族名，不是调用时填的 ID，按正式写法大写。
     // 正文里「请改用 glm 或 qwen」那种指的是 ID，保持小写。
     params: 'GLM 约 753B（MoE）；Qwen 35B 总参数 / 3B 激活',
     size: '官方 FP8 权重：GLM 约 756 GB，Qwen 约 37.5 GB',
-    context: 'Qwen 262,144；GLM 1,000,000 tokens',
+    context: '262,144 tokens（两个后端中的较小值）',
     io: '文本 → 文本',
   },
   {
@@ -111,11 +111,11 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '平台的通用对话模型，当前指向 GLM-5.2。'
+    summary: 'GLM-5.2，面向长程任务的旗舰对话模型，100 万 token 上下文。'
     ,
     // 版本会随上游升级，所以标题不写版本号，只在这里说当前指向谁。
     detail:
-      '当前指向 GLM-5.2，适用于日常问答、文本改写、内容总结和代码辅助。上下文 1M token，适合长文档和跨文件的代码分析；具体能放多少仍要按 token 估算，不是所有仓库都塞得下。**不支持图片输入：带图片的请求不会报错，但模型看不到图片内容。**`glm` 是平台维护的稳定别名，上游升级模型版本时这个 ID 不变。',
+      '`glm` 当前指向 GLM-5.2，是平台上上下文最长的对话模型：100 万 token 的窗口足以容纳项目级的工程上下文，适合跨文件的代码分析、长文档问答和长时间运行的任务，也胜任日常问答、文本改写与内容总结。单次输出上限 131,072 token。**本平台的部署不支持图片输入：带图片的请求不会报错，但模型看不到图片内容。**`glm` 是平台维护的稳定别名，上游升级模型版本时这个 ID 不变。',
     // 这两个数是按 GLM-5.2 查的。接口指向的版本会变，换版本时记得一起更新。
     params: '约 753B 总参数（MoE：256 个专家，每 token 激活 8 个 + 1 个共享）',
     size: '官方 FP8 权重约 756 GB',
@@ -135,10 +135,10 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: 'na', vision: false, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['anthropic'],
-    summary: '与 `glm` 是同一个模型，改用 Anthropic Messages 协议，当前指向 GLM-5.2。'
+    summary: '与 `glm` 同一个模型，改用 Anthropic Messages 协议接入。'
     ,
     detail:
-      '模型与 `glm` 完全相同（当前为 GLM-5.2），区别只在请求格式，支持的参数也不完全一致。Anthropic 协议没有 OpenAI 的 `response_format`；传 `output_config.format` 不会报错，但**实测并不生效**，给了严格 schema 仍会返回自然语言，需要可靠的结构化输出请改用工具调用。这个 ID 是为只支持 Anthropic 接口的客户端准备的，例如 Claude Code、Anthropic 官方 SDK，以及其他只发送 `/v1/messages` 的工具；使用 OpenAI SDK 时请直接选择 `glm`。`glm-anthropic` 是平台维护的稳定别名，指向的模型版本与 `glm` 同步。',
+      '`glm-anthropic` 与 `glm` 背后是同一个模型（当前为 GLM-5.2），区别只在请求格式：它走 Anthropic Messages 协议，供只支持该协议的客户端使用，例如 Claude Code、Anthropic 官方 SDK，以及其他只发送 `/v1/messages` 的工具。两条协议支持的参数并不一致：Anthropic 侧没有 `response_format`，**实测 `output_config.format` 传了也不生效**，给出严格 schema 仍会返回自然语言，需要可靠的结构化输出请改用工具调用。用 OpenAI SDK 时直接选择 `glm`。指向的模型版本与 `glm` 同步。',
     params: '约 753B 总参数（MoE：256 个专家，每 token 激活 8 个 + 1 个共享）',
     size: '官方 FP8 权重约 756 GB',
     context: '1,000,000 tokens（平台配置值）',
@@ -156,9 +156,9 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: true },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '混合专家架构的对话模型，单次推理只激活一小部分参数。',
+    summary: 'Qwen3.6-35B-A3B，混合专家架构，256K 上下文，兼顾质量与推理成本。',
     detail:
-      '总参数 35B，单次推理约激活 3B，计算量低于同规模的稠密模型。上下文 256K token，输入和输出共用这一个窗口。该模型会输出思考过程，放在 `reasoning` 字段里，**不是更常见的 `reasoning_content`**，解析时注意区分。`qwen` 是平台维护的稳定别名，上游升级模型版本时这个 ID 不变。',
+      '`qwen` 当前指向 Qwen3.6-35B-A3B：总参数 35B，每次推理只激活约 3B，用远低于同规模稠密模型的计算量支撑 262,144 token 的上下文，适合长文档处理、代码理解和量大的日常问答。输入与输出共用这一个窗口。该模型会输出思考过程，字段名为 `reasoning`，**不是更常见的 `reasoning_content`**，解析时注意区分。`qwen` 是平台维护的稳定别名，上游升级模型版本时这个 ID 不变。',
     params: '35B 总参数 / 3B 激活（MoE）',
     size: '官方 FP8 权重约 37.5 GB',
     context: '262,144 tokens',
@@ -174,9 +174,9 @@ export const MODELS = [
     caps: { stream: true, tools: true, json: true, vision: true, reasoning: true, cache: false },
     category: 'chat',
     endpoints: ['openai'],
-    summary: '开放权重模型，支持图片输入。上下文 4K token。',
+    summary: 'Gemma 4 26B，开放权重模型，支持图片输入，Apache-2.0 许可。',
     detail:
-      '总参数 26B，单次推理约激活 4B，支持图片输入。它会先输出思考过程（字段名 `reasoning_content`）再给出正文，因此 **`max_tokens` 需要留足余量，否则思考过程会占满额度，正文返回为空**。权重以 Apache-2.0 许可公开，可自由微调与再分发。平台接受 4,096 token 以内的请求，**超长请求不会报错**，但实测 `usage.prompt_tokens` 在约 2,048 封顶，超出的内容是否进入模型未经证实，长文本任务请改用 `glm` 或 `qwen`。',
+      '`gemma4:26b` 是总参数 26B、每次推理约激活 4B 的开放权重模型，支持图片输入；权重以 Apache-2.0 许可公开，可自由微调与再分发，适合需要审计模型来源或做领域微调的场景。它会先输出思考过程（字段名 `reasoning_content`）再给出正文，因此 **`max_tokens` 需要留足余量，否则思考过程会占满额度，正文返回为空**。本平台的部署接受 4,096 token 以内的请求，超长请求不会报错，但实测 `usage.prompt_tokens` 在约 2,048 封顶，超出的内容是否进入模型未经证实；长文本任务请改用 `glm` 或 `qwen`。',
     params: '约 26B 总参数 / 约 4B 激活（MoE）',
     size: '官方 BF16 权重约 52 GB',
     context: '4,096 tokens（超出不报错；实测上报值在 2,048 封顶）',
@@ -191,9 +191,9 @@ export const MODELS = [
     outputs: ['图像'],
     category: 'image',
     endpoints: ['openai'],
-    summary: '文生图模型，当前指向 Qwen-Image-2.0，中文提示词与画面内文字均可处理。',
+    summary: 'Qwen-Image-2.0，文生图模型，擅长中文提示词与画面内文字。',
     detail:
-      '当前指向 Qwen-Image-2.0，根据文字描述生成图片。**本平台默认**输出 1024×1024、采样 30 步。中文提示词可以直接使用，画面内的中文也能生成，做海报、配图和示意图不必先译成英文；复杂文案仍需人工校对，生成模型不保证逐字正确。模型规格允许最长 1,000 token 的提示词。',
+      '`qwen-image` 当前指向 Qwen-Image-2.0：以 Qwen3-VL 作条件编码器的多模态扩散模型，中文提示词可以直接使用，画面内的中文也能生成，做海报、配图和示意图无需先译成英文；复杂文案建议人工校对，生成模型不保证逐字正确。提示词最长 1,000 token。**本平台默认**输出 1024×1024、采样 30 步，可在请求中覆盖。',
     // 2.0 的权重官方没有公开发布（Hugging Face 上 Qwen 官方最新的公开权重
     // 仍是 20B 的 Qwen-Image-2512），所以参数量写「未公开」是事实而非偷懒。
     params: '官方未公开',
@@ -208,9 +208,9 @@ export const MODELS = [
     outputs: ['文本'],
     category: 'audio',
     endpoints: ['openai'],
-    summary: '语音转文字，适用于会议录音与访谈整理。',
+    summary: 'Qwen3-ASR-1.7B，语音转文字，支持中英混合口语。',
     detail:
-      '当前指向 Qwen3-ASR-1.7B，将音频转写为文本，支持中文以及中英混合口语，常用于会议录音、访谈整理和视频字幕。**超过 145 秒的音频由平台在静音处切段**，分别转写后拼接返回，这个阈值是平台配置，卡在后端单次约 157 秒的硬上限之下。接口与 OpenAI 的 `audio/transcriptions` 兼容。',
+      '`qwen-asr` 当前指向 Qwen3-ASR-1.7B：把音频转写为文本，支持中文与中英混合口语，常用于会议录音、访谈整理和视频字幕。接口与 OpenAI 的 `audio/transcriptions` 兼容。**超过 145 秒的音频由平台在静音处自动切段**，分别转写后拼接返回；这个阈值是平台配置，卡在后端单次约 157 秒的硬上限之下。',
     params: '1.7B 参数',
     context: null,
     io: '音频 → 文本',
@@ -223,9 +223,9 @@ export const MODELS = [
     outputs: ['音频'],
     category: 'audio',
     endpoints: ['openai'],
-    summary: '文字转语音，支持音色复刻。',
+    summary: 'CosyVoice3，文字转语音，支持 9 种语言与音色复刻。',
     detail:
-      '当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512），支持 9 种语言，可将文本合成为自然语音，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容；**音色复刻要用平台扩展字段 `ref_audio` 和 `ref_text`**，标准 SDK 的参数表里没有这两个，需要自己拼请求体。',
+      '`cosy-voice` 当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）：把文本合成为自然语音，覆盖 9 种语言，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容；**音色复刻用的是平台扩展字段 `ref_audio` 和 `ref_text`**，标准 SDK 的参数表里没有这两项，需要自行拼装请求体。',
     params: '0.5B 参数',
     context: null,
     io: '文本 → 音频',
@@ -238,9 +238,9 @@ export const MODELS = [
     outputs: ['视频'],
     category: 'video',
     endpoints: ['openai-video'],
-    summary: '文生视频、图生视频，异步返回结果。',
+    summary: 'MiniMax-H3，文生视频与图生视频，异步任务返回。',
     detail:
-      '当前指向 MiniMax-H3，根据文字描述生成视频，也支持由单张图片生成。**本平台默认**输出 4 秒、9:16、短边 768 的视频，模型本身支持 4～15 秒。生成耗时通常在几分钟，接口是异步任务形式：向 `/v1/videos` 提交后取回任务 ID，再轮询结果，**不要按同步请求设置超时**。任务进度可在「使用记录 → 任务」中查看。',
+      '`minimax-h3` 当前指向 MiniMax-H3：33B 的全模态生成模型，按文字描述生成带声音的视频，也支持由单张图片生成，模型本身覆盖 4～15 秒。**本平台默认**输出 4 秒、9:16、短边 768。生成耗时通常在几分钟，接口为异步任务：向 `/v1/videos` 提交后取回任务 ID，再轮询结果，**不要按同步请求设置超时**。任务进度可在「使用记录 → 任务」中查看。',
     params: '33B（H3-Omni-Transformer）',
     context: null,
     io: '文本 / 图像 → 视频',
@@ -253,9 +253,9 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '多语言向量模型，用于检索与知识库。超长文本会被静默截断。',
+    summary: 'BGE-M3，多语言向量模型，1024 维，用于检索与知识库。',
     detail:
-      '将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。一百多种语言共享同一向量空间，中文查询可以直接召回英文文档，输出 1024 维。**单次只处理前 2,048 token，超出的内容既不进模型也不报错**——实测在 2,048 token 之后接上一段完全无关的文字，返回的向量与不接时完全相同（余弦相似度 1.000），长文档必须自己先切分。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。',
+      '`bge-m3` 把文本转换为 1024 维向量，用于语义检索、相似度匹配和 RAG 知识库。一百多种语言共享同一向量空间，中文查询可以直接召回英文文档。**本平台的部署单次只处理前 2,048 token，超出的内容既不进模型也不报错**——实测在 2,048 token 之后接上一段完全无关的文字，返回的向量与不接时完全相同（余弦相似度 1.000），长文档必须自行切分。更换向量模型会改变向量空间，已建好的索引需要整体重算。',
     params: '约 568M 参数',
     size: '官方 FP32 权重约 2.3 GB',
     context: '2,048 tokens（实测：超出的内容不进模型，也不报错）',
@@ -270,9 +270,9 @@ export const MODELS = [
     outputs: ['向量'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '向量模型，单次可处理 4K token，默认输出 2,560 维。',
+    summary: 'Qwen3-Embedding-4B，向量模型，默认 2,560 维，支持维度裁剪。',
     detail:
-      '将文本转换为向量，用于语义检索、相似度匹配和 RAG 知识库。默认输出 2,560 维，可以用 `dimensions` 参数裁剪到更低维度（实测传 256 生效）。**单次只处理前 4,096 token，超出的内容既不进模型也不报错**——实测在 4,096 token 之后接上无关文字，返回的向量几乎不变（余弦相似度 0.999），长文档必须自己先切分。换用别的向量模型会改变向量空间，已经建好的索引需要整体重算。',
+      '`qwen3-embedding:4b` 把文本转换为向量，默认输出 2,560 维，可用 `dimensions` 参数裁剪到更低维度（实测传 256 生效），便于在检索质量和存储成本之间取舍。**本平台的部署单次只处理前 4,096 token，超出的内容既不进模型也不报错**——实测在 4,096 token 之后接上无关文字，返回的向量几乎不变（余弦相似度 0.999），长文档必须自行切分。更换向量模型会改变向量空间，已建好的索引需要整体重算。',
     params: '4B 参数',
     size: '官方 BF16 权重约 8 GB',
     context: '4,096 tokens（实测：超出的内容不进模型，也不报错）',
@@ -287,9 +287,9 @@ export const MODELS = [
     outputs: ['分数'],
     category: 'retrieval',
     endpoints: ['openai'],
-    summary: '重排模型，按与问题的相关性给候选文档重新打分排序。',
+    summary: 'BGE-Reranker-v2-M3，重排模型，为候选文档给出相关性分数。',
     detail:
-      '用在检索流程的最后一步：把已经取到的候选文档逐条与问题比对并重新打分，把最相关的排到前面。候选由谁召回不限——向量检索、关键词检索、数据库筛选都可以，它只负责排序，不参与召回。它不输出向量，只给出相关性分数，因此需要先有候选集才能使用。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；单对超过 8,192 token **会直接返回错误**，不会静默截断，长文档建议先切分再重排。',
+      '`bge-reranker-v2-m3` 用在检索流程的最后一步：把已取到的候选文档逐条与问题比对并重新打分，把最相关的排到前面。候选来自向量检索、关键词检索还是数据库筛选都可以，它只负责排序，不参与召回；输出是相关性分数而不是向量，因此必须先有候选集。每个「问题 + 文档」对各自占用一个窗口，不是所有候选共享一份；**单对超过 8,192 token 会直接返回错误**，不会静默截断，长文档建议先切分再重排。',
     params: '约 568M 参数',
     size: '官方 FP32 权重约 2.3 GB',
     context: '8,192 tokens（实测：超出直接报错，不静默截断）',
