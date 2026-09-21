@@ -76,7 +76,7 @@ export default function PortalKeys() {
       {/* 这页最重要的一句话：密钥怎么拿。放在最上面，字号和字重都压过下面的列表 */}
       <div className='pt-notice'>
         <p className='pt-notice-main'>
-          {t('需要调用两院私有部署的模型，请联系智能创新部的符积高开通并获取密钥。')}
+          {t('需要调用两院私有部署的模型，请联系智能创新部开通并获取密钥。')}
         </p>
         <p className='pt-notice-sub'>
           {t(

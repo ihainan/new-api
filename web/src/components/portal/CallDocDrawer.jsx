@@ -17,15 +17,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import python from 'highlight.js/lib/languages/python';
 import { copy, showError, showSuccess } from '../../helpers';
 import ModelIcon from './ModelIcon';
+import { DrawerShell, useDrawerParam } from './Drawer';
 import { describe } from './modelCatalog';
 import {
   KEY_ENV,
+  PROXY_BASE,
   UNTESTED_PARAMS,
   callNotes,
   callParams,
@@ -33,6 +35,8 @@ import {
   pythonSnippet,
 } from './callSpec';
 import { usePortalT, withMarks } from './shared';
+import { agentPrompt, docMarkdown, docPath } from './docMarkdown';
+import { VOICE_COUNT, VOICE_DEMO_URL, VOICE_GROUPS } from './ttsVoices';
 
 /*
  * 调用文档抽屉。从模型卡片上的「调用文档」打开，地址栏带 ?doc=<模型 ID>，
@@ -98,42 +102,73 @@ function Snippet({ code, lang }) {
   );
 }
 
+/*
+ * cosy-voice 的可用音色。默认收起——两百多个音色常开会把整篇文档淹掉。
+ * 点音色 ID 就复制：要的就是那个 ID，照抄最容易抄错。
+ * 演示页那句「实验性、未授权」原样带过来：这是用这些音色之前必须知道的。
+ */
+function VoiceList() {
+  const t = usePortalT();
+  const copyId = async (id) => {
+    (await copy(id)) ? showSuccess(t('已复制') + ' ' + id) : showError(t('复制失败'));
+  };
+  return (
+    <details className='pt-params pt-voices'>
+      <summary>
+        <span>{t('可用音色')}</span>
+        <span className='pt-params-count'>{VOICE_COUNT}</span>
+      </summary>
+      <div className='pt-voices-head'>
+        <p className='pt-params-note'>
+          {t(
+            '音色是 CosyVoice3 零样本克隆的实验性成果，用于内部能力评估，不是已授权的生产音色，请勿据此对外承诺。',
+          )}
+        </p>
+        <p className='pt-params-note'>
+          <a
+            className='pt-inline-link'
+            href={VOICE_DEMO_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+          >
+            {t('试听全部音色')}
+          </a>
+          {' · '}
+          {t('点击音色 ID 复制')}
+        </p>
+      </div>
+      {VOICE_GROUPS.map((g) => (
+        <section key={g.tab + g.group} className='pt-voice-group'>
+          <h4>
+            {t(g.tab)} · {t(g.group)}
+            <span className='pt-params-count'>{g.voices.length}</span>
+          </h4>
+          <div className='pt-voice-grid'>
+            {g.voices.map(([id, label]) => (
+              <button
+                key={id}
+                type='button'
+                className='pt-voice'
+                title={t('点击音色 ID 复制')}
+                onClick={() => copyId(id)}
+              >
+                <span className='pt-voice-label'>{label}</span>
+                <code>{id}</code>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </details>
+  );
+}
+
 export default function CallDocDrawer({ modelId, onClose }) {
   const t = usePortalT();
   const [tab, setTab] = useState('curl');
-  const panel = useRef(null);
 
-  // 示例里的地址就用当前这个站点：门户和网关是同一个源，
-  // 写死或者去读后台配的「系统地址」都可能和用户实际访问的地址对不上。
-  const base = window.location.origin;
-
-  // Esc 关闭 + 打开时把焦点移进来，否则键盘用户还停在后面的列表上
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    panel.current?.focus();
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  /*
-   * 抽屉开着的时候锁住背后的页面：不锁的话触摸板一滚，背后的模型列表跟着跑，
-   * 关掉抽屉发现自己已经不在原来的位置了（用户实测指出）。
-   * 直接 overflow:hidden 会让竖直滚动条消失、页面横向跳一下，
-   * 所以把滚动条那点宽度补成 padding。
-   */
-  useEffect(() => {
-    const { body } = document;
-    const gap = window.innerWidth - document.documentElement.clientWidth;
-    const prev = { overflow: body.style.overflow, pad: body.style.paddingRight };
-    body.style.overflow = 'hidden';
-    if (gap > 0) body.style.paddingRight = `${gap}px`;
-    return () => {
-      body.style.overflow = prev.overflow;
-      body.style.paddingRight = prev.pad;
-    };
-  }, []);
+  // 示例里的地址是 LLM Proxy（按构建环境取，见 callSpec.js 的 PROXY_BASE）
+  const base = PROXY_BASE;
 
   const m = describe(modelId);
   const notes = callNotes(modelId);
@@ -142,28 +177,47 @@ export default function CallDocDrawer({ modelId, onClose }) {
     tab === 'curl' ? curlSnippet(modelId, base) : pythonSnippet(modelId, base);
 
   return (
-    <div className='pt-drawer-wrap' role='dialog' aria-modal='true'>
-      <div className='pt-drawer-mask' onClick={onClose} />
-      <aside className='pt-drawer' ref={panel} tabIndex={-1}>
-        <header className='pt-drawer-head'>
-          <div className='pt-cell-row'>
-            <ModelIcon model={modelId} size={20} />
-            <div className='pt-stack'>
-              <strong>{t('调用文档')}</strong>
-              <span className='pt-sub pt-mono'>{modelId}</span>
-            </div>
-          </div>
-          <button
-            type='button'
-            className='pt-drawer-x'
-            aria-label={t('关闭')}
-            onClick={onClose}
-          >
-            ✕
-          </button>
-        </header>
-
-        <div className='pt-drawer-body'>
+    <DrawerShell
+      icon={<ModelIcon model={modelId} size={20} />}
+      title={t('调用文档')}
+      sub={modelId}
+      onClose={onClose}
+      actions={
+        <>
+              {/*
+               * 两种复制，各管一种场景：
+               *   复制文档 —— 整篇 Markdown，贴给同事、贴进任何 AI 都能用，不依赖网络；
+               *   复制给 AI —— 一段话加公开文档的链接，外部 agent 自己去读，
+               *                 不用登录；文档更新了，链接指向的也是新的。
+               * 两者用的是同一个生成函数（docMarkdown.js），和抽屉里看到的一致。
+               */}
+              <button
+                type='button'
+                className='pt-btn sm'
+                onClick={async () => {
+                  (await copy(docMarkdown(modelId, base)))
+                    ? showSuccess(t('已复制完整文档'))
+                    : showError(t('复制失败'));
+                }}
+              >
+                {t('复制文档')}
+              </button>
+              <button
+                type='button'
+                className='pt-btn sm'
+                title={t('复制一段带文档链接的提示词，外部 AI 不用登录就能读取')}
+                onClick={async () => {
+                  const url = window.location.origin + docPath(modelId);
+                  (await copy(agentPrompt(modelId, url)))
+                    ? showSuccess(t('已复制，粘贴给 AI 即可'))
+                    : showError(t('复制失败'));
+                }}
+              >
+                {t('复制给 AI')}
+              </button>
+        </>
+      }
+    >
           {m?.summary ? (
             <p className='pt-drawer-sum'>{withMarks(t(m.summary))}</p>
           ) : null}
@@ -281,38 +335,14 @@ export default function CallDocDrawer({ modelId, onClose }) {
               </table>
             </details>
           ) : null}
-        </div>
-      </aside>
-    </div>
+
+          {modelId === 'cosy-voice' ? <VoiceList /> : null}
+    </DrawerShell>
   );
 }
 
-/*
- * 地址栏里的 ?doc=<模型 ID> 就是抽屉的开关：能把链接发给同事，后退键能关。
- */
-export function useDocParam() {
-  const read = () => new URLSearchParams(window.location.search).get('doc');
-  const [id, setId] = useState(read);
-
-  useEffect(() => {
-    const onPop = () => setId(read());
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
-
-  const open = useCallback((next) => {
-    const u = new URL(window.location.href);
-    u.searchParams.set('doc', next);
-    window.history.pushState({}, '', u);
-    setId(next);
-  }, []);
-
-  const close = useCallback(() => {
-    const u = new URL(window.location.href);
-    u.searchParams.delete('doc');
-    window.history.pushState({}, '', u);
-    setId(null);
-  }, []);
-
-  return { docId: id, openDoc: open, closeDoc: close };
-}
+// 地址栏 ?doc=<模型 ID> 控制这个抽屉（通用实现见 Drawer.jsx）
+export const useDocParam = () => {
+  const [docId, openDoc, closeDoc] = useDrawerParam('doc');
+  return { docId, openDoc, closeDoc };
+};

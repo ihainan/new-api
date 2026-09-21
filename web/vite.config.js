@@ -21,8 +21,72 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, transformWithEsbuild } from 'vite';
 import pkg from '@douyinfe/vite-plugin-semi';
 import path from 'path';
+import { pathToFileURL } from 'url';
+import { build as esbuild } from 'esbuild';
 import { codeInspectorPlugin } from 'code-inspector-plugin';
 const { vitePluginSemi } = pkg;
+
+/*
+ * 每个模型的调用文档，生成成公开的 Markdown：/docs/models/<模型>.md。
+ *
+ * 门户里「复制给 AI」放的就是这个链接——外部 agent 不带登录就能读（网关对
+ * web/dist 是免认证的静态服务），而且读到的和抽屉里看到的是同一个函数拼出来的
+ * （src/components/portal/docMarkdown.js）。接口地址按构建环境取
+ * VITE_LLM_PROXY_BASE，和抽屉一致。
+ *
+ * 开发时由中间件现场生成，生产构建时直接产出到 dist——两边都不往 public/ 里写：
+ * 写进 public/ 的话，一次生产构建就会把开发服务器提供的文档换成生产地址。
+ *
+ * docMarkdown.js 是 ESM + 无 DOM 的纯函数，这里用 esbuild 打成一个 .mjs 再 import，
+ * 每次重新打包，改了文档源头不用重启。
+ */
+async function loadDocModule(root) {
+  const entry = path.resolve(root, 'src/components/portal/docMarkdown.js');
+  const tmp = path.resolve(root, 'node_modules/.cache/portal-docs/docMarkdown.mjs');
+  await esbuild({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile: tmp, logLevel: 'silent' });
+  return import(pathToFileURL(tmp).href + '?t=' + Date.now());
+}
+
+async function buildModelDocs(env, root) {
+  const mod = await loadDocModule(root);
+  const base = (env.VITE_LLM_PROXY_BASE || '').replace(/\/+$/, '');
+  const files = {};
+  const index = ['# ZGCAI Model Hub 调用文档', '', `接口地址：\`${base}\``, ''];
+  for (const id of mod.docModelIds()) {
+    files[mod.docSlug(id) + '.md'] = mod.docMarkdown(id, base);
+    index.push(`- [${id}](./${mod.docSlug(id)}.md)`);
+  }
+  files['index.md'] = index.join('\n') + '\n';
+  return files;
+}
+
+function portalModelDocs() {
+  let cfg;
+  return {
+    name: 'portal-model-docs',
+    configResolved(c) {
+      cfg = c;
+    },
+    // 开发：请求到了才生成，永远是源码的当前状态
+    configureServer(server) {
+      server.middlewares.use('/docs/models/', async (req, res, next) => {
+        const name = decodeURIComponent((req.url || '').split('?')[0].replace(/^\//, '')) || 'index.md';
+        const files = await buildModelDocs(cfg.env, cfg.root);
+        if (!files[name]) return next();
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+        res.end(files[name]);
+      });
+    },
+    // 生产构建：直接产出到 dist/docs/models/
+    async generateBundle() {
+      const files = await buildModelDocs(cfg.env, cfg.root);
+      for (const [name, source] of Object.entries(files)) {
+        this.emitFile({ type: 'asset', fileName: 'docs/models/' + name, source });
+      }
+      cfg.logger.info(`[portal-model-docs] ${Object.keys(files).length - 1} 篇调用文档 -> dist/docs/models/`);
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -32,6 +96,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    portalModelDocs(),
     codeInspectorPlugin({
       bundler: 'vite',
     }),

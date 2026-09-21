@@ -226,7 +226,7 @@ export const MODELS = [
     endpoints: ['openai'],
     summary: 'CosyVoice3，文字转语音，模型支持 9 种语言。',
     detail:
-      '`cosy-voice` 当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）：把文本合成为自然语音，覆盖 9 种语言，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容。**音色复刻目前走本平台网关用不了**：参考音频传不到后端，只能用默认音色或音色库里的音色。',
+      '`cosy-voice` 当前指向 CosyVoice3（Fun-CosyVoice3-0.5B-2512）：把文本合成为自然语音，覆盖 9 种语言，适用于播报、有声材料和数字人配音。基础合成与 OpenAI 的 `audio/speech` 兼容。平台预置了 203 个音色（普通话、12 种方言、英语），用 `voice` 指定，列表见调用文档。',
     params: '0.5B 参数',
     context: null,
     io: '文本 → 音频',

@@ -31,6 +31,8 @@ import {
 } from './shared';
 import { CATEGORIES, ENDPOINT_LABELS, HIDDEN, describe } from './modelCatalog';
 import CallDocDrawer, { useDocParam } from './CallDocDrawer';
+import WorkBuddyGuide, { WORKBUDDY_ICON } from './WorkBuddyGuide';
+import { useDrawerParam } from './Drawer';
 import { hasCallDoc } from './callSpec';
 
 /*
@@ -401,7 +403,7 @@ function SpecItem({ label, value, wide }) {
  * 一张模型卡。所有信息常驻展开，不做折叠：十一个模型、每个十来行字，
  * 折叠起来反而要一个个点开才能比较，省下的那点高度不值得多一次点击。
  */
-function ModelRow({ m, onDoc }) {
+function ModelRow({ m, onDoc, onGuide }) {
   const t = usePortalT();
   const endpoints = m.endpoints || [];
   const protocols = endpoints
@@ -427,6 +429,17 @@ function ModelRow({ m, onDoc }) {
           </span>
         </div>
         <div className='pt-mdl-act'>
+          {/* 接入 WorkBuddy 只挂在 smart-router 上：那份教程填的就是这个模型 */}
+          {m.id === 'smart-router' ? (
+            <button
+              type='button'
+              className='pt-btn sm pt-btn-guide'
+              onClick={() => onGuide('workbuddy')}
+            >
+              <img src={WORKBUDDY_ICON} width={16} height={16} alt='' />
+              {t('接入 WorkBuddy')}
+            </button>
+          ) : null}
           {/* 每个模型的调用方式都不一样，文档就挂在它自己这张卡上 */}
           {hasCallDoc(m.id) ? (
             <button
@@ -568,6 +581,8 @@ export default function PortalModels() {
   const [reloadKey, setReloadKey] = useState(0);
   // ?doc=<模型 ID> 控制右侧抽屉，可以把链接直接发给同事
   const { docId, openDoc, closeDoc } = useDocParam();
+  // ?guide=workbuddy 打开接入教程，同样能把链接直接发给同事
+  const [guide, openGuide, closeGuide] = useDrawerParam('guide');
 
   useEffect(() => {
     let alive = true;
@@ -725,6 +740,7 @@ export default function PortalModels() {
                       key={m.id}
                       m={m}
                       onDoc={openDoc}
+                      onGuide={openGuide}
                     />
                   ))}
                 </div>
@@ -736,6 +752,7 @@ export default function PortalModels() {
       {docId && hasCallDoc(docId) ? (
         <CallDocDrawer modelId={docId} onClose={closeDoc} />
       ) : null}
+      {guide === 'workbuddy' ? <WorkBuddyGuide onClose={closeGuide} /> : null}
     </div>
   );
 }
