@@ -174,7 +174,31 @@ export default function CallDocDrawer({ modelId, onClose }) {
 
           {/* 不做密钥下拉：这个账号下的每把密钥权限一样，选哪把示例都长得一模一样；
               而且示例里本来就不出现密钥本身，选了也看不出区别。 */}
-          <p className='pt-drawer-keyhint'>{t('先把密钥放进环境变量：')}</p>
+          {/*
+           * 「密钥」链到密钥页、新窗口打开：看文档的人手边未必有密钥，
+           * 跳走的话这页的文档就没了。
+           * 链接词要能跟着翻译走，所以用 <k>…</k> 在译文里标出来再切开，
+           * 不把一句话拆成三个 key 硬拼（英文语序和中文不一样）。
+           */}
+          <p className='pt-drawer-keyhint'>
+            {t('先把<k>密钥</k>放进环境变量：')
+              .split(/<k>|<\/k>/)
+              .map((part, i) =>
+                i === 1 ? (
+                  <a
+                    key={i}
+                    className='pt-inline-link'
+                    href='/console/token'
+                    target='_blank'
+                    rel='noopener noreferrer'
+                  >
+                    {part}
+                  </a>
+                ) : (
+                  <React.Fragment key={i}>{part}</React.Fragment>
+                ),
+              )}
+          </p>
           <Snippet code={`export ${KEY_ENV}=sk-你的密钥`} lang='bash' />
 
           <div className='pt-chips' role='group' aria-label={t('示例语言')}>
@@ -198,7 +222,7 @@ export default function CallDocDrawer({ modelId, onClose }) {
 
           {notes.length ? (
             <div className='pt-notes'>
-              <h3>{t('这个模型要注意')}</h3>
+              <h3>{t('注意事项')}</h3>
               <ul>
                 {notes.map((n) => (
                   // 和模型描述用同一套行内标记：`voice` 这种要照抄的字符串

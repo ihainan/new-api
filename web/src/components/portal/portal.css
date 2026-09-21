@@ -591,10 +591,6 @@
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 .pt-mdl:hover { border-color: var(--pt-border-strong); }
-.pt-mdl.open {
-  border-color: var(--pt-border-strong);
-  box-shadow: var(--pt-shadow-sm);
-}
 .pt-mdl-head {
   display: flex;
   align-items: center;
@@ -605,31 +601,16 @@
 .pt-mdl-head.has-desc { padding-bottom: 4px; }
 /* 左缩进 = 图标 20px 外边距 + 28px 图标 + 12px 间隔，让描述接着名称起笔 */
 .pt-mdl-desc {
-  /* 下边距不能写成 padding：折叠时的两行截断按内边距框裁切，
-     留了下内边距就会多露出小半行 */
   margin: 0 0 16px;
   padding: 0 20px 0 60px;
 }
-/* 展开控件是一个真 <button>，把浏览器默认外观清掉，让它长得像一行内容。
-   复制按钮是它的同级，不再嵌在里面——嵌套会吞掉键盘激活。 */
+/* 标题行：图标 + 名称 + ID。卡片不再折叠，它只是一行内容，不是控件 */
 .pt-mdl-main {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.pt-mdl-main:focus-visible {
-  outline: 2px solid var(--pt-accent);
-  outline-offset: 3px;
-  border-radius: var(--pt-radius-md);
 }
 .pt-mdl-act {
   flex: none;
@@ -638,21 +619,6 @@
   gap: 8px;
   color: var(--pt-text-muted);
 }
-.pt-mdl-chev {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* 点击区按 32px 给足，图标本身只有 16px */
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--pt-radius-sm);
-  background: none;
-  color: inherit;
-  cursor: pointer;
-}
-.pt-mdl-chev:hover { background: var(--pt-bg-subtle); }
 .pt-mdl-icon {
   flex: none;
   display: inline-flex;
@@ -701,8 +667,7 @@
  *   每行到 62 个字，中文舒适区在 40 上下，太长了回行找不准。
  * 现在：用正文的次级色，字号 14，行宽收到 42 个字。
  */
-.pt-mdl-full,
-.pt-mdl-brief {
+.pt-mdl-full {
   /* 与侧边栏正文同号；行高 1.75 显得比左边大一圈，收到 1.7 */
   font-size: 13.5px;
   line-height: 1.7;
@@ -712,13 +677,6 @@
   max-width: 80em;
 }
 .pt-mdl-full { display: block; }
-/* 折叠时截两行；展开时是同一段，只是去掉截断 */
-.pt-mdl-brief {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 
 /* 正文里的强调：只用字重，不换颜色——颜色在这套页面里另有含义 */
 .pt-em {
@@ -859,27 +817,7 @@
   .pt-metrics { gap: 14px 0; margin: 0 14px 14px; }
   .pt-metric { flex: 0 0 50%; border-left: 0; padding: 0 14px; }
 }
-.pt-chev { transition: transform 0.15s; }
-.pt-chev.open { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) {
-  .pt-chev { transition: none; }
-}
 
-/* 展开/收起做高度过渡。height:auto 不能插值，所以用 grid 的 0fr→1fr，
-   内层必须 overflow:hidden + min-height:0，否则内容会顶破收起状态。 */
-.pt-mdl-panel {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.22s ease;
-}
-.pt-mdl-panel.open { grid-template-rows: 1fr; }
-.pt-mdl-panel > .pt-mdl-panel-in {
-  overflow: hidden;
-  min-height: 0;
-}
-@media (prefers-reduced-motion: reduce) {
-  .pt-mdl-panel { transition: none; }
-}
 .pt-mdl-detail {
   border-top: 1px solid var(--pt-border);
   padding: 18px 20px 20px;
@@ -1826,6 +1764,14 @@
 }
 .pt-drawer-sum { margin: 0; font-size: 13.5px; color: var(--pt-text-secondary); }
 .pt-drawer-keyhint { margin: 0; font-size: 12.5px; color: var(--pt-text-muted); }
+/* 句子里的链接：主题色 + 细下划线，和周围的灰字分得开，又不像按钮那么重 */
+.pt-inline-link {
+  color: var(--pt-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.pt-inline-link:hover { text-decoration-thickness: 2px; }
 .pt-drawer-pip { margin: -6px 0 0; }
 
 /* 接口地址 / 鉴权这类「公共部分」 */

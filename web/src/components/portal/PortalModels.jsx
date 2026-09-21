@@ -110,25 +110,6 @@ function CategoryIcon({ category }) {
   );
 }
 
-function Chevron({ open }) {
-  return (
-    <svg
-      className={`pt-chev${open ? ' open' : ''}`}
-      width='14'
-      height='14'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
-      strokeWidth='2'
-      strokeLinecap='round'
-      strokeLinejoin='round'
-      aria-hidden='true'
-    >
-      <path d='M6 9l6 6 6-6' />
-    </svg>
-  );
-}
-
 /*
  * 能力矩阵。四态，缺一不可：
  *   true    实测通过
@@ -416,7 +397,11 @@ function SpecItem({ label, value, wide }) {
   );
 }
 
-function ModelRow({ m, open, onToggle, onDoc }) {
+/*
+ * 一张模型卡。所有信息常驻展开，不做折叠：十一个模型、每个十来行字，
+ * 折叠起来反而要一个个点开才能比较，省下的那点高度不值得多一次点击。
+ */
+function ModelRow({ m, onDoc }) {
   const t = usePortalT();
   const endpoints = m.endpoints || [];
   const protocols = endpoints
@@ -430,29 +415,17 @@ function ModelRow({ m, open, onToggle, onDoc }) {
   // 折叠行里上下文只留数字，括号里的限定语放到展开后的规格里说，
   // 否则一行挤三样东西，最该看的数字反而不显眼。
   const contextBrief = m.context ? stripQualifier(t(m.context)) : null;
-  const panelId = `mdl-${m.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
-
   return (
-    <div className={`pt-mdl${open ? ' open' : ''}`}>
+    <div className='pt-mdl'>
       <div className={`pt-mdl-head${m.detail || m.summary ? ' has-desc' : ''}`}>
-        {/*
-         * 展开控件和复制按钮必须是同级的真 <button>。之前把复制按钮嵌在
-         * role="button" 的行里，键盘 Tab 到它再按回车，keydown 冒泡到父行被
-         * preventDefault 掉，结果是展开而不是复制。
-         */}
-        <button
-          type='button'
-          className='pt-mdl-main'
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={onToggle}
-        >
+        {/* 标题行不再是按钮：没有折叠了，它也就不该有可点的样子 */}
+        <div className='pt-mdl-main'>
           <ModelIcon icon={m.icon} size={28} />
           <span className='pt-mdl-title'>
             <span className='pt-mdl-name'>{t(m.name)}</span>
             <code className='pt-mdl-id'>{m.id}</code>
           </span>
-        </button>
+        </div>
         <div className='pt-mdl-act'>
           {/* 每个模型的调用方式都不一样，文档就挂在它自己这张卡上 */}
           {hasCallDoc(m.id) ? (
@@ -478,32 +451,12 @@ function ModelRow({ m, open, onToggle, onDoc }) {
           >
             {t('复制 ID')}
           </button>
-          {/*
-           * 箭头长得像按钮，就得真能点。但它和标题行是同一个动作，
-           * 所以不进 Tab 顺序、也不报给读屏——键盘和读屏走标题行那一个控件，
-           * 鼠标点哪个都行。
-           */}
-          <button
-            type='button'
-            className='pt-mdl-chev'
-            tabIndex={-1}
-            aria-hidden='true'
-            onClick={onToggle}
-          >
-            <Chevron open={open} />
-          </button>
         </div>
       </div>
 
-      {/*
-       * 描述必须长在按钮外面：浏览器不让人选中 <button> 里的文字，
-       * 放进去就复制不了。代价是点描述不再展开，点标题行或箭头才行。
-       *
-       * 折叠时直接给详述的前两行，不再另外摆一句摘要——两者开头说的是
-       * 同一件事，并排放着就是同一句话写两遍。summary 字段保留，搜索还在用。
-       */}
+      {/* 详述整段常驻；summary 字段保留，抽屉和搜索还在用 */}
       {m.detail ? (
-        <p className={`pt-mdl-desc ${open ? 'pt-mdl-full' : 'pt-mdl-brief'}`}>
+        <p className='pt-mdl-desc pt-mdl-full'>
           {withMarks(t(m.detail))}
         </p>
       ) : m.summary ? (
@@ -533,20 +486,7 @@ function ModelRow({ m, open, onToggle, onDoc }) {
         <Metric label={t('协议')} value={protocols} />
       </div>
 
-      {/*
-       * 详情区常驻 DOM，靠 grid-template-rows 0fr→1fr 做高度过渡；
-       * 条件渲染没法过渡，height:auto 也不能插值。收起时用 inert 把里面的
-       * 控件移出 Tab 顺序和读屏，视觉之外的行为和「不存在」一致。
-       */}
-      <div
-        className={`pt-mdl-panel${open ? ' open' : ''}`}
-        id={panelId}
-        aria-hidden={open ? undefined : 'true'}
-        inert={open ? undefined : ''}
-      >
-        {/* 裁切层不带内边距：内边距会算进 grid 行的最小高度，收起时收不干净 */}
-        <div className='pt-mdl-panel-in'>
-          <div className='pt-mdl-detail'>
+      <div className='pt-mdl-detail'>
             {/* 版本会跟着上游升级，所以标题不写版本号，靠这一行说明当前指向谁。
               加粗是因为它是这一条里最容易过期、也最该被看到的信息。 */}
             {m.highlight ? (
@@ -577,8 +517,6 @@ function ModelRow({ m, open, onToggle, onDoc }) {
               />
               {/* 实测到什么程度，单独占一整行：它是一句话，塞进窄格里会断得很碎 */}
             </dl>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -626,7 +564,6 @@ export default function PortalModels() {
   const cat = urlState.cat;
   const setKw = (v) => patch({ q: v });
   const setCat = (v) => patch({ cat: v });
-  const [openId, setOpenId] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   // ?doc=<模型 ID> 控制右侧抽屉，可以把链接直接发给同事
   const { docId, openDoc, closeDoc } = useDocParam();
@@ -786,8 +723,6 @@ export default function PortalModels() {
                     <ModelRow
                       key={m.id}
                       m={m}
-                      open={openId === m.id}
-                      onToggle={() => setOpenId(openId === m.id ? null : m.id)}
                       onDoc={openDoc}
                     />
                   ))}

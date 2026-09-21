@@ -4112,6 +4112,8 @@
     "超过 145 秒的音频平台会自动切段后拼接，不需要自己处理。": "Audio longer than 145 seconds is split and stitched back by the platform; you do not need to handle it.",
     "不要传 `voice`：OpenAI 的 alloy、echo 这些音色在这里不存在，填了会返回 400。": "Do not send `voice`: OpenAI voices such as alloy or echo do not exist here and will return 400.",
     "返回的是 wav（24kHz 单声道），不是 mp3。": "You get wav back (24kHz mono), not mp3.",
-    "需要克隆音色时传 `ref_audio` 和 `ref_text`。": "For voice cloning, send `ref_audio` and `ref_text`."
+    "需要克隆音色时传 `ref_audio` 和 `ref_text`。": "For voice cloning, send `ref_audio` and `ref_text`.",
+    "先把<k>密钥</k>放进环境变量：": "Put your <k>API key</k> in an environment variable first:",
+    "注意事项": "Notes"
   }
 }
